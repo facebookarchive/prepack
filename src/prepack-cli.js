@@ -61,8 +61,9 @@ function run(
     --lazyObjectsRuntime     Enable lazy objects feature and specify the JS runtime that support this feature.
     --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
                              Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
-    --initializeMoreModules  Enable speculative initialization of modules (for the module system Prepack has builtin
-                             knowledge about). Prepack will try to execute all factory functions it is able to.
+    --modulesToInitialize [ALL | comma separated list]
+                             Enable speculative initialization of modules (for the module system Prepack has builtin
+                             knowledge about). Prepack will try to execute the factory functions of the modules you specify.
     --trace                  Traces the order of module initialization.
     --check [start[, count]] Check residual functions for diagnostic messages. Do not generate code.
     --profile                Collect statistics about time and memory usage of the different internal passes
@@ -116,8 +117,8 @@ function run(
   let diagnosticAsError: void | Set<string>;
   let noDiagnostic: void | Set<string>;
   let warnAsError: void | true;
+  let modulesToInitialize: void | Set<string> | "ALL";
   let flags = {
-    initializeMoreModules: false,
     trace: false,
     debugNames: false,
     emitConcreteModel: false,
@@ -147,6 +148,10 @@ function run(
     } else {
       arg = arg.slice(2);
       switch (arg) {
+        case "modulesToInitialize":
+          let modulesString = args.shift().trim();
+          modulesToInitialize = modulesString === "ALL" ? modulesString : new Set(modulesString.split(","));
+          break;
         case "out":
           arg = args.shift();
           outputFilename = arg;
@@ -386,6 +391,7 @@ function run(
       invariantLevel,
       debuggerConfigArgs,
       debugReproArgs,
+      modulesToInitialize,
     },
     flags
   );

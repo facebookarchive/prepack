@@ -20,3 +20,7 @@ it("Hacker News app", () => {
   let data = JSON.parse(fs.readFileSync(__dirname + "/ServerRendering/hacker-news.json").toString());
   runTest(__dirname + "/ServerRendering/hacker-news.js", { data });
 });
+
+it("PE Functional Components benchmark", () => {
+  runTest(__dirname + "/ServerRendering/pe-functional-benchmark.js");
+});

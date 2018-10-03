@@ -26,7 +26,7 @@ export class SerializerStatistics extends RealmStatistics {
 
     this.total = new PerformanceTracker(getTime, getMemory);
     this.resolveInitializedModules = new PerformanceTracker(getTime, getMemory);
-    this.initializeMoreModules = new PerformanceTracker(getTime, getMemory);
+    this.modulesToInitialize = new PerformanceTracker(getTime, getMemory);
     this.optimizeReactComponentTreeRoots = new PerformanceTracker(getTime, getMemory);
     this.checkThatFunctionsAreIndependent = new PerformanceTracker(getTime, getMemory);
     this.processCollectedNestedOptimizedFunctions = new PerformanceTracker(getTime, getMemory);
@@ -94,7 +94,7 @@ export class SerializerStatistics extends RealmStatistics {
 
   total: PerformanceTracker;
   resolveInitializedModules: PerformanceTracker;
-  initializeMoreModules: PerformanceTracker;
+  modulesToInitialize: PerformanceTracker;
   optimizeReactComponentTreeRoots: PerformanceTracker;
   checkThatFunctionsAreIndependent: PerformanceTracker;
   processCollectedNestedOptimizedFunctions: PerformanceTracker;
@@ -135,7 +135,7 @@ export class SerializerStatistics extends RealmStatistics {
     this.logPerformanceTrackers(format);
     console.log(
       `${format(this.resolveInitializedModules)} resolving initialized modules, ${format(
-        this.initializeMoreModules
+        this.modulesToInitialize
       )} initializing more modules, ${format(
         this.optimizeReactComponentTreeRoots
       )} optimizing react component tree roots, ${format(

@@ -365,7 +365,7 @@ export class Realm {
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
-  reportObjectGetOwnProperties: void | (ObjectValue => void);
+  reportObjectGetOwnProperties: void | ((ObjectValue | AbstractObjectValue) => void);
   reportSideEffectCallbacks: Set<
     (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
   >;
@@ -719,7 +719,19 @@ export class Realm {
     try {
       return f();
     } finally {
-      this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      if (saved_createdObjectsTrackedForLeaks === undefined) {
+        this.createdObjectsTrackedForLeaks = undefined;
+      } else {
+        // Add any created objects from the child evaluatePure's tracked objects set to the
+        // current tracked objects set.
+        if (this.createdObjectsTrackedForLeaks !== undefined) {
+          for (let obj of this.createdObjectsTrackedForLeaks) {
+            saved_createdObjectsTrackedForLeaks.add(obj);
+          }
+        }
+        this.createdObjectsTrackedForLeaks = saved_createdObjectsTrackedForLeaks;
+      }
+
       if (reportSideEffectFunc !== null) {
         if (!bubbleSideEffectReports && saved_reportSideEffectCallbacks !== undefined) {
           this.reportSideEffectCallbacks = saved_reportSideEffectCallbacks;
@@ -857,9 +869,11 @@ export class Realm {
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
     let saved_completion = this.savedCompletion;
+    let saved_abstractValuesDefined = this._abstractValuesDefined;
     this.generator = new Generator(this, generatorName, this.pathConditions);
     this.createdObjects = new Set();
     this.savedCompletion = undefined; // while in this call, we only explore the normal path.
+    this._abstractValuesDefined = new Set(saved_abstractValuesDefined);
 
     let result;
     try {
@@ -924,6 +938,7 @@ export class Realm {
         this.modifiedProperties = savedProperties;
         this.createdObjects = saved_createdObjects;
         this.savedCompletion = saved_completion;
+        this._abstractValuesDefined = saved_abstractValuesDefined;
       }
     } finally {
       for (let t2 of this.tracers) t2.endEvaluateForEffects(state, result);
@@ -1504,7 +1519,7 @@ export class Realm {
     return binding;
   }
 
-  callReportObjectGetOwnProperties(ob: ObjectValue): void {
+  callReportObjectGetOwnProperties(ob: ObjectValue | AbstractObjectValue): void {
     if (this.reportObjectGetOwnProperties !== undefined) {
       this.reportObjectGetOwnProperties(ob);
     }

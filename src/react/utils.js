@@ -21,6 +21,7 @@ import {
   BoundFunctionValue,
   ECMAScriptFunctionValue,
   ECMAScriptSourceFunctionValue,
+  EmptyValue,
   FunctionValue,
   NumberValue,
   ObjectValue,
@@ -239,17 +240,31 @@ export function forEachArrayValue(
   mapFunc: (element: Value, index: number) => void
 ): void {
   let lengthValue = Get(realm, array, "length");
-  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on forEachArrayValue");
-  let length = lengthValue.value;
+  let isConditionalLength = lengthValue instanceof AbstractValue && lengthValue.kind === "conditional";
+  let length;
+  if (isConditionalLength) {
+    length = getMaxLength(lengthValue, 0);
+  } else {
+    invariant(lengthValue instanceof NumberValue, "TODO: support other types of array length value");
+    length = lengthValue.value;
+  }
   for (let i = 0; i < length; i++) {
     let elementProperty = array.properties.get("" + i);
     let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
     if (elementPropertyDescriptor) {
       invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
       let elementValue = elementPropertyDescriptor.value;
-      if (elementValue instanceof Value) {
-        mapFunc(elementValue, i);
+      // If we are in an array with conditional length, the element might be a conditional join
+      // of the same type as the length of the array
+      if (isConditionalLength && elementValue instanceof AbstractValue && elementValue.kind === "conditional") {
+        invariant(lengthValue instanceof AbstractValue);
+        let lengthCondition = lengthValue.args[0];
+        let elementCondition = elementValue.args[0];
+        // If they are the same condition
+        invariant(lengthCondition.equals(elementCondition), "TODO: support cases where the condition is not the same");
       }
+      invariant(elementValue instanceof Value);
+      mapFunc(elementValue, i);
     }
   }
 }
@@ -259,28 +274,66 @@ export function mapArrayValue(
   array: ArrayValue,
   mapFunc: (element: Value, descriptor: Descriptor) => Value
 ): ArrayValue {
-  let lengthValue = Get(realm, array, "length");
-  invariant(lengthValue instanceof NumberValue, "TODO: support non-numeric length on mapArrayValue");
-  let length = lengthValue.value;
-  let newArray = Create.ArrayCreate(realm, length);
   let returnTheNewArray = false;
+  let newArray;
 
-  for (let i = 0; i < length; i++) {
-    let elementProperty = array.properties.get("" + i);
-    let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
-    if (elementPropertyDescriptor) {
-      invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
-      let elementValue = elementPropertyDescriptor.value;
-      if (elementValue instanceof Value) {
-        let newElement = mapFunc(elementValue, elementPropertyDescriptor);
-        if (newElement !== elementValue) {
-          returnTheNewArray = true;
+  const mapArray = (lengthValue: NumberValue): void => {
+    let length = lengthValue.value;
+
+    for (let i = 0; i < length; i++) {
+      let elementProperty = array.properties.get("" + i);
+      let elementPropertyDescriptor = elementProperty && elementProperty.descriptor;
+      if (elementPropertyDescriptor) {
+        invariant(elementPropertyDescriptor instanceof PropertyDescriptor);
+        let elementValue = elementPropertyDescriptor.value;
+        if (elementValue instanceof Value) {
+          let newElement = mapFunc(elementValue, elementPropertyDescriptor);
+          if (newElement !== elementValue) {
+            returnTheNewArray = true;
+          }
+          Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, newElement);
+          continue;
         }
-        Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, newElement);
-        continue;
       }
+      Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, realm.intrinsics.undefined);
     }
-    Create.CreateDataPropertyOrThrow(realm, newArray, "" + i, realm.intrinsics.undefined);
+  };
+
+  let lengthValue = Get(realm, array, "length");
+  if (lengthValue instanceof AbstractValue && lengthValue.kind === "conditional") {
+    returnTheNewArray = true;
+    let [condValue, consequentVal, alternateVal] = lengthValue.args;
+    newArray = Create.ArrayCreate(realm, 0);
+    realm.evaluateWithAbstractConditional(
+      condValue,
+      () => {
+        return realm.evaluateForEffects(
+          () => {
+            invariant(consequentVal instanceof NumberValue);
+            mapArray(consequentVal);
+            return realm.intrinsics.undefined;
+          },
+          null,
+          "mapArrayValue consequent"
+        );
+      },
+      () => {
+        return realm.evaluateForEffects(
+          () => {
+            invariant(alternateVal instanceof NumberValue);
+            mapArray(alternateVal);
+            return realm.intrinsics.undefined;
+          },
+          null,
+          "mapArrayValue alternate"
+        );
+      }
+    );
+  } else if (lengthValue instanceof NumberValue) {
+    newArray = Create.ArrayCreate(realm, lengthValue.value);
+    mapArray(lengthValue);
+  } else {
+    invariant(false, "TODO: support other types of array length value");
   }
   return returnTheNewArray ? newArray : array;
 }
@@ -602,21 +655,68 @@ export function hasNoPartialKeyOrRef(realm: Realm, props: ObjectValue | Abstract
   return false;
 }
 
-function recursivelyFlattenArray(realm: Realm, array, targetArray): void {
-  forEachArrayValue(realm, array, item => {
-    if (item instanceof ArrayValue && !item.intrinsicName) {
-      recursivelyFlattenArray(realm, item, targetArray);
+export function getMaxLength(value: Value, maxLength: number): number {
+  if (value instanceof NumberValue) {
+    if (value.value > maxLength) {
+      return value.value;
+    } else {
+      return maxLength;
+    }
+  } else if (value instanceof AbstractValue && value.kind === "conditional") {
+    let [, consequentVal, alternateVal] = value.args;
+    let consequentMaxVal = getMaxLength(consequentVal, maxLength);
+    let alternateMaxVal = getMaxLength(alternateVal, maxLength);
+    if (consequentMaxVal > maxLength && consequentMaxVal >= alternateMaxVal) {
+      return consequentMaxVal;
+    } else if (alternateMaxVal > maxLength && alternateMaxVal >= consequentMaxVal) {
+      return alternateMaxVal;
+    }
+    return maxLength;
+  }
+  invariant(false, "TODO: support other types of array length value");
+}
+
+function recursivelyFlattenArray(realm: Realm, array, targetArray: ArrayValue, noHoles: boolean): void {
+  forEachArrayValue(realm, array, _item => {
+    let element = _item;
+    if (element instanceof ArrayValue && !element.intrinsicName) {
+      recursivelyFlattenArray(realm, element, targetArray, noHoles);
     } else {
       let lengthValue = Get(realm, targetArray, "length");
       invariant(lengthValue instanceof NumberValue);
-      Properties.Set(realm, targetArray, "" + lengthValue.value, item, true);
+      if (noHoles && element instanceof EmptyValue) {
+        // We skip holely elements
+        return;
+      } else if (noHoles && element instanceof AbstractValue && element.kind === "conditional") {
+        let [condValue, consequentVal, alternateVal] = element.args;
+        invariant(condValue instanceof AbstractValue);
+        let consquentIsHolely = consequentVal instanceof EmptyValue;
+        let alternateIsHolely = alternateVal instanceof EmptyValue;
+
+        if (consquentIsHolely && alternateIsHolely) {
+          // We skip holely elements
+          return;
+        }
+        if (consquentIsHolely) {
+          element = AbstractValue.createFromLogicalOp(
+            realm,
+            "&&",
+            AbstractValue.createFromUnaryOp(realm, "!", condValue),
+            alternateVal
+          );
+        }
+        if (alternateIsHolely) {
+          element = AbstractValue.createFromLogicalOp(realm, "&&", condValue, consequentVal);
+        }
+      }
+      Properties.Set(realm, targetArray, "" + lengthValue.value, element, true);
     }
   });
 }
 
-export function flattenChildren(realm: Realm, array: ArrayValue): ArrayValue {
+export function flattenChildren(realm: Realm, array: ArrayValue, noHoles: boolean): ArrayValue {
   let flattenedChildren = Create.ArrayCreate(realm, 0);
-  recursivelyFlattenArray(realm, array, flattenedChildren);
+  recursivelyFlattenArray(realm, array, flattenedChildren, noHoles);
   flattenedChildren.makeFinal();
   return flattenedChildren;
 }

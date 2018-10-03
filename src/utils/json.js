@@ -37,14 +37,14 @@ export function mergeAdjacentJSONTextNodes(node: JSON, removeFunctions: boolean,
           concatString = child;
         }
       } else if (typeof child === "object" && child !== null) {
-        if (concatString !== null) {
+        if (concatString !== null && concatString !== "") {
           arr.push(concatString);
           concatString = null;
         }
         arr.push(((mergeAdjacentJSONTextNodes(child, removeFunctions, visitedNodes): any): JSON));
       }
     }
-    if (concatString !== null) {
+    if (concatString !== null && concatString !== "") {
       arr.push(concatString);
     }
     return arr;

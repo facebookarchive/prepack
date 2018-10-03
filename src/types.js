@@ -402,7 +402,7 @@ export type LeakType = {
 
 export type MaterializeType = {
   materializeObject(realm: Realm, object: ObjectValue): void,
-  materializeObjectsTransitive(realm: Realm, value: FunctionValue): void,
+  computeReachableObjects(realm: Realm, value: Value): Set<ObjectValue>,
 };
 
 export type PropertiesType = {

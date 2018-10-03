@@ -1036,7 +1036,18 @@ export class ResidualHeapVisitor {
   _mark(val: Value): boolean {
     let scopes = this.values.get(val);
     if (scopes === undefined) this.values.set(val, (scopes = new Set()));
-    if (scopes.has(this.scope)) return false;
+    if (this.scope instanceof Generator && this.scope.effectsToApply === undefined) {
+      // If we've already marked this value for any simple parent (non-effect carrying) generator,
+      // then we don't need to re-mark it, as such a set of generators is reduced to the
+      // parent generator in all uses of the scopes set.
+      for (
+        let g = this.scope;
+        g instanceof Generator && g.effectsToApply === undefined;
+        g = this.generatorTree.getParent(g)
+      ) {
+        if (scopes.has(g)) return false;
+      }
+    } else if (scopes.has(this.scope)) return false;
     scopes.add(this.scope);
     return true;
   }
@@ -1076,7 +1087,7 @@ export class ResidualHeapVisitor {
     } else if (val.isIntrinsic()) {
       // All intrinsic values exist from the beginning of time...
       // ...except for a few that come into existence as templates for abstract objects via executable code.
-      if (val instanceof ObjectValue && val._isScopedTemplate) {
+      if (val instanceof ObjectValue && val.isScopedTemplate) {
         this.preProcessValue(val);
         this.postProcessValue(val);
       } else

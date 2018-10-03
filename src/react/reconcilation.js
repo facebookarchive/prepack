@@ -1033,7 +1033,7 @@ export class Reconciler {
         );
         // we can optimize further and flatten arrays on non-composite components
         if (resolvedChildren instanceof ArrayValue && !resolvedChildren.intrinsicName) {
-          resolvedChildren = flattenChildren(this.realm, resolvedChildren);
+          resolvedChildren = flattenChildren(this.realm, resolvedChildren, true);
         }
         if (resolvedChildren !== childrenValue) {
           let newProps = cloneProps(this.realm, propsValue, resolvedChildren);

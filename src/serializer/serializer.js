@@ -157,21 +157,22 @@ export class Serializer {
         });
       }
 
+      statistics.processCollectedNestedOptimizedFunctions.measure(() =>
+        this.functions.processCollectedNestedOptimizedFunctions()
+      );
+
       statistics.dumpIR.measure(() => {
         if (onExecute !== undefined) {
           let optimizedFunctions = new Map();
-          for (let [functionValue, additionalFunctionEffects] of this.functions.writeEffects)
+          for (let [functionValue, additionalFunctionEffects] of this.functions.getAdditionalFunctionValuesToEffects())
             optimizedFunctions.set(functionValue, additionalFunctionEffects.generator);
           onExecute(this.realm, optimizedFunctions);
         }
       });
 
-      statistics.processCollectedNestedOptimizedFunctions.measure(() =>
-        this.functions.processCollectedNestedOptimizedFunctions()
-      );
-
-      if (this.options.initializeMoreModules) {
-        statistics.initializeMoreModules.measure(() => this.modules.initializeMoreModules());
+      let modulesToInitialize = this.options.modulesToInitialize;
+      if (modulesToInitialize) {
+        statistics.modulesToInitialize.measure(() => this.modules.initializeMoreModules(modulesToInitialize));
         if (this.logger.hasErrors()) return undefined;
       }
 

@@ -147,3 +147,7 @@ it("Hacker News app", () => {
 it("Function bind", () => {
   runTest(__dirname + "/FBMocks/function-bind.js");
 });
+
+it("PE Functional Components benchmark", () => {
+  runTest(__dirname + "/FBMocks/pe-functional-benchmark.js");
+});
