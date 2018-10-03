@@ -26,7 +26,7 @@ import invariant from "../invariant.js";
 import { IsArray, IsArrayIndex } from "../methods/index.js";
 import { Logger } from "../utils/logger.js";
 import { Generator } from "../utils/generator.js";
-import type { AdditionalFunctionEffects } from "./types";
+import type { AdditionalFunctionEffects, AdditionalFunctionTransform } from "./types";
 import type { Binding } from "../environment.js";
 import type { BabelNodeSourceLocation } from "@babel/types";
 import { optionalStringOfLocation } from "../utils/babelhelpers.js";
@@ -205,14 +205,24 @@ export function createAdditionalEffects(
   effects: Effects,
   fatalOnAbrupt: boolean,
   name: string,
-  environmentRecordIdAfterGlobalCode: number,
-  parentAdditionalFunction: FunctionValue | void = undefined
+  additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
+  preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>,
+  optimizedFunction: FunctionValue,
+  parentOptimizedFunction: FunctionValue | void,
+  transforms: Array<AdditionalFunctionTransform> = []
 ): AdditionalFunctionEffects | null {
-  let generator = Generator.fromEffects(effects, realm, name, environmentRecordIdAfterGlobalCode);
-  let retValue: AdditionalFunctionEffects = {
-    parentAdditionalFunction,
+  let generator = Generator.fromEffects(
     effects,
-    transforms: [],
+    realm,
+    name,
+    additionalFunctionEffects,
+    preEvaluationComponentToWriteEffectFunction,
+    optimizedFunction
+  );
+  let retValue: AdditionalFunctionEffects = {
+    parentAdditionalFunction: parentOptimizedFunction || undefined,
+    effects,
+    transforms,
     generator,
     additionalRoots: new Set(),
   };

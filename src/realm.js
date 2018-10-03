@@ -477,6 +477,7 @@ export class Realm {
 
   optimizedFunctions: Map<FunctionValue | AbstractValue, ArgModel | void>;
   arrayNestedOptimizedFunctionsEnabled: boolean;
+  currentOptimizedFunction: FunctionValue | void;
 
   eagerlyRequireModuleDependencies: void | boolean;
 
@@ -819,6 +820,18 @@ export class Realm {
       }
     });
     invariant(result !== undefined, "If we get here, func must have returned undefined.");
+    return result;
+  }
+
+  withNewOptimizedFunction<T>(func: () => T, optimizedFunction: FunctionValue): T {
+    let result: T;
+    let previousOptimizedFunction = this.currentOptimizedFunction;
+    this.currentOptimizedFunction = optimizedFunction;
+    try {
+      result = func();
+    } finally {
+      this.currentOptimizedFunction = previousOptimizedFunction;
+    }
     return result;
   }
 
