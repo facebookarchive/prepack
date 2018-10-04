@@ -443,8 +443,11 @@ export class Modules {
       count++;
       this.initializedModules.set(moduleId, result.value);
     };
-    if (modulesToInitialize === "ALL") for (let moduleId of this.moduleIds) body(moduleId);
-    else for (let moduleId of modulesToInitialize) body("" + moduleId);
+    if (modulesToInitialize === "ALL") {
+      for (let moduleId of this.moduleIds) body(moduleId);
+    } else {
+      for (let moduleId of modulesToInitialize) body("" + moduleId);
+    }
     if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
   }
 }
