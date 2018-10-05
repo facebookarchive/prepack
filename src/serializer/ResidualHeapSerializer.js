@@ -1216,6 +1216,19 @@ export class ResidualHeapSerializer {
       let serializedValue = this.serializeValue(value);
       let condition;
       if (value instanceof AbstractValue && value.kind === "conditional") {
+        let cf = this.conditionalFeasibility.get(value);
+        invariant(cf !== undefined);
+        let conditionalSerializedValue;
+        if (cf.t && !cf.f) {
+          conditionalSerializedValue = this.serializeValue(value.args[1]);
+        } else if (!cf.t && cf.f) {
+          conditionalSerializedValue = this.serializeValue(value.args[2]);
+        } else {
+          invariant(cf.t && cf.f);
+        }
+        if (conditionalSerializedValue !== undefined) {
+          return t.expressionStatement(t.assignmentExpression("=", location, conditionalSerializedValue));
+        }
         let [c, x, y] = value.args;
         if (x instanceof EmptyValue) {
           if (c instanceof AbstractValue && c.kind === "!") condition = this.serializeValue(c.args[0]);
