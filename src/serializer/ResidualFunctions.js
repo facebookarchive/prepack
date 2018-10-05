@@ -663,16 +663,22 @@ export class ResidualFunctions {
           let firstUsage = this.firstFunctionUsages.get(functionValue);
           // todo: why can this be undefined?
           invariant(insertionPoint !== undefined);
-          if (
-            // The same free variables in shared instances may refer to objects with different initialization values
-            // so a stub forward function is needed during delay initializations.
+
+          let cannotBind =
             this.residualFunctionInitializers.hasInitializerStatement(functionValue) ||
             usesThis ||
             hasFunctionArg ||
             (firstUsage === undefined || !firstUsage.isNotEarlierThan(insertionPoint)) ||
             this.functionPrototypes.get(functionValue) !== undefined ||
-            hasAnyLeakedIds
-          ) {
+            hasAnyLeakedIds;
+
+          // TODO 2589: Code size reduction opportunity: bring back .bind calls
+          cannotBind = true;
+
+          if (cannotBind) {
+            // The same free variables in shared instances may refer to objects with different initialization values
+            // so a stub forward function is needed during delay initializations.
+
             let callArgs: Array<BabelNodeExpression | BabelNodeSpreadElement> = [t.thisExpression()];
             for (let flatArg of flatArgs) callArgs.push(flatArg);
             for (let param of params) {
