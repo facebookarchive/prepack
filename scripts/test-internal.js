@@ -56,9 +56,11 @@ function runTest(name: string, code: string): boolean {
     errorList = [];
     let modelName = name + ".model";
     let sourceMapName = name + ".map";
+    let modulesName = name + ".modules";
     let sourceCode = fs.readFileSync(name, "utf8");
     let modelCode = fs.existsSync(modelName) ? fs.readFileSync(modelName, "utf8") : undefined;
     let sourceMap = fs.existsSync(sourceMapName) ? fs.readFileSync(sourceMapName, "utf8") : undefined;
+    let modulesString = fs.existsSync(modulesName) ? JSON.parse(fs.readFileSync(modulesName, "utf8")) : undefined;
     let sources = [];
     if (modelCode) {
       sources.push({ filePath: modelName, fileContents: modelCode });
@@ -71,7 +73,7 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       errorHandler,
       serialize: true,
-      modulesToInitialize: modelCode ? undefined : "ALL",
+      modulesToInitialize: modulesString || (modelCode ? undefined : "ALL"),
       sourceMaps: !!sourceMap,
     };
     let serialized = prepackSources(sources, options);
