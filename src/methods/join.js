@@ -10,7 +10,7 @@
 /* @flow */
 
 import type { Binding } from "../environment.js";
-import type { Bindings, BindingEntry, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import type { Bindings, BindingEntry, PropertyBindings, CreatedAbstracts, CreatedObjects, Realm } from "../realm.js";
 import { construct_empty_effects, Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import {
@@ -215,6 +215,7 @@ export class JoinImplementation {
       modifiedBindings: modifiedBindings1,
       modifiedProperties: modifiedProperties1,
       createdObjects: createdObjects1,
+      createdAbstracts: createdAbstracts1,
     } = e1;
 
     let {
@@ -223,6 +224,7 @@ export class JoinImplementation {
       modifiedBindings: modifiedBindings2,
       modifiedProperties: modifiedProperties2,
       createdObjects: createdObjects2,
+      createdAbstracts: createdAbstracts2,
     } = e2;
 
     let realm = joinCondition.$Realm;
@@ -245,7 +247,9 @@ export class JoinImplementation {
       modifiedProperties1,
       modifiedProperties2,
       createdObjects1,
-      createdObjects2
+      createdObjects2,
+      createdAbstracts1,
+      createdAbstracts2
     );
     let createdObjects = new Set();
     createdObjects1.forEach(o => {
@@ -254,8 +258,15 @@ export class JoinImplementation {
     createdObjects2.forEach(o => {
       createdObjects.add(o);
     });
+    let createdAbstracts = new Set();
+    createdAbstracts1.forEach(o => {
+      createdAbstracts.add(o);
+    });
+    createdAbstracts2.forEach(o => {
+      createdAbstracts.add(o);
+    });
 
-    return new Effects(c, generator, bindings, properties, createdObjects);
+    return new Effects(c, generator, bindings, properties, createdObjects, createdAbstracts);
   }
 
   joinValuesOfSelectedCompletions(
@@ -411,13 +422,15 @@ export class JoinImplementation {
     joinCondition: AbstractValue,
     m1: PropertyBindings,
     m2: PropertyBindings,
-    c1: CreatedObjects,
-    c2: CreatedObjects
+    co1: CreatedObjects,
+    co2: CreatedObjects,
+    ca1: CreatedAbstracts,
+    ca2: CreatedAbstracts
   ): PropertyBindings {
     let join = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
       // If the PropertyBinding object has been freshly allocated do not join
       if (d1 === undefined) {
-        if (c2.has(b.object)) return d2; // no join
+        if (co2.has(b.object)) return d2; // no join
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was deleted
           d1 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
@@ -429,7 +442,7 @@ export class JoinImplementation {
         }
       }
       if (d2 === undefined) {
-        if (c1.has(b.object)) return d1; // no join
+        if (co1.has(b.object)) return d1; // no join
         if (b.descriptor !== undefined && m2.has(b)) {
           // property was deleted
           d2 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
