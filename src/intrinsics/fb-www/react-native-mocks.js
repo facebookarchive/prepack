@@ -1678,6 +1678,19 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
   invariant(RCTTextDerivedReference instanceof AbstractValue);
   realm.react.reactElementStringTypeReferences.set("RCTText", RCTTextDerivedReference);
 
+  let RCTActivityIndicatorViewDerivedReference = AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    StringValue,
+    [new StringValue(realm, "RCTActivityIndicatorView")],
+    createOperationDescriptor("REACT_NATIVE_STRING_LITERAL"),
+    { skipInvariant: true, isPure: true }
+  );
+  invariant(RCTActivityIndicatorViewDerivedReference instanceof AbstractValue);
+  realm.react.reactElementStringTypeReferences.set(
+    "RCTActivityIndicatorView",
+    RCTActivityIndicatorViewDerivedReference
+  );
+
   let reactLibrary = realm.fbLibraries.react;
   invariant(
     reactLibrary !== undefined,

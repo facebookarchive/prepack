@@ -1212,8 +1212,12 @@ export class ResidualHeapSerializer {
     deleteIfMightHaveBeenDeleted: boolean = false
   ): BabelNodeStatement {
     if (mightHaveBeenDeleted) {
-      // We always need to serialize this value in order to keep the invariants happy.
+      invariant(value.mightHaveBeenDeleted());
+
+      // We always need to serialize this value in order to keep the invariants happy,
+      // as the visitor hasn't been taught about the following peephole optimization.
       let serializedValue = this.serializeValue(value);
+<<<<<<< HEAD
       let condition;
       if (value instanceof AbstractValue && value.kind === "conditional") {
         let cf = this.conditionalFeasibility.get(value);
@@ -1237,23 +1241,52 @@ export class ResidualHeapSerializer {
         } else if (y instanceof EmptyValue) {
           condition = this.serializeValue(c);
           serializedValue = this.serializeValue(x);
+=======
+
+      // Let's find the relevant value taking into account conditions implied by path conditions
+      while (value instanceof AbstractValue && value.kind === "conditional") {
+        let cf = this.conditionalFeasibility.get(value);
+        invariant(cf !== undefined);
+        if (cf.t && cf.f) break;
+        if (cf.t) value = value.args[1];
+        else {
+          invariant(cf.f);
+          value = value.args[2];
+>>>>>>> master
         }
       }
-      if (condition === undefined) {
-        condition = t.binaryExpression("!==", this.serializeValue(value), this._serializeEmptyValue());
+      if (value instanceof EmptyValue) {
+        return t.expressionStatement(t.unaryExpression("delete", ((location: any): BabelNodeMemberExpression), true));
+      } else if (value.mightHaveBeenDeleted()) {
+        // Let's try for a little peephole optimization, if __empty is a branch of a conditional, and the other side cannot be __empty
+        let condition;
+        if (value instanceof AbstractValue && value.kind === "conditional") {
+          let [c, x, y] = value.args;
+          if (x instanceof EmptyValue && !y.mightHaveBeenDeleted()) {
+            if (c instanceof AbstractValue && c.kind === "!") condition = this.serializeValue(c.args[0]);
+            else condition = t.unaryExpression("!", this.serializeValue(c));
+            serializedValue = this.serializeValue(y);
+          } else if (y instanceof EmptyValue && !x.mightHaveBeenDeleted()) {
+            condition = this.serializeValue(c);
+            serializedValue = this.serializeValue(x);
+          }
+        }
+        if (condition === undefined) {
+          condition = t.binaryExpression("!==", serializedValue, this._serializeEmptyValue());
+        }
+        let assignment = t.expressionStatement(t.assignmentExpression("=", location, serializedValue));
+        let deletion = null;
+        if (deleteIfMightHaveBeenDeleted) {
+          invariant(location.type === "MemberExpression");
+          deletion = t.expressionStatement(
+            t.unaryExpression("delete", ((location: any): BabelNodeMemberExpression), true)
+          );
+        }
+        return t.ifStatement(condition, assignment, deletion);
       }
-      let assignment = t.expressionStatement(t.assignmentExpression("=", location, serializedValue));
-      let deletion = null;
-      if (deleteIfMightHaveBeenDeleted) {
-        invariant(location.type === "MemberExpression");
-        deletion = t.expressionStatement(
-          t.unaryExpression("delete", ((location: any): BabelNodeMemberExpression), true)
-        );
-      }
-      return t.ifStatement(condition, assignment, deletion);
-    } else {
-      return t.expressionStatement(t.assignmentExpression("=", location, this.serializeValue(value)));
     }
+
+    return t.expressionStatement(t.assignmentExpression("=", location, this.serializeValue(value)));
   }
 
   _serializeArrayIndexProperties(
