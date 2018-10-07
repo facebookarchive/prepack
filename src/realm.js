@@ -95,6 +95,7 @@ export type EvaluationResult = Completion | Reference;
 export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 
 export type CreatedObjects = Set<ObjectValue>;
+export type CreatedAbstracts = Set<AbstractValue>;
 
 export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "EXCEPTION_THROWN" | "MODIFIED_GLOBAL";
 
@@ -106,13 +107,15 @@ export class Effects {
     generator: Generator,
     bindings: Bindings,
     propertyBindings: PropertyBindings,
-    createdObjects: CreatedObjects
+    createdObjects: CreatedObjects,
+    createdAbstracts: CreatedAbstracts
   ) {
     this.result = result;
     this.generator = generator;
     this.modifiedBindings = bindings;
     this.modifiedProperties = propertyBindings;
     this.createdObjects = createdObjects;
+    this.createdAbstracts = createdAbstracts;
 
     this.canBeApplied = true;
     this._id = effects_uid++;
@@ -123,11 +126,19 @@ export class Effects {
   modifiedBindings: Bindings;
   modifiedProperties: PropertyBindings;
   createdObjects: CreatedObjects;
+  createdAbstracts: CreatedAbstracts;
   canBeApplied: boolean;
   _id: number;
 
   shallowCloneWithResult(result: Completion): Effects {
-    return new Effects(result, this.generator, this.modifiedBindings, this.modifiedProperties, this.createdObjects);
+    return new Effects(
+      result,
+      this.generator,
+      this.modifiedBindings,
+      this.modifiedProperties,
+      this.createdObjects,
+      this.createdAbstracts
+    );
   }
 
   toDisplayString(): string {
@@ -228,6 +239,7 @@ export function construct_empty_effects(
     new Generator(realm, "construct_empty_effects", realm.pathConditions),
     new Map(),
     new Map(),
+    new Set(),
     new Set()
   );
 }
@@ -372,6 +384,7 @@ export class Realm {
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
+  createdAbstracts: void | CreatedAbstracts;
   reportObjectGetOwnProperties: void | ((ObjectValue | AbstractObjectValue) => void);
   reportSideEffectCallbacks: Set<
     (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
@@ -875,10 +888,12 @@ export class Realm {
     let [savedBindings, savedProperties] = this.getAndResetModifiedMaps();
     let saved_generator = this.generator;
     let saved_createdObjects = this.createdObjects;
+    let saved_createdAbstracts = this.createdAbstracts;
     let saved_completion = this.savedCompletion;
     let saved_abstractValuesDefined = this._abstractValuesDefined;
     this.generator = new Generator(this, generatorName, this.pathConditions);
     this.createdObjects = new Set();
+    this.createdAbstracts = new Set();
     this.savedCompletion = undefined; // while in this call, we only explore the normal path.
     this._abstractValuesDefined = new Set(saved_abstractValuesDefined);
 
@@ -908,6 +923,7 @@ export class Realm {
         let astBindings = this.modifiedBindings;
         let astProperties = this.modifiedProperties;
         let astCreatedObjects = this.createdObjects;
+        let astCreatedAbstracts = this.createdAbstracts;
 
         /* TODO #1615: The following invariant should hold.
 
@@ -920,7 +936,8 @@ export class Realm {
 
         // Return the captured state changes and evaluation result
         if (c instanceof Value) c = new SimpleNormalCompletion(c);
-        result = new Effects(c, astGenerator, astBindings, astProperties, astCreatedObjects);
+        invariant(astCreatedAbstracts !== undefined);
+        result = new Effects(c, astGenerator, astBindings, astProperties, astCreatedObjects, astCreatedAbstracts);
         return result;
       } finally {
         // Roll back the state changes
@@ -944,6 +961,7 @@ export class Realm {
         this.modifiedBindings = savedBindings;
         this.modifiedProperties = savedProperties;
         this.createdObjects = saved_createdObjects;
+        this.createdAbstracts = saved_createdAbstracts;
         this.savedCompletion = saved_completion;
         this._abstractValuesDefined = saved_abstractValuesDefined;
       }
@@ -1364,12 +1382,14 @@ export class Realm {
       (this.generator: any),
       (this.modifiedBindings: any),
       (this.modifiedProperties: any),
-      (this.createdObjects: any)
+      (this.createdObjects: any),
+      (this.createdAbstracts: any)
     );
     this.generator = new Generator(this, "captured", this.pathConditions);
     this.modifiedBindings = new Map();
     this.modifiedProperties = new Map();
     this.createdObjects = new Set();
+    this.createdAbstracts = new Set();
   }
 
   getCapturedEffects(v?: Completion | Value = this.intrinsics.undefined): Effects {
@@ -1377,12 +1397,14 @@ export class Realm {
     invariant(this.modifiedBindings !== undefined);
     invariant(this.modifiedProperties !== undefined);
     invariant(this.createdObjects !== undefined);
+    invariant(this.createdAbstracts !== undefined);
     return new Effects(
       v instanceof Completion ? v : new SimpleNormalCompletion(v),
       this.generator,
       this.modifiedBindings,
       this.modifiedProperties,
-      this.createdObjects
+      this.createdObjects,
+      this.createdAbstracts
     );
   }
 
@@ -1399,6 +1421,7 @@ export class Realm {
       this.modifiedBindings = savedEffects.modifiedBindings;
       this.modifiedProperties = savedEffects.modifiedProperties;
       this.createdObjects = savedEffects.createdObjects;
+      this.createdAbstracts = savedEffects.createdAbstracts;
     } else {
       invariant(false);
     }
@@ -1411,7 +1434,7 @@ export class Realm {
       "Effects have been applied and not properly reverted. It is not safe to apply them a second time."
     );
     effects.canBeApplied = false;
-    let { generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
+    let { generator, modifiedBindings, modifiedProperties, createdObjects, createdAbstracts } = effects;
 
     // Add generated code for property modifications
     if (appendGenerator) this.appendGenerator(generator, leadingComment);
@@ -1448,6 +1471,18 @@ export class Realm {
         createdObjects.forEach((ob, a) => {
           invariant(realmCreatedObjects !== undefined);
           realmCreatedObjects.add(ob);
+        });
+      }
+    }
+
+    // add created abstracts
+    if (createdAbstracts.size > 0) {
+      let realmCreatedAbstracts = this.createdAbstracts;
+      if (realmCreatedAbstracts === undefined) this.createdAbstracts = new Set(createdAbstracts);
+      else {
+        createdAbstracts.forEach((ob, a) => {
+          invariant(realmCreatedAbstracts !== undefined);
+          realmCreatedAbstracts.add(ob);
         });
       }
     }
@@ -1599,6 +1634,12 @@ export class Realm {
     }
     if (this.createdObjectsTrackedForLeaks !== undefined) {
       this.createdObjectsTrackedForLeaks.add(object);
+    }
+  }
+
+  recordNewAbstract(abstract: AbstractValue): void {
+    if (this.createdAbstracts !== undefined) {
+      this.createdAbstracts.add(abstract);
     }
   }
 
