@@ -10,4 +10,3 @@ let z = foo(!x);
 inspect = function() {
   return z;
 };
-  

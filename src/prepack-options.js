@@ -14,7 +14,12 @@ import type { SerializerOptions, RealmOptions, Compatibility, ReactOutputTypes, 
 import { type Realm } from "./realm.js";
 import { type Generator } from "./utils/generator.js";
 import { type FunctionValue } from "./values/index.js";
-import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
+import type {
+  DebuggerConfigArguments,
+  DebugReproArguments,
+  OptionallyInlineFunctionCallsType,
+  OptionallyInlineFunctionCallsLossyConfig,
+} from "./types";
 import type { BabelNodeFile } from "@babel/types";
 
 export type PrepackOptions = {|
@@ -63,7 +68,8 @@ export type PrepackOptions = {|
   onExecute?: (Realm, Map<FunctionValue, Generator>) => void,
   arrayNestedOptimizedFunctionsEnabled?: boolean,
   reactFailOnUnsupportedSideEffects?: boolean,
-  optionallyInlineFunctionCalls?: boolean,
+  optionallyInlineFunctionCalls?: OptionallyInlineFunctionCallsType,
+  optionallyInlineFunctionCallsLossyConfig?: OptionallyInlineFunctionCallsLossyConfig,
 |};
 
 export function getRealmOptions({
@@ -92,6 +98,7 @@ export function getRealmOptions({
   arrayNestedOptimizedFunctionsEnabled,
   reactFailOnUnsupportedSideEffects,
   optionallyInlineFunctionCalls,
+  optionallyInlineFunctionCallsLossyConfig,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -119,6 +126,7 @@ export function getRealmOptions({
     arrayNestedOptimizedFunctionsEnabled,
     reactFailOnUnsupportedSideEffects,
     optionallyInlineFunctionCalls,
+    optionallyInlineFunctionCallsLossyConfig,
   };
 }
 

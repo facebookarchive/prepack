@@ -72,6 +72,7 @@ export type OperationDescriptorType =
   | "CALL_ABSTRACT_FUNC"
   | "CALL_ABSTRACT_FUNC_THIS"
   | "CALL_BAILOUT"
+  | "CALL_OPTIONAL_INLINE"
   | "CANNOT_BECOME_OBJECT"
   | "COERCE_TO_STRING"
   | "CONCRETE_MODEL"
@@ -170,7 +171,7 @@ export type OperationDescriptorData = {
   thisArg?: BaseValue | Value, // used by CALL_BAILOUT
   templateSource?: string, // used by ABSTRACT_FROM_TEMPLATE
   typeComparisons?: Set<typeof Value>, // used by FULL_INVARIANT_ABSTRACT
-  usesThis?: boolean, // used by FOR_STATEMENT_FUNC
+  usesThis?: boolean, // used by FOR_STATEMENT_FUNC and CALL_OPTIONAL_INLINE
   value?: Value, // used by DO_WHILE, CONDITIONAL_PROPERTY_ASSIGNMENT, LOGICAL_PROPERTY_ASSIGNMENT, LOCAL_ASSIGNMENT, CONDITIONAL_THROW, EMIT_PROPERTY_ASSIGNMENT
   violationConditionOperationDescriptor?: OperationDescriptor, // used by INVARIANT
 };

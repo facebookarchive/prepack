@@ -84,7 +84,14 @@ let prepackOptions = {
   invariantLevel: 0,
   abstractValueImpliesMax: 1000,
   stripFlow: true,
-  optionallyInlineFunctionCalls: true,
+  optionallyInlineFunctionCalls: "LOSSY",
+  optionallyInlineFunctionCallsLossyConfig: {
+    ARRAY_ABSTRACT_PROPERTIES: false,
+    ARRAY_FUNCTION_PROPERTIES: false,
+    OBJECT_ABSTRACT_PROPERTIES: false,
+    OBJECT_FUNCTION_PROPERTIES: false,
+    COMPLEX_ABSTRACT_CONDITIONS: false,
+  },
 };
 let inputPath = path.resolve("fb-www/input.js");
 let outputPath = path.resolve("fb-www/output.js");

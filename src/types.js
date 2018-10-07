@@ -60,6 +60,15 @@ export const ElementSize = {
   Uint8Clamped: 1,
 };
 
+export type OptionallyInlineFunctionCallsType = "DISABLED" | "LOSSLESS" | "LOSSY";
+export type OptionallyInlineFunctionCallsLossyConfig = {
+  ARRAY_ABSTRACT_PROPERTIES?: boolean,
+  ARRAY_FUNCTION_PROPERTIES?: boolean,
+  OBJECT_ABSTRACT_PROPERTIES?: boolean,
+  OBJECT_FUNCTION_PROPERTIES?: boolean,
+  COMPLEX_ABSTRACT_CONDITIONS?: boolean,
+};
+
 export type ConsoleMethodTypes =
   | "assert"
   | "clear"

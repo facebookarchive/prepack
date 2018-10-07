@@ -26,7 +26,7 @@ import {
   Value,
 } from "../values/index.js";
 import invariant from "../invariant.js";
-import { Functions, Properties } from "../singletons.js";
+import { Functions, Materialize, Properties } from "../singletons.js";
 import { PropertyDescriptor, cloneDescriptor } from "../descriptors.js";
 import { createOperationDescriptor } from "../utils/generator.js";
 import { Get } from "../methods/index.js";
@@ -78,13 +78,67 @@ function effectsArePure(realm: Realm, effects: Effects, F: ECMAScriptFunctionVal
   return true;
 }
 
-type OptionalInlinableStatus = "NEEDS_INLINING" | "OPTIONALLY_INLINE_WITH_CLONING" | "OPTIONALLY_INLINE";
+type OptionalInlinableStatus =
+  | "NEEDS_INLINING"
+  | "OPTIONALLY_INLINE_WITH_CLONING"
+  | "OPTIONALLY_INLINE"
+  | "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY";
+
+type LossyConfigProperty =
+  | "OBJECT_ABSTRACT_PROPERTIES"
+  | "OBJECT_FUNCTION_PROPERTIES"
+  | "COMPLEX_ABSTRACT_CONDITIONS"
+  | "ARRAY_ABSTRACT_PROPERTIES"
+  | "ARRAY_FUNCTION_PROPERTIES";
+
+function checkLossyConfigPropertyEnabled(realm: Realm, property: LossyConfigProperty): boolean {
+  if (realm.optionallyInlineFunctionCalls === "LOSSY" && realm.optionallyInlineFunctionCallsLossyConfig !== undefined) {
+    return realm.optionallyInlineFunctionCallsLossyConfig[property] === true;
+  }
+  return false;
+}
+
+function canAvoidPropertyInliningWithLossyConfig(realm: Realm, obj: ObjectValue, propVal: Value): boolean {
+  invariant(realm.optionallyInlineFunctionCalls === "LOSSY");
+  // If the property matches against the below heuristics and we've got the lossy setting on to ignore them
+  // if they come back as NEEDS_INLINING, then we ultimately making the property value abstract
+  // during the cloning/remodeling phase.
+  if (
+    propVal instanceof AbstractValue &&
+    obj instanceof ArrayValue &&
+    obj.$Prototype === realm.intrinsics.ArrayPrototype &&
+    checkLossyConfigPropertyEnabled(realm, "ARRAY_ABSTRACT_PROPERTIES")
+  ) {
+    return true;
+  } else if (
+    propVal instanceof FunctionValue &&
+    obj instanceof ArrayValue &&
+    obj.$Prototype === realm.intrinsics.ArrayPrototype &&
+    checkLossyConfigPropertyEnabled(realm, "ARRAY_FUNCTION_PROPERTIES")
+  ) {
+    return true;
+  } else if (
+    propVal instanceof AbstractValue &&
+    obj.$Prototype === realm.intrinsics.ObjectPrototype &&
+    checkLossyConfigPropertyEnabled(realm, "OBJECT_ABSTRACT_PROPERTIES")
+  ) {
+    return true;
+  } else if (
+    propVal instanceof FunctionValue &&
+    obj.$Prototype === realm.intrinsics.ObjectPrototype &&
+    checkLossyConfigPropertyEnabled(realm, "OBJECT_FUNCTION_PROPERTIES")
+  ) {
+    return true;
+  }
+  return false;
+}
 
 function getOptionalInlinableStatus(
   realm: Realm,
   val: Value,
   funcEffects: Effects,
-  validateNonObjectTemprals: boolean
+  checkAbstractsAreTemporals: boolean,
+  abstractDepth: number
 ): OptionalInlinableStatus {
   if (val instanceof ConcreteValue) {
     if (val instanceof PrimitiveValue) {
@@ -102,23 +156,37 @@ function getOptionalInlinableStatus(
         return "NEEDS_INLINING";
       }
       if (val.isIntrinsic()) {
-        // TODO: should we inline in this case?
+        // TODO: are there issues around objects that are intrinsic? I'm not 100% sure.
       }
       if (val.mightBeLeakedObject()) {
-        // TODO: should we inline in this case?
+        // TODO: are there issues around objects that have leaked? I'm not 100% sure.
       }
       // Check the status of the properties to see if any of them need inlining
       for (let [propName, binding] of val.properties) {
         if (binding && binding.descriptor) {
           // TODO support prototypes and callee
           if (propName === "callee" || propName === "prototype") {
-            continue;
+            // Given we don't support cloning functions now, we only check this for other objects
+            if (val instanceof FunctionValue) {
+              continue;
+            }
+            invariant(false, "TODO support prototype and callee for non-function objects");
           }
           invariant(val instanceof ObjectValue);
           let propVal = Get(realm, val, propName);
-          let propStatus = getOptionalInlinableStatus(realm, propVal, funcEffects, validateNonObjectTemprals);
+          let propStatus = getOptionalInlinableStatus(
+            realm,
+            propVal,
+            funcEffects,
+            checkAbstractsAreTemporals,
+            abstractDepth
+          );
 
-          if (propStatus === "NEEDS_INLINING") {
+          if (
+            propStatus === "NEEDS_INLINING" &&
+            (realm.optionallyInlineFunctionCalls !== "LOSSY" ||
+              !canAvoidPropertyInliningWithLossyConfig(realm, val, propVal))
+          ) {
             return "NEEDS_INLINING";
           }
         }
@@ -135,13 +203,25 @@ function getOptionalInlinableStatus(
             // checking if simple functions have unbound reads to bindings already created in the environment.
             return "NEEDS_INLINING";
           } else if (val instanceof BoundFunctionValue) {
-            let thisStatus = getOptionalInlinableStatus(realm, val.$BoundThis, funcEffects, validateNonObjectTemprals);
+            let thisStatus = getOptionalInlinableStatus(
+              realm,
+              val.$BoundThis,
+              funcEffects,
+              checkAbstractsAreTemporals,
+              abstractDepth
+            );
 
             if (thisStatus === "NEEDS_INLINING") {
               return "NEEDS_INLINING";
             }
             for (let boundArg of val.$BoundArguments) {
-              let boundArgStatus = getOptionalInlinableStatus(realm, boundArg, funcEffects, validateNonObjectTemprals);
+              let boundArgStatus = getOptionalInlinableStatus(
+                realm,
+                boundArg,
+                funcEffects,
+                checkAbstractsAreTemporals,
+                abstractDepth
+              );
 
               if (boundArgStatus === "NEEDS_INLINING") {
                 return "NEEDS_INLINING";
@@ -151,7 +231,8 @@ function getOptionalInlinableStatus(
               realm,
               val.$BoundTargetFunction,
               funcEffects,
-              validateNonObjectTemprals
+              checkAbstractsAreTemporals,
+              abstractDepth
             );
 
             if (targetFunctionStatus === "NEEDS_INLINING") {
@@ -175,56 +256,98 @@ function getOptionalInlinableStatus(
     if (val.kind === "conditional") {
       let [condValue, consequentVal, alternateVal] = val.args;
       invariant(condValue instanceof AbstractValue);
-      let consequentStatus = getOptionalInlinableStatus(realm, consequentVal, funcEffects, validateNonObjectTemprals);
-      let alternateStatus = getOptionalInlinableStatus(realm, alternateVal, funcEffects, validateNonObjectTemprals);
+      let consequentStatus = getOptionalInlinableStatus(
+        realm,
+        consequentVal,
+        funcEffects,
+        checkAbstractsAreTemporals,
+        abstractDepth + 1 // For conditonals always increase depth
+      );
+      let alternateStatus = getOptionalInlinableStatus(
+        realm,
+        alternateVal,
+        funcEffects,
+        checkAbstractsAreTemporals,
+        abstractDepth + 1 // For conditonals always increase depth
+      );
 
       if (
-        consequentStatus === "NEEDS_INLINING" ||
-        alternateStatus === "NEEDS_INLINING" ||
-        consequentStatus !== alternateStatus
+        consequentStatus === "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY" ||
+        alternateStatus === "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY"
       ) {
+        return "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY";
+      } else if (consequentStatus === "NEEDS_INLINING" || alternateStatus === "NEEDS_INLINING") {
+        if (checkLossyConfigPropertyEnabled(realm, "COMPLEX_ABSTRACT_CONDITIONS") && abstractDepth > 5) {
+          return "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY";
+        }
         return "NEEDS_INLINING";
       } else if (consequentStatus === "OPTIONALLY_INLINE" && alternateStatus === "OPTIONALLY_INLINE") {
         return "OPTIONALLY_INLINE";
       } else {
         // We care if the condValue is temporal here, as it means we can't clone the conditional
-        let condStatus = getOptionalInlinableStatus(realm, condValue, funcEffects, true);
-        if (condStatus === "NEEDS_INLINING") {
+        let condStatus = getOptionalInlinableStatus(realm, condValue, funcEffects, true, abstractDepth);
+        if (condStatus === "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY") {
+          return "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY";
+        } else if (condStatus === "NEEDS_INLINING") {
           return "NEEDS_INLINING";
         }
         return "OPTIONALLY_INLINE_WITH_CLONING";
       }
     } else if (val.args.length > 0) {
       let optionalInlinableStatus;
+      let shouldIncreaseDepth = val.kind === "||" || "&&";
 
       for (let arg of val.args) {
         // We care if the arg is temporal here, as it means we can't clone the abstract
-        let status = getOptionalInlinableStatus(realm, arg, funcEffects, true);
-        if (status === "NEEDS_INLINING") {
+        let status = getOptionalInlinableStatus(
+          realm,
+          arg,
+          funcEffects,
+          checkAbstractsAreTemporals,
+          shouldIncreaseDepth ? abstractDepth + 1 : abstractDepth
+        );
+        if (status === "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY") {
+          return "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY";
+        } else if (status === "NEEDS_INLINING") {
+          if (checkLossyConfigPropertyEnabled(realm, "COMPLEX_ABSTRACT_CONDITIONS") && abstractDepth > 5) {
+            return "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY";
+          }
+          optionalInlinableStatus = "NEEDS_INLINING";
+        } else if (status === "OPTIONALLY_INLINE" && optionalInlinableStatus !== "OPTIONALLY_INLINE") {
+          optionalInlinableStatus = "NEEDS_INLINING";
+        } else if (optionalInlinableStatus !== "NEEDS_INLINING") {
+          if (status === "OPTIONALLY_INLINE_WITH_CLONING") {
+            optionalInlinableStatus = "OPTIONALLY_INLINE_WITH_CLONING";
+          } else if (optionalInlinableStatus === undefined) {
+            optionalInlinableStatus = status;
+          }
+        }
+      }
+      if (!checkAbstractsAreTemporals && optionalInlinableStatus === "OPTIONALLY_INLINE_WITH_CLONING") {
+        // We now re-do the check on the same value, this time failing if any of the args are temporal.
+        // We dot this because on the first pass, we want to allow for cases where all args might
+        // return "OPTIONALLY_INLINE" without the tempral check in place, meaning we can cosider val
+        // as also being "OPTIONALLY_INLINE". Yet, in cases where we don't check for temporals,
+        // we may get back "OPTIONALLY_INLINE_WITH_CLONING" where we'd actually get back "NEED_INLING"
+        // in the cases where we find abstracts that were temporal.
+        let status = getOptionalInlinableStatus(realm, val, funcEffects, true, abstractDepth);
+        if (status === "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY") {
+          return "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY";
+        } else if (status === "NEEDS_INLINING") {
           return "NEEDS_INLINING";
-        } else if (status === "OPTIONALLY_INLINE_WITH_CLONING") {
-          optionalInlinableStatus = "OPTIONALLY_INLINE_WITH_CLONING";
-        } else if (optionalInlinableStatus === undefined) {
-          optionalInlinableStatus = status;
         }
       }
       invariant(optionalInlinableStatus !== undefined);
       return optionalInlinableStatus;
     }
+    if (checkAbstractsAreTemporals && val.isTemporal()) {
+      return "NEEDS_INLINING";
+    }
     if (val instanceof AbstractObjectValue) {
-      if (val.isTemporal()) {
-        return "NEEDS_INLINING";
-      }
       if (val.values.isTop() || val.values.isBottom()) {
         return "OPTIONALLY_INLINE";
       }
-      debugger;
-      for (let values of val.values.getElements()) {
-
-      }
-      return "OPTIONALLY_INLINE_WITH_CLONING";
-    }
-    if (validateNonObjectTemprals && val.isTemporal()) {
+      // TODO check values in values and handle those cases
       return "NEEDS_INLINING";
     }
     // All abstract values with no args are treated as optionally inlinable.
@@ -288,7 +411,7 @@ function cloneObjectProperties(
   for (let [propName, { descriptor }] of val.properties) {
     // TODO support prototypes and callee
     if (propName === "prototype" || propName === "callee") {
-      continue;
+      invariant(false, "TODO support prototype and callee");
     }
     invariant(descriptor instanceof PropertyDescriptor);
     let desc = cloneAndModelObjectPropertyDescriptor(
@@ -309,19 +432,20 @@ function cloneObjectProperties(
 function applyPostValueConfig(realm: Realm, value: Value, clonedValue: Value, rootObject: void | ObjectValue): void {
   if (clonedValue instanceof ObjectValue) {
     clonedValue.intrinsicNameGenerated = true;
+    clonedValue.isScopedTemplate = true;
   }
   if (value instanceof ObjectValue && clonedValue instanceof ObjectValue) {
     if (realm.react.reactProps.has(value)) {
       realm.react.reactProps.add(clonedValue);
-    }
-    if (value.mightBeFinalObject()) {
-      clonedValue.makeFinal();
     }
     if (value.isPartialObject()) {
       clonedValue.makePartial();
     }
     if (value.isSimpleObject()) {
       clonedValue.makeSimple();
+    }
+    if (value.mightBeFinalObject()) {
+      clonedValue.makeFinal();
     }
   }
   if (rootObject !== undefined) {
@@ -369,7 +493,7 @@ function cloneAndModelObjectPropertyDescriptor(
       !(value instanceof PrimitiveValue) &&
       ((value instanceof ObjectValue && realm.createdObjects.has(value)) || value instanceof AbstractValue)
     ) {
-      realm.optionallyInlinedDerivedPropertyDependencies.set(value, clonedObject);
+      realm.optionallyInlinedDerivedPropertyDependencies.set(clonedValue, clonedObject);
     }
   } else {
     invariant(false, "// TODO handle get/set in cloneAndModelObjectPropertyDescriptor");
@@ -377,10 +501,98 @@ function cloneAndModelObjectPropertyDescriptor(
   return clonedDesc;
 }
 
+function cloneAndModelObjectValue(
+  realm: Realm,
+  val: ObjectValue,
+  intrinsicName: null | string,
+  funcEffects: Effects,
+  rootObject: void | ObjectValue
+): Value {
+  // If the value was created inside the funcEffects, then that means we need to clone it
+  // otherwise we can just return the value
+  if (!funcEffects.createdObjects.has(val)) {
+    return val;
+  }
+  invariant(intrinsicName !== null);
+  if (val instanceof ArrayValue) {
+    let clonedObject = new ArrayValue(realm, intrinsicName);
+    cloneObjectProperties(realm, clonedObject, val, intrinsicName, rootObject, funcEffects);
+    applyPostValueConfig(realm, val, clonedObject, rootObject);
+    return clonedObject;
+  } else if (val instanceof FunctionValue) {
+    if (val instanceof BoundFunctionValue) {
+      let targetFunction = val.$BoundTargetFunction;
+      let clonedTargetFunction = cloneAndModelValue(realm, targetFunction, intrinsicName, funcEffects, rootObject);
+      if (clonedTargetFunction instanceof AbstractValue && realm.optionallyInlineFunctionCalls === "LOSSY") {
+        return clonedTargetFunction;
+      }
+      invariant(clonedTargetFunction instanceof ECMAScriptSourceFunctionValue);
+      let clonedBoundFunction = Functions.BoundFunctionCreate(
+        realm,
+        clonedTargetFunction,
+        val.$BoundThis,
+        val.$BoundArguments
+      );
+      applyPostValueConfig(realm, val, clonedBoundFunction, rootObject);
+      return clonedBoundFunction;
+    }
+    // TODO We do not support functions properly yet
+    let abstractalue = AbstractValue.createAbstractArgument(realm, intrinsicName, undefined, val.getType());
+    abstractalue.intrinsicName = intrinsicName;
+    applyPostValueConfig(realm, val, abstractalue, rootObject);
+    return abstractalue;
+    // invariant(false, "TODO support function values in cloneAndModelValue");
+  } else {
+    let clonedObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, intrinsicName);
+    cloneObjectProperties(realm, clonedObject, val, intrinsicName, rootObject, funcEffects);
+    applyPostValueConfig(realm, val, clonedObject, rootObject);
+    return clonedObject;
+  }
+}
+
+function cloneAndModelAbstractValue(
+  realm: Realm,
+  val: AbstractValue,
+  intrinsicName: null | string,
+  funcEffects: Effects,
+  rootObject: void | ObjectValue
+): Value {
+  const kind = val.kind;
+  if (kind === "conditional") {
+    // Conditional ops
+    let [condValue, consequentVal, alternateVal] = val.args;
+    let clonedCondValue = cloneAndModelValue(realm, condValue, null, funcEffects, rootObject);
+    let clonedConsequentVal = cloneAndModelValue(realm, consequentVal, intrinsicName, funcEffects, rootObject);
+    let clonedAlternateVal = cloneAndModelValue(realm, alternateVal, intrinsicName, funcEffects, rootObject);
+    return AbstractValue.createFromConditionalOp(realm, clonedCondValue, clonedConsequentVal, clonedAlternateVal);
+  } else if (kind === "+" || kind === "!=" || kind === "==" || kind === "===" || kind === "!==") {
+    // Binary ops
+    let [leftValue, rightValue] = val.args;
+    let clonedLeftValue = cloneAndModelValue(realm, leftValue, null, funcEffects, rootObject);
+    let clonedRightValue = cloneAndModelValue(realm, rightValue, null, funcEffects, rootObject);
+    return AbstractValue.createFromBinaryOp(realm, kind, clonedLeftValue, clonedRightValue);
+  } else if (kind === "&&" || kind === "||") {
+    // Logical ops
+    let [leftValue, rightValue] = val.args;
+    let clonedLeftValue = cloneAndModelValue(realm, leftValue, intrinsicName, funcEffects, rootObject);
+    let clonedRightValue = cloneAndModelValue(realm, rightValue, intrinsicName, funcEffects, rootObject);
+    return AbstractValue.createFromLogicalOp(realm, kind, clonedLeftValue, clonedRightValue);
+  } else if (kind === "!" || kind === "typeof" || kind === "delete") {
+    // Unary ops
+    let [condValue] = val.args;
+    let clonedCondValue = cloneAndModelValue(realm, condValue, null, funcEffects, rootObject);
+    invariant(val.operationDescriptor !== undefined);
+    invariant(clonedCondValue instanceof AbstractValue);
+    let hasPrefix = val.operationDescriptor.data.prefix;
+    return AbstractValue.createFromUnaryOp(realm, kind, clonedCondValue, hasPrefix);
+  }
+  invariant(false, "TODO: add functionality to cloneAndModelAbstractValue");
+}
+
 function cloneAndModelValue(
   realm: Realm,
   val: Value,
-  intrinsicName: string,
+  intrinsicName: null | string,
   funcEffects: Effects,
   rootObject: void | ObjectValue
 ): Value {
@@ -388,45 +600,19 @@ function cloneAndModelValue(
     if (val instanceof PrimitiveValue) {
       return val;
     } else if (val instanceof ObjectValue) {
-      // If the value was created inside the funcEffects, then that means we need to clone it
-      // otherwise we can just return the value
-      if (!funcEffects.createdObjects.has(val)) {
-        return val;
-      }
-      if (val instanceof ArrayValue) {
-        let clonedObject = new ArrayValue(realm, intrinsicName);
-        cloneObjectProperties(realm, clonedObject, val, intrinsicName, rootObject, funcEffects);
-        applyPostValueConfig(realm, val, clonedObject, rootObject);
-        return clonedObject;
-      } else if (val instanceof FunctionValue) {
-        if (val instanceof BoundFunctionValue) {
-          let targetFunction = val.$BoundTargetFunction;
-          let clonedTargetFunction = cloneAndModelValue(realm, targetFunction, intrinsicName, funcEffects, rootObject);
-          invariant(clonedTargetFunction instanceof ECMAScriptSourceFunctionValue);
-          let clonedBoundFunction = Functions.BoundFunctionCreate(
-            realm,
-            clonedTargetFunction,
-            val.$BoundThis,
-            val.$BoundArguments
-          );
-          applyPostValueConfig(realm, val, clonedBoundFunction, rootObject);
-          return clonedBoundFunction;
-        }
-        // TODO We do not support functions properly yet
-        invariant(false, "TODO support function values in cloneAndModelValue");
-      } else {
-        let clonedObject = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, intrinsicName);
-        cloneObjectProperties(realm, clonedObject, val, intrinsicName, rootObject, funcEffects);
-        applyPostValueConfig(realm, val, clonedObject, rootObject);
-        return clonedObject;
-      }
+      return cloneAndModelObjectValue(realm, val, intrinsicName, funcEffects, rootObject);
     }
   } else if (val instanceof AbstractValue) {
-    let status = getOptionalInlinableStatus(realm, val, funcEffects, false);
+    // If the value was created inside the funcEffects, then that means we need to clone it
+    // otherwise we can just return the value
+    if (!funcEffects.createdAbstracts.has(val)) {
+      return val;
+    }
+    let status = getOptionalInlinableStatus(realm, val, funcEffects, true, 0);
     if (status === "OPTIONALLY_INLINE_WITH_CLONING") {
-      debugger;
-      invariant(false, "TODO support cloning and modeling OPTIONALLY_INLINE_WITH_CLONING");
-    } else if (status === "OPTIONALLY_INLINE") {
+      return cloneAndModelAbstractValue(realm, val, intrinsicName, funcEffects, rootObject);
+    } else {
+      invariant(intrinsicName !== null);
       let abstractalue = AbstractValue.createAbstractArgument(realm, intrinsicName, undefined, val.getType());
       abstractalue.intrinsicName = intrinsicName;
       applyPostValueConfig(realm, val, abstractalue, rootObject);
@@ -442,7 +628,8 @@ function createTemporalModeledValue(
   intrinsicName: void | string,
   temporalArgs: void | Array<Value>,
   rootObject: void | ObjectValue,
-  funcEffects: Effects
+  funcEffects: Effects,
+  usesThis: boolean
 ): Value {
   invariant(temporalArgs !== undefined);
   invariant(realm.generator !== undefined);
@@ -455,7 +642,7 @@ function createTemporalModeledValue(
         return obj;
       },
       temporalArgs,
-      createOperationDescriptor("CALL_BAILOUT", { propRef: undefined, thisArg: undefined }),
+      createOperationDescriptor("CALL_OPTIONAL_INLINE", { usesThis }),
       // TODO: isPure isn't strictly correct here, as the function
       // might contain abstract function calls that we need to happen
       // and won't happen if the temporal is never referenced (thus DCE).
@@ -470,26 +657,27 @@ function createTemporalModeledValue(
         return obj;
       },
       temporalArgs,
-      createOperationDescriptor("CALL_BAILOUT", { propRef: undefined, thisArg: undefined }),
+      createOperationDescriptor("CALL_OPTIONAL_INLINE", { usesThis }),
       // TODO: isPure isn't strictly correct here, as the function
       // might contain abstract function calls that we need to happen
       // and won't happen if the temporal is never referenced (thus DCE).
       { isPure: true }
     );
   }
-  invariant(false, "createTemporalModeledValue was passed a value with an unknown type");
+  invariant(false, "TODO support more types of abstract value");
 }
 
 function createDeepClonedTemporalValue(
   realm: Realm,
   val: Value,
   temporalArgs: Array<Value>,
-  funcEffects: Effects
+  funcEffects: Effects,
+  usesThis: boolean
 ): [Value, Effects] {
   let clonedObject;
   let effects = realm.evaluateForEffects(
     () => {
-      clonedObject = createTemporalModeledValue(realm, val, undefined, temporalArgs, undefined, funcEffects);
+      clonedObject = createTemporalModeledValue(realm, val, undefined, temporalArgs, undefined, funcEffects, usesThis);
       return realm.intrinsics.undefined;
     },
     undefined,
@@ -499,7 +687,12 @@ function createDeepClonedTemporalValue(
   return [clonedObject, effects];
 }
 
-function createAbstractTemporalValue(realm: Realm, val: Value, temporalArgs: Array<Value>): [Value, Effects] {
+function createAbstractTemporalValue(
+  realm: Realm,
+  val: Value,
+  temporalArgs: Array<Value>,
+  usesThis: boolean
+): [Value, Effects] {
   let abstractVal;
   let effects = realm.evaluateForEffects(
     () => {
@@ -507,7 +700,7 @@ function createAbstractTemporalValue(realm: Realm, val: Value, temporalArgs: Arr
         realm,
         val.getType(),
         temporalArgs,
-        createOperationDescriptor("CALL_BAILOUT", { propRef: undefined, thisArg: undefined }),
+        createOperationDescriptor("CALL_OPTIONAL_INLINE", { usesThis }),
         // TODO: isPure isn't strictly correct here, as the function
         // might contain abstract function calls that we need to happen
         // and won't happen if the temporal is never referenced (thus DCE).
@@ -551,16 +744,20 @@ export function OptionallyInlineInternalCall(
     result = result.value;
   }
   invariant(result instanceof Value);
+  let usesThis = thisArgument !== realm.intrinsics.undefined;
+  let args = usesThis ? [thisArgument, ...argsList] : argsList;
   // We always inline primitive values that are returned. There's no apparant benefit from
   // trying to optimize them given they are constant.
-  if (!(result instanceof PrimitiveValue) && effectsArePure(realm, effects, F)) {
+  // Furthermore, we do not support "usesThis" just yet, there are some bugs around supporting it
+  // that need to get ironed out first. The logic for it remains, as we want to use this in the future.
+  if (!usesThis && !(result instanceof PrimitiveValue) && effectsArePure(realm, effects, F)) {
     let generator = effects.generator;
     // For now, we do not apply this optimization if we pass arguments that contain functions
     // otherwise we will have to materialize the function bodies, thus potentially undoing the
     // wins of this optimization.
     if (
-      generator._entries.length > 1 &&
-      !argsContainFunctionValues(realm, argsList) &&
+      generator._entries.length > 0 &&
+      // argsContainFunctionValues(realm, args) &&
       !isValueAnAlreadyDefinedObjectIntrinsic(realm, result)
     ) {
       let optimizedValue;
@@ -568,18 +765,31 @@ export function OptionallyInlineInternalCall(
 
       realm.withEffectsAppliedInGlobalEnv(() => {
         invariant(result instanceof Value);
-        let status = getOptionalInlinableStatus(realm, result, effects, false);
-        if (status === "OPTIONALLY_INLINE") {
-          [optimizedValue, optimizedEffects] = createAbstractTemporalValue(realm, result, [F, ...argsList]);
+        let status = getOptionalInlinableStatus(realm, result, effects, false, 0);
+        if (status === "OPTIONALLY_INLINE" || status === "OPTIONALLY_INLINE_DUE_TO_COMPLEXITY") {
+          [optimizedValue, optimizedEffects] = createAbstractTemporalValue(realm, result, [F, ...args], usesThis);
         } else if (status === "OPTIONALLY_INLINE_WITH_CLONING") {
-          [optimizedValue, optimizedEffects] = createDeepClonedTemporalValue(realm, result, [F, ...argsList], effects);
+          [optimizedValue, optimizedEffects] = createDeepClonedTemporalValue(
+            realm,
+            result,
+            [F, ...args],
+            effects,
+            usesThis
+          );
         }
         return realm.intrinsics.undefined;
       }, effects);
 
       if (optimizedValue !== undefined && optimizedEffects !== undefined) {
+        // We need to materialize any objects we pass as arguments as objects
+        for (let arg of args) {
+          if (arg instanceof ObjectValue) {
+            Materialize.materializeObject(realm, arg);
+          }
+        }
         // TODO we need to leak on some of the bindings of F, leaking right now
         // causes failures because we remove much of the value we get from this optimization.
+        Materialize.materializeObject(realm, F);
         realm.applyEffects(optimizedEffects);
         return optimizedValue;
       }

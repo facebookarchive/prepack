@@ -1217,31 +1217,6 @@ export class ResidualHeapSerializer {
       // We always need to serialize this value in order to keep the invariants happy,
       // as the visitor hasn't been taught about the following peephole optimization.
       let serializedValue = this.serializeValue(value);
-<<<<<<< HEAD
-      let condition;
-      if (value instanceof AbstractValue && value.kind === "conditional") {
-        let cf = this.conditionalFeasibility.get(value);
-        invariant(cf !== undefined);
-        let conditionalSerializedValue;
-        if (cf.t && !cf.f) {
-          conditionalSerializedValue = this.serializeValue(value.args[1]);
-        } else if (!cf.t && cf.f) {
-          conditionalSerializedValue = this.serializeValue(value.args[2]);
-        } else {
-          invariant(cf.t && cf.f);
-        }
-        if (conditionalSerializedValue !== undefined) {
-          return t.expressionStatement(t.assignmentExpression("=", location, conditionalSerializedValue));
-        }
-        let [c, x, y] = value.args;
-        if (x instanceof EmptyValue) {
-          if (c instanceof AbstractValue && c.kind === "!") condition = this.serializeValue(c.args[0]);
-          else condition = t.unaryExpression("!", this.serializeValue(c));
-          serializedValue = this.serializeValue(y);
-        } else if (y instanceof EmptyValue) {
-          condition = this.serializeValue(c);
-          serializedValue = this.serializeValue(x);
-=======
 
       // Let's find the relevant value taking into account conditions implied by path conditions
       while (value instanceof AbstractValue && value.kind === "conditional") {
@@ -1252,7 +1227,6 @@ export class ResidualHeapSerializer {
         else {
           invariant(cf.f);
           value = value.args[2];
->>>>>>> master
         }
       }
       if (value instanceof EmptyValue) {
