@@ -322,7 +322,8 @@ export class CreateImplementation {
         writable: true,
         enumerable: false,
         configurable: false,
-      })
+      }),
+      A
     );
 
     // 11. Return A.

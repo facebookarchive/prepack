@@ -115,7 +115,9 @@ export function createAbstract(
   if (template && !(template instanceof FunctionValue)) {
     // why exclude functions?
     template.makePartial();
-    if (name !== undefined) realm.rebuildNestedProperties(result, name);
+    if (name !== undefined && !optionsMap.get("externalTemplate")) {
+      realm.rebuildNestedProperties(result, name);
+    }
   }
   if (functionResultType) {
     invariant(result instanceof AbstractObjectValue);

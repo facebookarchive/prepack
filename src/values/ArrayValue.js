@@ -13,6 +13,7 @@ import type { Effects, Realm } from "../realm.js";
 import type { PropertyBinding, PropertyKeyValue, Descriptor, ObjectKind } from "../types.js";
 import {
   AbstractValue,
+  AbstractObjectValue,
   BoundFunctionValue,
   ECMAScriptSourceFunctionValue,
   NumberValue,
@@ -233,7 +234,8 @@ export default class ArrayValue extends ObjectValue {
   }
 
   // ECMA262 9.4.2.1
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value to emit residual effects on at runtime, if any.
+  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor, Target: ObjectValue | AbstractObjectValue = this): boolean {
     let A = this;
 
     // 1. Assert: IsPropertyKey(P) is true.
@@ -242,11 +244,11 @@ export default class ArrayValue extends ObjectValue {
     // 2. If P is "length", then
     if (P === "length" || (P instanceof StringValue && P.value === "length")) {
       // a. Return ? ArraySetLength(A, Desc).
-      return Properties.ArraySetLength(this.$Realm, A, Desc);
+      return Properties.ArraySetLength(this.$Realm, A, Desc, Target);
     } else if (IsArrayIndex(this.$Realm, P)) {
       if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(this)) {
         // The length of an array with widenend numeric properties is always abstract
-        let succeeded = Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc);
+        let succeeded = Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc, Target);
         if (succeeded === false) return false;
         return true;
       }
@@ -278,7 +280,7 @@ export default class ArrayValue extends ObjectValue {
       if (index >= oldLen && oldLenDesc.writable === false) return false;
 
       // f. Let succeeded be ! OrdinaryDefineOwnProperty(A, P, Desc).
-      let succeeded = Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc);
+      let succeeded = Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc, Target);
 
       // g. If succeeded is false, return false.
       if (succeeded === false) return false;
@@ -289,7 +291,9 @@ export default class ArrayValue extends ObjectValue {
         oldLenDesc.value = new NumberValue(this.$Realm, index + 1);
 
         // ii. Let succeeded be OrdinaryDefineOwnProperty(A, "length", oldLenDesc).
-        succeeded = Properties.OrdinaryDefineOwnProperty(this.$Realm, A, "length", oldLenDesc);
+        // We pass null as the Target because we don't want to emit any extra effects for this operation
+        // since it will happen automatically by any effects emitted in the above OrdinaryDefineOwnProperty.
+        succeeded = Properties.OrdinaryDefineOwnProperty(this.$Realm, A, "length", oldLenDesc, null);
 
         // iii. Assert: succeeded is true.
         invariant(succeeded, "expected length definition to succeed");
@@ -300,7 +304,7 @@ export default class ArrayValue extends ObjectValue {
     }
 
     // 1. Return OrdinaryDefineOwnProperty(A, P, Desc).
-    return Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, A, P, Desc, Target);
   }
 
   static createTemporalWithWidenedNumericProperty(

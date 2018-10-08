@@ -89,6 +89,9 @@ export default function(realm: Realm): void {
   //   repeated, by default they must be unique
   // - disablePlaceholders: boolean representing whether placeholders should be substituted in
   //   the abstract value's name.
+  // - externalTemplate: boolean representing whether the template object is unchanged. By default
+  //   the template and nested properties are given intrinsic names. Setting this flag to true
+  //   makes the template reusable and lets nested objects to remain not intrinsic.
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty(
@@ -509,6 +512,23 @@ export default function(realm: Realm): void {
       value: new NativeFunctionValue(realm, "global.__makeSimple", "__makeSimple", 1, (context, [object, option]) => {
         if (object instanceof AbstractObjectValue || object instanceof ObjectValue) {
           object.makeSimple(option);
+          return object;
+        }
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");
+      }),
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
+
+  // __widenIdentity(object) marks a template object as representing one or more objects instances with the same structure.
+  global.$DefineOwnProperty(
+    "__widenIdentity",
+    new PropertyDescriptor({
+      value: new NativeFunctionValue(realm, "global.__widenIdentity", "__widenIdentity", 1, (context, [object]) => {
+        if (object instanceof AbstractObjectValue || object instanceof ObjectValue) {
+          object.widenIdentity();
           return object;
         }
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not an (abstract) object");

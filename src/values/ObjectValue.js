@@ -281,6 +281,12 @@ export default class ObjectValue extends ConcreteValue {
   // If set, this happened during object initialization and the value is never changed again, so not tracked.
   isScopedTemplate: void | true;
 
+  // If true, this object represents one or more object with the same structure.
+  // We don't know which of the objects it may be though, so all updates are
+  // weak. These should only be accessed through abstract values after being widened.
+  // An object should only be widened in its creation branch, so it's not tracked.
+  _hasWidenedIdentity: void | true;
+
   // If true, then unknown properties should return transitively simple abstract object values
   _simplicityIsTransitive: AbstractValue | BooleanValue;
 
@@ -375,6 +381,15 @@ export default class ObjectValue extends ConcreteValue {
 
   makeNotFinal(): void {
     this._isFinal = this.$Realm.intrinsics.false;
+  }
+
+  hasWidenedIdentity(): boolean {
+    return this._hasWidenedIdentity === true;
+  }
+
+  // Makes this object represent one or more objects with the same structure.
+  widenIdentity(): void {
+    this._hasWidenedIdentity = true;
   }
 
   isPartialObject(): boolean {
@@ -646,9 +661,10 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // ECMA262 9.1.6
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value to emit residual effects on at runtime, if any.
+  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor, Target: ObjectValue | AbstractObjectValue = this): boolean {
     // 1. Return ? OrdinaryDefineOwnProperty(O, P, Desc).
-    return Properties.OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc, Target);
   }
 
   // ECMA262 9.1.7
@@ -697,7 +713,8 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // ECMA262 9.1.10
-  $Delete(P: PropertyKeyValue): boolean {
+  // Note: The extra Target argument represents the Value to emit residual effects on at runtime, if any.
+  $Delete(P: PropertyKeyValue, Target: ObjectValue | AbstractObjectValue = this): boolean {
     if (this.unknownProperty !== undefined) {
       // TODO #946: generate a delete from the object
       AbstractValue.reportIntrospectionError(this, P);
@@ -705,7 +722,7 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     // 1. Return ? OrdinaryDelete(O, P).
-    return Properties.OrdinaryDelete(this.$Realm, this, P);
+    return Properties.OrdinaryDelete(this.$Realm, this, P, Target);
   }
 
   // ECMA262 9.1.11

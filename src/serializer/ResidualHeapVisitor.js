@@ -1011,6 +1011,10 @@ export class ResidualHeapVisitor {
   }
 
   visitAbstractValue(val: AbstractValue): void {
+    invariant(
+      val.kind !== "sentinel weak property",
+      "weakly updated properties should never leak out of its abstract value wrapper"
+    );
     if (val.kind === "sentinel member expression") {
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
     } else if (val.kind === "environment initialization expression") {

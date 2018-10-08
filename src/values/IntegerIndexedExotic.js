@@ -11,7 +11,7 @@
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "./index.js";
+import { AbstractObjectValue, ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "./index.js";
 import { IsInteger, IsArrayIndex, IsAccessorDescriptor, IsDetachedBuffer, IsPropertyKey } from "../methods/is.js";
 import { OrdinaryGet } from "../methods/get.js";
 import { OrdinaryHasProperty } from "../methods/has.js";
@@ -119,7 +119,12 @@ export default class IntegerIndexedExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.5.3
-  $DefineOwnProperty(P: PropertyKeyValue, _Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value to emit residual effects on at runtime, if any.
+  $DefineOwnProperty(
+    P: PropertyKeyValue,
+    _Desc: Descriptor,
+    Target: ObjectValue | AbstractObjectValue = this
+  ): boolean {
     let O = this;
 
     // 1. Assert: IsPropertyKey(P) is true.
@@ -184,7 +189,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     }
 
     // 4. Return ! OrdinaryDefineOwnProperty(O, P, Desc).
-    return Properties.OrdinaryDefineOwnProperty(this.$Realm, O, P, _Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, O, P, _Desc, Target);
   }
 
   // ECMA262 9.4.5.4
