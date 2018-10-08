@@ -133,7 +133,13 @@ export function prepackFile(
 
 function getSourceFileCollection(filenames: Array<string>, options: PrepackOptions) {
   const sourceFiles = filenames.map(filename => {
-    let code = fs.readFileSync(filename, "utf8");
+    let code;
+    try {
+      code = fs.readFileSync(filename, "utf8");
+    } catch (e) {
+      console.error(`Could not read source file '${filename}': ${e}`);
+      throw e;
+    }
     let sourceMap = "";
     let [sourceMapFilename, matchedSourceMapFilename] = getSourceMapFilename(filename, options);
 

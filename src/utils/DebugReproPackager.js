@@ -77,7 +77,7 @@ export class DebugReproPackager {
         let content = fs.readFileSync(file, "utf8");
         this._reproZip.file(path.basename(file), content);
       } catch (err) {
-        console.error(`Could not zip input file ${err}`);
+        console.error(`Could not zip input file '${file}': ${err}`);
         process.exit(1);
       }
     }
@@ -88,7 +88,7 @@ export class DebugReproPackager {
         let content = fs.readFileSync(map, "utf8");
         this._reproZip.file(path.basename(map), content);
       } catch (err) {
-        console.error(`Could not zip sourcemap: ${err}`);
+        console.error(`Could not zip sourcemap file '${map}': ${err}`);
         process.exit(1);
       }
     }
@@ -121,9 +121,10 @@ export class DebugReproPackager {
       child_process.spawnSync(unzipRuntime, unzipCommand);
       // Note that this process is asynchronous. A process.exit() elsewhere in this cli code
       // might cause the whole process (including an ongoing zip) to prematurely terminate.
-      zipdir(path.resolve(".", "package"), (err, buffer) => {
+      let resolvedPath = path.resolve(".", "package");
+      zipdir(resolvedPath, (err, buffer) => {
         if (err) {
-          console.error(`Could not zip Prepack ${err}`);
+          console.error(`Could not zip Prepack '${resolvedPath}': ${err}`);
           process.exit(1);
         }
 

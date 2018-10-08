@@ -403,7 +403,11 @@ function run(
         text += line + "\n";
       }).print(realm, optimizedFunctions);
       invariant(dumpIRFilePath !== undefined);
-      fs.writeFileSync(dumpIRFilePath, text);
+      try {
+        fs.writeFileSync(dumpIRFilePath, text);
+      } catch (e) {
+        console.error(`Could not write IR file '${dumpIRFilePath}': ${e}`);
+      }
     };
   }
   if (lazyObjectsRuntime !== undefined && (resolvedOptions.delayInitializations || resolvedOptions.inlineExpressions)) {
@@ -582,20 +586,24 @@ function run(
       let data = profiler.stopProfiling("");
       let start = Date.now();
       invariant(cpuprofilePath !== undefined);
-      let stream = fs.createWriteStream(cpuprofilePath);
-      let getNextToken = JSONTokenizer(data);
-      let write = () => {
-        for (let token = getNextToken(); token !== undefined; token = getNextToken()) {
-          if (!stream.write(token)) {
-            stream.once("drain", write);
-            return;
+      try {
+        let stream = fs.createWriteStream(cpuprofilePath);
+        let getNextToken = JSONTokenizer(data);
+        let write = () => {
+          for (let token = getNextToken(); token !== undefined; token = getNextToken()) {
+            if (!stream.write(token)) {
+              stream.once("drain", write);
+              return;
+            }
           }
-        }
-        stream.end();
-        invariant(cpuprofilePath !== undefined);
-        console.log(`Wrote ${cpuprofilePath} in ${Date.now() - start}ms`);
-      };
-      write();
+          stream.end();
+          invariant(cpuprofilePath !== undefined);
+          console.log(`Wrote ${cpuprofilePath} in ${Date.now() - start}ms`);
+        };
+        write();
+      } catch (e) {
+        console.error(`Could not write cpu profile file '${cpuprofilePath}': ${e}`);
+      }
     }
   }
 
@@ -606,7 +614,12 @@ function run(
     }
     if (outputFilename) {
       console.log(`Prepacked source code written to ${outputFilename}.`);
-      fs.writeFileSync(outputFilename, serialized.code);
+      try {
+        fs.writeFileSync(outputFilename, serialized.code);
+      } catch (e) {
+        console.error(`Could not write output file '${outputFilename}': ${e}`);
+        throw e;
+      }
     } else {
       console.log(serialized.code);
     }
@@ -622,14 +635,29 @@ function run(
         HeapStatistics: statistics.projectPerformanceTrackers("Memory", pt => pt.memory),
         MemoryStatistics: v8.getHeapStatistics(),
       };
-      fs.writeFileSync(statsFileName, JSON.stringify(stats));
+      try {
+        fs.writeFileSync(statsFileName, JSON.stringify(stats));
+      } catch (e) {
+        console.error(`Could not write stats file '${statsFileName}': ${e}`);
+        throw e;
+      }
     }
     if (outputSourceMap) {
-      fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
+      try {
+        fs.writeFileSync(outputSourceMap, serialized.map ? JSON.stringify(serialized.map) : "");
+      } catch (e) {
+        console.error(`Could not write output source map file '${outputSourceMap}': ${e}`);
+        throw e;
+      }
     }
     if (heapGraphFilePath !== undefined) {
       invariant(serialized.heapGraph);
-      fs.writeFileSync(heapGraphFilePath, serialized.heapGraph);
+      try {
+        fs.writeFileSync(heapGraphFilePath, serialized.heapGraph);
+      } catch (e) {
+        console.error(`Could not write heap graph file '${heapGraphFilePath}': ${e}`);
+        throw e;
+      }
     }
   }
 
