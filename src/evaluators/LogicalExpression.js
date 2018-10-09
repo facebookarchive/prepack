@@ -60,11 +60,12 @@ export default function(
     modifiedBindings: modifiedBindings1,
     modifiedProperties: modifiedProperties1,
     createdObjects: createdObjects1,
+    createdAbstracts: createdAbstracts1,
   } = construct_empty_effects(realm);
   result1; // ignore
 
   // Evaluate ast.right in a sandbox to get its effects
-  let result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2;
+  let result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2, createdAbstracts2;
   try {
     let wrapper = ast.operator === "&&" ? Path.withCondition : Path.withInverseCondition;
     ({
@@ -73,6 +74,7 @@ export default function(
       modifiedBindings: modifiedBindings2,
       modifiedProperties: modifiedProperties2,
       createdObjects: createdObjects2,
+      createdAbstracts: createdAbstracts2,
     } = wrapper(lcond, () => realm.evaluateNodeForEffects(ast.right, strictCode, env)));
   } catch (e) {
     if (e instanceof InfeasiblePathError) {
@@ -91,8 +93,15 @@ export default function(
   if (ast.operator === "&&") {
     joinedEffects = Join.joinEffects(
       lcond,
-      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2),
-      new Effects(new SimpleNormalCompletion(lval), generator1, modifiedBindings1, modifiedProperties1, createdObjects1)
+      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2, createdAbstracts2),
+      new Effects(
+        new SimpleNormalCompletion(lval),
+        generator1,
+        modifiedBindings1,
+        modifiedProperties1,
+        createdObjects1,
+        createdAbstracts1
+      )
     );
   } else {
     joinedEffects = Join.joinEffects(
@@ -102,9 +111,10 @@ export default function(
         generator1,
         modifiedBindings1,
         modifiedProperties1,
-        createdObjects1
+        createdObjects1,
+        createdAbstracts1
       ),
-      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
+      new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2, createdAbstracts2)
     );
   }
 
