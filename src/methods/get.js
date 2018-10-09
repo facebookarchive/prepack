@@ -172,7 +172,7 @@ export function OrdinaryGet(
     return OrdinaryGetHelper();
   }
   invariant(joinCondition instanceof AbstractValue);
-  let result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1;
+  let result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1, createdAbstracts1;
   try {
     desc = descriptor1;
     ({
@@ -181,6 +181,7 @@ export function OrdinaryGet(
       modifiedBindings: modifiedBindings1,
       modifiedProperties: modifiedProperties1,
       createdObjects: createdObjects1,
+      createdAbstracts: createdAbstracts1,
     } = Path.withCondition(joinCondition, () => {
       return desc !== undefined
         ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/1")
@@ -195,7 +196,7 @@ export function OrdinaryGet(
       throw e;
     }
   }
-  let result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2;
+  let result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2, createdAbstracts2;
   try {
     desc = descriptor2;
     ({
@@ -204,6 +205,7 @@ export function OrdinaryGet(
       modifiedBindings: modifiedBindings2,
       modifiedProperties: modifiedProperties2,
       createdObjects: createdObjects2,
+      createdAbstracts: createdAbstracts2,
     } = Path.withInverseCondition(joinCondition, () => {
       return desc !== undefined
         ? realm.evaluateForEffects(() => OrdinaryGetHelper(), undefined, "OrdinaryGet/2")
@@ -222,8 +224,8 @@ export function OrdinaryGet(
   // of the actual value of ownDesc.joinCondition.
   let joinedEffects = Join.joinEffects(
     joinCondition,
-    new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
-    new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
+    new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1, createdAbstracts1),
+    new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2, createdAbstracts2)
   );
   realm.applyEffects(joinedEffects);
   return realm.returnOrThrowCompletion(joinedEffects.result);
