@@ -4,7 +4,7 @@
 function fn(a) {
   var arr = Array.from(a);
   var foo;
-  
+
   var mapped = arr.map(function() {
     foo = 2;
     return 1 + 1;
@@ -15,6 +15,6 @@ function fn(a) {
 
 inspect = function() {
   return fn([]);
-}
+};
 
 global.__optimize && __optimize(fn);

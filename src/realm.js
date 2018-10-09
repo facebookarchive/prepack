@@ -1483,7 +1483,9 @@ export class Realm {
       let pureScopeEnv = this.pureScopeEnv;
       let env = context.lexicalEnvironment;
       while (env !== null) {
-        if (env === pureScopeEnv) {
+        // If we reach a destroyed env, then it's outside of the pure running context.
+        // Furthermore, if we reach the pure scope env, we're also out of scope.
+        if (env === pureScopeEnv || env.destroyed) {
           return false;
         } else if (env.environmentRecord === targetEnv) {
           return true;
