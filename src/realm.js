@@ -365,6 +365,7 @@ export class Realm {
   modifiedProperties: void | PropertyBindings;
   createdObjects: void | CreatedObjects;
   createdObjectsTrackedForLeaks: void | CreatedObjects;
+  pureScopeEnv: void | LexicalEnvironment;
   reportObjectGetOwnProperties: void | ((ObjectValue | AbstractObjectValue) => void);
   reportSideEffectCallbacks: Set<
     (sideEffectType: SideEffectType, binding: void | Binding | PropertyBinding, expressionLocation: any) => void
@@ -693,6 +694,7 @@ export class Realm {
   // call.
   evaluatePure<T>(
     f: () => T,
+    pureScopeEnv: LexicalEnvironment,
     bubbleSideEffectReports: boolean,
     reportSideEffectFunc:
       | null
@@ -704,6 +706,8 @@ export class Realm {
   ): T {
     let saved_createdObjectsTrackedForLeaks = this.createdObjectsTrackedForLeaks;
     let saved_reportSideEffectCallbacks;
+    let saved_pureScopeEnv = this.pureScopeEnv;
+    this.pureScopeEnv = pureScopeEnv;
     // Track all objects (including function closures) created during
     // this call. This will be used to make the assumption that every
     // *other* object is unchanged (pure). These objects are marked
@@ -719,6 +723,7 @@ export class Realm {
     try {
       return f();
     } finally {
+      this.pureScopeEnv = saved_pureScopeEnv;
       if (saved_createdObjectsTrackedForLeaks === undefined) {
         this.createdObjectsTrackedForLeaks = undefined;
       } else {
@@ -1473,14 +1478,15 @@ export class Realm {
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
   recordModifiedBinding(binding: Binding, value?: Value): Binding {
-    const isDefinedInsidePureFn = root => {
+    const isDefinedInsidePureFn = targetEnv => {
       let context = this.getRunningContext();
-      let { lexicalEnvironment: env } = context;
+      let pureScopeEnv = this.pureScopeEnv;
+      let env = context.lexicalEnvironment;
       while (env !== null) {
-        if (env.environmentRecord === root) {
-          // We can look at whether the lexical environment of the binding was destroyed to
-          // determine if it was defined outside the current pure running context.
-          return !env.destroyed;
+        if (env === pureScopeEnv) {
+          return false;
+        } else if (env.environmentRecord === targetEnv) {
+          return true;
         }
         env = env.parent;
       }

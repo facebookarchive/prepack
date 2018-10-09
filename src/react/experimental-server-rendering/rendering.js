@@ -356,8 +356,9 @@ class ReactDOMServerRenderer {
             invariant(result instanceof Value);
             return this.render(result, namespace, depth);
           };
+          let pureScopeEnv = func.$Environment;
           let pureFuncCall = () =>
-            this.realm.evaluatePure(funcCall, /*bubbles*/ true, () => {
+            this.realm.evaluatePure(funcCall, pureScopeEnv, /*bubbles*/ true, () => {
               invariant(false, "SSR _renderArrayValue side-effect should have been caught in main React reconciler");
             });
 

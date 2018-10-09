@@ -267,8 +267,10 @@ export default function(realm: Realm): void {
           invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
           invariant(typeof functionValue.$Call === "function");
           let functionCall: Function = functionValue.$Call;
+          let pureScopeEnv = functionValue.$Environment;
           return realm.evaluatePure(
             () => functionCall(realm.intrinsics.undefined, []),
+            pureScopeEnv,
             /*bubbles*/ true,
             /*reportSideEffectFunc*/ callback === undefined || callback === realm.intrinsics.undefined
               ? null
