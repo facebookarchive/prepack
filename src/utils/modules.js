@@ -25,6 +25,7 @@ import {
   UndefinedValue,
   NullValue,
 } from "../values/index.js";
+import { NormalCompletion } from "../completions.js";
 import * as t from "@babel/types";
 import type {
   BabelNodeIdentifier,
@@ -108,7 +109,7 @@ export class ModuleTracer extends Tracer {
       this.requireStack.push(moduleIdValue);
       try {
         let value = performCall();
-        if (this.modules.moduleIds.has(moduleIdValue)) this.modules.recordModuleInitialized(moduleIdValue, value);
+        if (this.modules.moduleIds.has("" + moduleIdValue)) this.modules.recordModuleInitialized(moduleIdValue, value);
         return value;
       } finally {
         invariant(this.requireStack.pop() === moduleIdValue);
@@ -180,6 +181,7 @@ export class ModuleTracer extends Tracer {
         let moduleIdValue = moduleId.value;
         let factoryFunction = argumentsList[0];
         if (factoryFunction instanceof FunctionValue) {
+          this.modules.moduleIds.add("" + moduleIdValue);
           let dependencies = this._tryExtractDependencies(argumentsList[2]);
           if (dependencies !== undefined) {
             this.modules.moduleDependencies.set(moduleIdValue, dependencies);
@@ -191,8 +193,6 @@ export class ModuleTracer extends Tracer {
             );
         } else
           this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
-
-        this.modules.moduleIds.add(moduleIdValue);
       } else
         this.modules.logger.logError(moduleId, "Second argument to define function is not a number or string value.");
     }
@@ -223,8 +223,8 @@ export class Modules {
   _define: Value;
   factoryFunctionDependencies: Map<FunctionValue, Array<Value>>;
   moduleDependencies: Map<number | string, Array<Value>>;
-  moduleIds: Set<number | string>;
-  initializedModules: Map<number | string, Value>;
+  moduleIds: Set<string>;
+  initializedModules: Map<string, Value>;
   active: boolean;
   moduleTracer: ModuleTracer;
 
@@ -431,18 +431,22 @@ export class Modules {
     });
   }
 
-  initializeMoreModules(modulesToInitialize: Set<string> | "ALL"): void {
+  initializeMoreModules(modulesToInitialize: Set<string | number> | "ALL"): void {
     // partially evaluate all factory methods by calling require
     let count = 0;
-    for (let moduleId of this.moduleIds) {
-      if (modulesToInitialize !== "ALL" && !modulesToInitialize.has("" + moduleId)) continue;
-      if (this.initializedModules.has(moduleId)) continue;
+    let body = (moduleId: string) => {
+      if (this.initializedModules.has(moduleId)) return;
       let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
-      if (effects === undefined) continue;
+      if (effects === undefined) return;
       let result = effects.result;
-      if (!(result instanceof Value)) continue; // module might throw
+      if (!(result instanceof NormalCompletion)) return; // module might throw
       count++;
-      this.initializedModules.set(moduleId, result);
+      this.initializedModules.set(moduleId, result.value);
+    };
+    if (modulesToInitialize === "ALL") {
+      for (let moduleId of this.moduleIds) body(moduleId);
+    } else {
+      for (let moduleId of modulesToInitialize) body("" + moduleId);
     }
     if (count > 0) console.log(`=== speculatively initialized ${count} additional modules`);
   }
