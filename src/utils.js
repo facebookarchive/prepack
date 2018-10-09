@@ -31,6 +31,7 @@ import invariant from "./invariant.js";
 import { ShapeInformation } from "./utils/ShapeInformation.js";
 import type { ArgModel } from "./types.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
+import { DeclarativeEnvironmentRecord, GlobalEnvironmentRecord, LexicalEnvironment } from "./environment.js";
 import * as t from "@babel/types";
 
 export function typeToString(type: typeof Value): void | string {
@@ -208,4 +209,30 @@ export function createModelledFunctionCall(
       realm.pathConditions = savedPathConditions;
     }
   };
+}
+
+export function bindingWasMutated(binding: PropertyBinding, effects: Effects, F: ECMAScriptFunctionValue) {
+  let env = F.$Environment;
+  let bindingName = binding.name;
+  if (env instanceof LexicalEnvironment) {
+    while (env !== null) {
+      let envRecord = env.environmentRecord;
+
+      if (envRecord instanceof GlobalEnvironmentRecord) {
+        for (let name of envRecord.$VarNames) {
+          if (name === bindingName) {
+            return true;
+          }
+        }
+        envRecord = envRecord.$DeclarativeRecord;
+      }
+      if (envRecord instanceof DeclarativeEnvironmentRecord) {
+        if (envRecord.bindings[bindingName] === binding) {
+          return true;
+        }
+      }
+      env = env.parent;
+    }
+  }
+  return false;
 }
