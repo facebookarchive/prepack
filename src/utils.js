@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { Realm } from "./realm.js";
+import type { Effects, Realm } from "./realm.js";
 import {
   AbstractValue,
   ArrayValue,
@@ -32,6 +32,7 @@ import { ShapeInformation } from "./utils/ShapeInformation.js";
 import type { ArgModel } from "./types.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
 import { DeclarativeEnvironmentRecord, GlobalEnvironmentRecord, LexicalEnvironment } from "./environment.js";
+import type { Binding } from "./environment.js";
 import * as t from "@babel/types";
 
 export function typeToString(type: typeof Value): void | string {
@@ -211,7 +212,7 @@ export function createModelledFunctionCall(
   };
 }
 
-export function bindingWasMutated(binding: PropertyBinding, effects: Effects, F: ECMAScriptFunctionValue) {
+export function bindingWasMutated(binding: Binding, effects: Effects, F: FunctionValue): boolean {
   let env = F.$Environment;
   let bindingName = binding.name;
   if (env instanceof LexicalEnvironment) {

@@ -58,7 +58,6 @@ import type { PathConditions, ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
 import { PropertyDescriptor } from "../descriptors.js";
 import type { AdditionalFunctionEffects } from "../serializer/types.js";
-import { bindingWasMutated } from "../utils.js";
 
 export type OperationDescriptorType =
   | "ABSTRACT_FROM_TEMPLATE"
@@ -703,7 +702,7 @@ export class Generator {
     }
 
     for (let [modifiedBinding] of modifiedBindings.entries()) {
-      if (bindingWasMutated(modifiedBinding, effects, optimizedFunction)) {
+      if (Utils.bindingWasMutated(modifiedBinding, effects, optimizedFunction)) {
         if (!modifiedBinding.hasLeaked) {
           invariant(modifiedBinding.value !== undefined);
           output.emitBindingModification(modifiedBinding);
