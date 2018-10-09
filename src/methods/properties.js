@@ -339,6 +339,7 @@ export class PropertiesImplementation {
         modifiedBindings: modifiedBindings1,
         modifiedProperties: modifiedProperties1,
         createdObjects: createdObjects1,
+        createdAbstracts: createdAbstracts1,
       } = e1;
       ownDesc = descriptor2;
       let e2 = Path.withInverseCondition(joinCondition, () => {
@@ -352,14 +353,15 @@ export class PropertiesImplementation {
         modifiedBindings: modifiedBindings2,
         modifiedProperties: modifiedProperties2,
         createdObjects: createdObjects2,
+        createdAbstracts: createdAbstracts2,
       } = e2;
 
       // Join the effects, creating an abstract view of what happened, regardless
       // of the actual value of ownDesc.joinCondition.
       let joinedEffects = Join.joinEffects(
         joinCondition,
-        new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1),
-        new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2)
+        new Effects(result1, generator1, modifiedBindings1, modifiedProperties1, createdObjects1, createdAbstracts1),
+        new Effects(result2, generator2, modifiedBindings2, modifiedProperties2, createdObjects2, createdAbstracts2)
       );
       realm.applyEffects(joinedEffects);
       return To.ToBooleanPartial(realm, realm.returnOrThrowCompletion(joinedEffects.result));

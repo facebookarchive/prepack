@@ -11,7 +11,15 @@
 
 import type { Binding } from "../environment.js";
 import { FatalError } from "../errors.js";
-import type { Bindings, BindingEntry, EvaluationResult, PropertyBindings, CreatedObjects, Realm } from "../realm.js";
+import type {
+  Bindings,
+  BindingEntry,
+  EvaluationResult,
+  PropertyBindings,
+  CreatedAbstracts,
+  CreatedObjects,
+  Realm,
+} from "../realm.js";
 import { Effects } from "../realm.js";
 import type { Descriptor, PropertyBinding } from "../types.js";
 import { cloneDescriptor, equalDescriptors, PropertyDescriptor } from "../descriptors.js";
@@ -94,11 +102,14 @@ export class WidenImplementation {
       e1.modifiedProperties,
       e2.modifiedProperties,
       e1.createdObjects,
-      e2.createdObjects
+      e2.createdObjects,
+      e1.createdAbstracts,
+      e2.createdAbstracts
     );
     let createdObjects = new Set(); // Top, since the empty set knows nothing. There is no other choice for widen.
+    let createdAbstracts = new Set();
     let generator = new Generator(realm, "widen", realm.pathConditions); // code subject to widening will be generated somewhere else
-    return new Effects(result, generator, bindings, properties, createdObjects);
+    return new Effects(result, generator, bindings, properties, createdObjects, createdAbstracts);
   }
 
   widenResults(
@@ -207,15 +218,17 @@ export class WidenImplementation {
     realm: Realm,
     m1: PropertyBindings,
     m2: PropertyBindings,
-    c1: CreatedObjects,
-    c2: CreatedObjects
+    co1: CreatedObjects,
+    co2: CreatedObjects,
+    ca1: CreatedAbstracts,
+    ca2: CreatedAbstracts
   ): PropertyBindings {
     let widen = (b: PropertyBinding, d1: void | Descriptor, d2: void | Descriptor) => {
       if (d1 === undefined && d2 === undefined) return undefined;
       // If the PropertyBinding object has been freshly allocated do not widen (that happens in AbstractObjectValue)
       if (d1 === undefined) {
         invariant(d2 !== undefined);
-        if (c2.has(b.object)) return d2; // no widen
+        if (co2.has(b.object)) return d2; // no widen
         if (b.descriptor !== undefined && m1.has(b)) {
           // property was present in (n-1)th iteration and deleted in nth iteration
           d1 = cloneDescriptor(b.descriptor.throwIfNotConcrete(realm));
@@ -232,7 +245,7 @@ export class WidenImplementation {
         }
       }
       if (d2 === undefined) {
-        if (c1.has(b.object)) return d1; // no widen
+        if (co1.has(b.object)) return d1; // no widen
         if (m2.has(b)) {
           // property was present in nth iteration and deleted in (n+1)th iteration
           d2 = cloneDescriptor(d1.throwIfNotConcrete(realm));

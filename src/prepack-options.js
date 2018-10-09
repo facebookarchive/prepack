@@ -46,7 +46,7 @@ export type PrepackOptions = {|
   check?: Array<number>,
   inlineExpressions?: boolean,
   sourceMaps?: boolean,
-  modulesToInitialize?: Set<string> | "ALL",
+  modulesToInitialize?: Set<string | number> | "ALL",
   statsFile?: string,
   strictlyMonotonicDateNow?: boolean,
   stripFlow?: boolean,

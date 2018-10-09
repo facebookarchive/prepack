@@ -78,7 +78,8 @@ export class DebugReproPackager {
         this._reproZip.file(path.basename(file), content);
       } catch (err) {
         console.error(`Could not zip input file ${err}`);
-        process.exit(1);
+        if (shouldExitWithError) process.exit(1);
+        else return;
       }
     }
 
@@ -89,7 +90,8 @@ export class DebugReproPackager {
         this._reproZip.file(path.basename(map), content);
       } catch (err) {
         console.error(`Could not zip sourcemap: ${err}`);
-        process.exit(1);
+        if (shouldExitWithError) process.exit(1);
+        else return;
       }
     }
 

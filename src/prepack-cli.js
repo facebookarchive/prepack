@@ -61,7 +61,7 @@ function run(
     --lazyObjectsRuntime     Enable lazy objects feature and specify the JS runtime that support this feature.
     --debugNames             Changes the output of Prepack so that for named functions and variables that get emitted into
                              Prepack's output, the original name is appended as a suffix to Prepack's generated identifier.
-    --modulesToInitialize [ALL | comma separated list]
+    --modulesToInitialize [ALL | comma separated list | filepath to JSON array of value]
                              Enable speculative initialization of modules (for the module system Prepack has builtin
                              knowledge about). Prepack will try to execute the factory functions of the modules you specify.
     --trace                  Traces the order of module initialization.
@@ -117,7 +117,7 @@ function run(
   let diagnosticAsError: void | Set<string>;
   let noDiagnostic: void | Set<string>;
   let warnAsError: void | true;
-  let modulesToInitialize: void | Set<string> | "ALL";
+  let modulesToInitialize: void | Set<string | number> | "ALL";
   let flags = {
     trace: false,
     debugNames: false,
@@ -150,7 +150,14 @@ function run(
       switch (arg) {
         case "modulesToInitialize":
           let modulesString = args.shift().trim();
-          modulesToInitialize = modulesString === "ALL" ? modulesString : new Set(modulesString.split(","));
+          if (fs.existsSync(modulesString))
+            try {
+              let modulesFileContents = fs.readFileSync(modulesString, "utf-8");
+              modulesToInitialize = new Set(JSON.parse(modulesFileContents));
+            } catch (e) {
+              console.error(`Tried reading ${modulesString} as a file, but failed: ${e.message}`);
+            }
+          else modulesToInitialize = modulesString === "ALL" ? modulesString : new Set(modulesString.split(","));
           break;
         case "out":
           arg = args.shift();
