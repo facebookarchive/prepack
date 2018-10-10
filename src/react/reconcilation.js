@@ -188,6 +188,7 @@ export class Reconciler {
 
     try {
       this.realm.react.activeReconciler = this;
+      let pureScopeEnv = componentType.$Environment;
       return this.realm.wrapInGlobalEnv(() =>
         this.realm.evaluatePure(
           () =>
@@ -196,6 +197,7 @@ export class Reconciler {
               /*state*/ null,
               `react component: ${getComponentName(this.realm, componentType)}`
             ),
+          pureScopeEnv,
           /*bubbles*/ true,
           (sideEffectType, binding, expressionLocation) => {
             if (this.realm.react.failOnUnsupportedSideEffects) {
@@ -1409,9 +1411,14 @@ export class Reconciler {
             invariant(result instanceof Value);
             return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
           };
+          let pureScopeEnv = func.$Environment;
           let pureFuncCall = () =>
-            this.realm.evaluatePure(funcCall, /*bubbles*/ true, (sideEffectType, binding, expressionLocation) =>
-              handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
+            this.realm.evaluatePure(
+              funcCall,
+              pureScopeEnv,
+              /*bubbles*/ true,
+              (sideEffectType, binding, expressionLocation) =>
+                handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
             );
 
           let resolvedEffects;
@@ -1525,8 +1532,9 @@ export class Reconciler {
     // We take the modelled function and wrap it in a pure evaluation so we can check for
     // side-effects that occur when evaluating the function. If there are side-effects, then
     // we don't try and optimize the nested function.
+    let pureScopeEnv = funcToModel.$Environment;
     let pureFuncCall = () =>
-      this.realm.evaluatePure(funcCall, /*bubbles*/ false, () => {
+      this.realm.evaluatePure(funcCall, pureScopeEnv, /*bubbles*/ false, () => {
         throw new NestedOptimizedFunctionSideEffect();
       });
     let effects;

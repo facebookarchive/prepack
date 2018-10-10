@@ -103,6 +103,10 @@ function InternalCall(
     let calleeContext = PrepareForOrdinaryCall(realm, F, undefined);
     let calleeEnv = calleeContext.lexicalEnvironment;
 
+    if (calleeEnv.parent === undefined) {
+      calleeEnv.parent = callerContext.lexicalEnvironment;
+    }
+
     let result;
     try {
       for (let t1 of realm.tracers) t1.beforeCall(F, thisArgument, argsList, undefined);
