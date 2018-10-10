@@ -31,7 +31,12 @@ import invariant from "./invariant.js";
 import { ShapeInformation } from "./utils/ShapeInformation.js";
 import type { ArgModel } from "./types.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
-import { DeclarativeEnvironmentRecord, GlobalEnvironmentRecord, LexicalEnvironment } from "./environment.js";
+import {
+  DeclarativeEnvironmentRecord,
+  FunctionEnvironmentRecord,
+  GlobalEnvironmentRecord,
+  LexicalEnvironment,
+} from "./environment.js";
 import type { Binding } from "./environment.js";
 import * as t from "@babel/types";
 
@@ -212,9 +217,15 @@ export function createModelledFunctionCall(
   };
 }
 
-export function bindingWasMutated(binding: Binding, effects: Effects, F: FunctionValue): boolean {
+export function isBindingMutationOutsideFunction(binding: Binding, effects: Effects, F: FunctionValue): boolean {
   let env = F.$Environment;
   let bindingName = binding.name;
+  let bindingEnv = binding.environment;
+  // If the bindingEnv is the same env, we know the mutation was only local
+  if (bindingEnv instanceof FunctionEnvironmentRecord && bindingEnv.$FunctionObject === F) {
+    return false;
+  }
+  // Check if the binding was mutated in a scope of F or its parents
   if (env instanceof LexicalEnvironment) {
     while (env !== null) {
       let envRecord = env.environmentRecord;
@@ -235,5 +246,20 @@ export function bindingWasMutated(binding: Binding, effects: Effects, F: Functio
       env = env.parent;
     }
   }
-  return false;
+  let functionBindingWasCreatedIn = bindingEnv.creatingOptimizedFunction;
+  // If it was never created in an optimized function then it was created in a scope
+  // of F and was mutated outside of it.
+  if (functionBindingWasCreatedIn === undefined) {
+    return true;
+  }
+  env = functionBindingWasCreatedIn.$Environment;
+  // Check if the function the binding was created in is a child scope of F,
+  // if it is not, then this binding was mutated outside of F.
+  while (env !== null) {
+    if (env === F.$Environment) {
+      return false;
+    }
+    env = env.parent;
+  }
+  return true;
 }

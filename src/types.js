@@ -989,7 +989,7 @@ export type UtilsType = {|
   jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
   verboseToDisplayJson: ({}, number) => DisplayResult,
   createModelledFunctionCall: (Realm, FunctionValue, void | string | ArgModel, void | Value) => void => Value,
-  bindingWasMutated: (binding: Binding, effects: Effects, F: FunctionValue) => boolean,
+  isBindingMutationOutsideFunction: (binding: Binding, effects: Effects, F: FunctionValue) => boolean,
 |};
 
 export type DebuggerConfigArguments = {

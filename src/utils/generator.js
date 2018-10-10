@@ -702,7 +702,7 @@ export class Generator {
     }
 
     for (let [modifiedBinding] of modifiedBindings.entries()) {
-      if (Utils.bindingWasMutated(modifiedBinding, effects, optimizedFunction)) {
+      if (Utils.isBindingMutationOutsideFunction(modifiedBinding, effects, optimizedFunction)) {
         if (!modifiedBinding.hasLeaked) {
           invariant(modifiedBinding.value !== undefined);
           output.emitBindingModification(modifiedBinding);
