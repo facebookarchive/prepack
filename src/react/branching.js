@@ -180,14 +180,14 @@ export function getValueWithBranchingLogicApplied(
   searchAndFlagMismatchingNonHostTypes(parentX, parentY, 0);
 
   if (needsKeys) {
-    return applyBranchedLogicValue(realm, value);
+    return applyBranchedLogicValue(realm, value, false);
   }
   return value;
 }
 
 // When we apply branching logic, it means to add keys to all ReactElement nodes
 // we encounter, thus returning new ReactElements with the keys on them
-function applyBranchedLogicValue(realm: Realm, value: Value): Value {
+function applyBranchedLogicValue(realm: Realm, value: Value, inBranch: boolean): Value {
   if (
     value instanceof StringValue ||
     value instanceof NumberValue ||
@@ -197,9 +197,13 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
   ) {
     // terminal values
   } else if (value instanceof ObjectValue && isReactElement(value)) {
-    return addKeyToReactElement(realm, value);
+    if (inBranch) {
+      return wrapReactElementInBranchOrReturnValue(realm, addKeyToReactElement(realm, value));
+    } else {
+      return addKeyToReactElement(realm, value);
+    }
   } else if (value instanceof ArrayValue) {
-    let newArray = mapArrayValue(realm, value, elementValue => applyBranchedLogicValue(realm, elementValue));
+    let newArray = mapArrayValue(realm, value, elementValue => applyBranchedLogicValue(realm, elementValue, inBranch));
     newArray.makeFinal();
     return newArray;
   } else if (value instanceof AbstractValue && value.kind === "conditional") {
@@ -210,14 +214,14 @@ function applyBranchedLogicValue(realm: Realm, value: Value): Value {
       condValue,
       () => {
         return realm.evaluateForEffects(
-          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, consequentVal)),
+          () => applyBranchedLogicValue(realm, consequentVal, true),
           null,
           "applyBranchedLogicValue consequent"
         );
       },
       () => {
         return realm.evaluateForEffects(
-          () => wrapReactElementInBranchOrReturnValue(realm, applyBranchedLogicValue(realm, alternateVal)),
+          () => applyBranchedLogicValue(realm, alternateVal, true),
           null,
           "applyBranchedLogicValue alternate"
         );
