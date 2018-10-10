@@ -342,6 +342,7 @@ class ReactDOMServerRenderer {
   }
 
   _renderArrayValue(arrayValue: ArrayValue, namespace: string, depth: number): Array<ReactNode> | ReactNode {
+    invariant(this.realm.isInPureScope());
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
       let nestedOptimizedFunctionEffects = arrayValue.nestedOptimizedFunctionEffects;
 
@@ -356,16 +357,15 @@ class ReactDOMServerRenderer {
             invariant(result instanceof Value);
             return this.render(result, namespace, depth);
           };
-          let pureFuncCall = () =>
-            this.realm.evaluatePure(funcCall, /*bubbles*/ true, () => {
-              invariant(false, "SSR _renderArrayValue side-effect should have been caught in main React reconciler");
-            });
 
           let resolvedEffects;
-          resolvedEffects = this.realm.evaluateForEffects(
-            pureFuncCall,
+          resolvedEffects = this.realm.evaluateForPureEffects(
+            funcCall,
             /*state*/ null,
-            `react SSR resolve nested optimized closure`
+            `react SSR resolve nested optimized closure`,
+            () => {
+              invariant(false, "SSR _renderArrayValue side-effect should have been caught in main React reconciler");
+            }
           );
           nestedOptimizedFunctionEffects.set(func, resolvedEffects);
           this.realm.collectedNestedOptimizedFunctionEffects.set(func, resolvedEffects);
