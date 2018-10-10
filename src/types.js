@@ -42,7 +42,7 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeSourceLocation,
 } from "@babel/types";
-import type { Effects, Realm, SideEffectCallback } from "./realm.js";
+import type { BindingEntry, Effects, Realm, SideEffectCallback } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -284,6 +284,7 @@ export type Intrinsics = {
   __IntrospectionErrorPrototype: ObjectValue,
   __topValue: AbstractValue,
   __bottomValue: AbstractValue,
+  __leakedValue: AbstractValue,
 };
 
 export type PromiseCapability = {
@@ -989,7 +990,12 @@ export type UtilsType = {|
   jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
   verboseToDisplayJson: ({}, number) => DisplayResult,
   createModelledFunctionCall: (Realm, FunctionValue, void | string | ArgModel, void | Value) => void => Value,
-  isBindingMutationOutsideFunction: (binding: Binding, effects: Effects, F: FunctionValue) => boolean,
+  isBindingMutationOutsideFunction: (
+    binding: Binding,
+    bindingEntry: BindingEntry,
+    effects: Effects,
+    F: FunctionValue
+  ) => boolean,
   areEffectsPure: (realm: Realm, effects: Effects, F: FunctionValue) => boolean,
   reportSideEffectsFromEffects: (
     realm: Realm,

@@ -23,6 +23,7 @@ import {
   StringValue,
   SymbolValue,
   UndefinedValue,
+  Value,
 } from "../values/index.js";
 import { Functions } from "../singletons.js";
 
@@ -505,6 +506,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
       Number.MIN_SAFE_INTEGER,
       []
     );
+    i.__leakedValue = AbstractValue.createFromType(realm, Value, "leaked binding value", []);
   }
 
   return i;

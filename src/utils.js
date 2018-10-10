@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { Effects, Realm, SideEffectCallback } from "./realm.js";
+import type { BindingEntry, Effects, Realm, SideEffectCallback } from "./realm.js";
 import {
   AbstractValue,
   ArrayValue,
@@ -217,7 +217,16 @@ export function createModelledFunctionCall(
   };
 }
 
-export function isBindingMutationOutsideFunction(binding: Binding, effects: Effects, F: FunctionValue): boolean {
+export function isBindingMutationOutsideFunction(
+  binding: Binding,
+  bindingEntry: BindingEntry,
+  effects: Effects,
+  F: FunctionValue
+): boolean {
+  // If either the previous values are uninitialized then this is not a mutation
+  if (binding.value === undefined || bindingEntry.value === undefined) {
+    return false;
+  }
   // If the binding has a "strict" property then it's const and can never mutate
   if (binding.strict !== undefined) {
     return false;
@@ -276,8 +285,8 @@ export function areEffectsPure(realm: Realm, effects: Effects, F: FunctionValue)
     }
   }
 
-  for (let [binding] of effects.modifiedBindings) {
-    if (isBindingMutationOutsideFunction(binding, effects, F)) {
+  for (let [binding, bindingEntry] of effects.modifiedBindings) {
+    if (isBindingMutationOutsideFunction(binding, bindingEntry, effects, F)) {
       return false;
     }
   }
@@ -298,7 +307,7 @@ export function reportSideEffectsFromEffects(
   }
 
   for (let [binding, bindingEntry] of effects.modifiedBindings) {
-    if (isBindingMutationOutsideFunction(binding, effects, F)) {
+    if (isBindingMutationOutsideFunction(binding, bindingEntry, effects, F)) {
       let value = bindingEntry.value;
       sideEffectCallback("MODIFIED_BINDING", binding, value && value.expressionLocation);
     }
