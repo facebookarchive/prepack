@@ -57,8 +57,6 @@ import type { SerializerOptions } from "../options.js";
 import type { PathConditions, ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
 import { PropertyDescriptor } from "../descriptors.js";
-import type { AdditionalFunctionEffects } from "../serializer/types.js";
-import { FunctionEnvironmentRecord } from "../environment";
 
 export type OperationDescriptorType =
   | "ABSTRACT_FROM_TEMPLATE"
@@ -682,9 +680,7 @@ export class Generator {
   static _generatorOfEffects(
     realm: Realm,
     name: string,
-    additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
     optimizedFunction: FunctionValue,
-    preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>,
     effects: Effects
   ): Generator {
     let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
@@ -702,35 +698,12 @@ export class Generator {
       output.emitPropertyModification(propertyBinding);
     }
 
-    for (let [modifiedBinding, previousValue] of modifiedBindings.entries()) {
-      let cannonicalize = functionValue =>
-        preEvaluationComponentToWriteEffectFunction.get(functionValue) || functionValue;
-      let optimizedFunctionValue = optimizedFunction;
-      invariant(optimizedFunctionValue);
-      invariant(
-        cannonicalize(optimizedFunctionValue) === optimizedFunctionValue,
-        "These values should be canonical already"
-      );
-      // Walks up the parent chain for the given optimized function checking if the value or any of its parents are
-      // equal to the optimized function we're currently building a generator for.
-      let valueOrParentEqualsFunction = functionValue => {
-        let canonicalOptimizedFunction = cannonicalize(functionValue);
-        if (canonicalOptimizedFunction === optimizedFunctionValue) return true;
-        let additionalEffects = additionalFunctionEffects.get(canonicalOptimizedFunction);
-        invariant(additionalEffects !== undefined);
-        let parent = additionalEffects.parentAdditionalFunction;
-        if (parent !== undefined) return valueOrParentEqualsFunction(parent);
-        return false;
-      };
-
-      let environment = modifiedBinding.environment;
-      if (environment instanceof FunctionEnvironmentRecord && environment.$FunctionObject === optimizedFunctionValue)
-        continue;
-      let creatingOptimizedFunction = environment.creatingOptimizedFunction;
-      if (creatingOptimizedFunction && valueOrParentEqualsFunction(creatingOptimizedFunction)) continue;
-      // TODO #2586: modifiedBinding.value should always exist
-      if (modifiedBinding.value || previousValue.value) {
-        output.emitBindingModification(modifiedBinding);
+    for (let [modifiedBinding] of modifiedBindings.entries()) {
+      if (Utils.isBindingMutationOutsideFunction(modifiedBinding, effects, optimizedFunction)) {
+        if (!modifiedBinding.hasLeaked) {
+          invariant(modifiedBinding.value !== undefined);
+          output.emitBindingModification(modifiedBinding);
+        }
       }
     }
 
@@ -752,23 +725,9 @@ export class Generator {
 
   // Make sure to to fixup
   // how to apply things around sets of things
-  static fromEffects(
-    effects: Effects,
-    realm: Realm,
-    name: string,
-    additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
-    preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>,
-    optimizedFunction: FunctionValue
-  ): Generator {
+  static fromEffects(effects: Effects, realm: Realm, name: string, optimizedFunction: FunctionValue): Generator {
     return realm.withEffectsAppliedInGlobalEnv(
-      this._generatorOfEffects.bind(
-        this,
-        realm,
-        name,
-        additionalFunctionEffects,
-        optimizedFunction,
-        preEvaluationComponentToWriteEffectFunction
-      ),
+      this._generatorOfEffects.bind(this, realm, name, optimizedFunction),
       effects
     );
   }

@@ -198,8 +198,6 @@ export class Functions {
         effects,
         true,
         "AdditionalFunctionEffects",
-        this._writeEffects,
-        this.reactFunctionMap,
         functionValue,
         this.getDeclaringOptimizedFunction(functionValue)
       );
@@ -256,8 +254,6 @@ export class Functions {
         effects,
         true,
         "AdditionalFunctionEffects",
-        this._writeEffects,
-        this.reactFunctionMap,
         functionValue,
         this.getDeclaringOptimizedFunction(functionValue)
       );
