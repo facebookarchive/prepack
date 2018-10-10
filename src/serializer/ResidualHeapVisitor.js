@@ -637,6 +637,7 @@ export class ResidualHeapVisitor {
     if (residualFunctionBinding.hasLeaked) return;
     let environment = residualFunctionBinding.declarativeEnvironmentRecord;
     invariant(environment !== null);
+
     if (residualFunctionBinding.value === undefined) {
       // The first time we visit, we need to initialize the value to its equivalent value
       invariant(environment instanceof DeclarativeEnvironmentRecord);
@@ -644,8 +645,10 @@ export class ResidualHeapVisitor {
       invariant(binding !== undefined);
       invariant(!binding.deletable);
       let value = (binding.initialized && binding.value) || this.realm.intrinsics.undefined;
-      residualFunctionBinding.value = this.visitEquivalentValue(value);
-    } else {
+      if (value !== this.realm.intrinsics.__leakedValue) {
+        residualFunctionBinding.value = this.visitEquivalentValue(value);
+      }
+    } else if (residualFunctionBinding.value !== this.realm.intrinsics.__leakedValue) {
       // Subsequently, we just need to visit the value.
       this.visitValue(residualFunctionBinding.value);
     }
@@ -1011,6 +1014,7 @@ export class ResidualHeapVisitor {
   }
 
   visitAbstractValue(val: AbstractValue): void {
+    invariant(val !== this.realm.intrinsics.__leakedValue, "leaked binding values should never be visited");
     if (val.kind === "sentinel member expression") {
       this.logger.logError(val, "expressions of type o[p] are not yet supported for partially known o and unknown p");
     } else if (val.kind === "environment initialization expression") {
