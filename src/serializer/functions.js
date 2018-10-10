@@ -240,7 +240,8 @@ export class Functions {
         realm.handleError(error);
       };
       const functionCall = () =>
-        realm.evaluateForPureEffectsInGlobalEnv(
+        realm.evaluateFunctionForPureEffectsInGlobalEnv(
+          functionValue,
           call,
           (sideEffectType, binding, expressionLocation) =>
             handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation),

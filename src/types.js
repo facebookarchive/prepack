@@ -42,7 +42,7 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeSourceLocation,
 } from "@babel/types";
-import type { Effects, Realm } from "./realm.js";
+import type { Effects, Realm, SideEffectCallback } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -990,6 +990,13 @@ export type UtilsType = {|
   verboseToDisplayJson: ({}, number) => DisplayResult,
   createModelledFunctionCall: (Realm, FunctionValue, void | string | ArgModel, void | Value) => void => Value,
   isBindingMutationOutsideFunction: (binding: Binding, effects: Effects, F: FunctionValue) => boolean,
+  areEffectsPure: (realm: Realm, effects: Effects, F: FunctionValue) => boolean,
+  reportSideEffectsFromEffects: (
+    realm: Realm,
+    effects: Effects,
+    F: FunctionValue,
+    sideEffectCallback: SideEffectCallback
+  ) => void,
 |};
 
 export type DebuggerConfigArguments = {

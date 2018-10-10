@@ -186,7 +186,8 @@ export class Reconciler {
       }
     };
     const funcCall = () =>
-      this.realm.evaluateForPureEffects(
+      this.realm.evaluateFunctionForPureEffects(
+        componentType,
         resolveComponentTree,
         /*state*/ null,
         `react component: ${getComponentName(this.realm, componentType)}`,
@@ -197,14 +198,19 @@ export class Reconciler {
         }
       );
 
+    let effects;
     try {
       this.realm.react.activeReconciler = this;
-      return this.realm.wrapInGlobalEnv(
+      effects = this.realm.wrapInGlobalEnv(
         () => (this.realm.isInPureScope() ? funcCall() : this.realm.evaluateWithPureScope(funcCall))
       );
+    } catch (e) {
+      this._handleComponentTreeRootFailure(e, evaluatedRootNode);
     } finally {
       this.realm.react.activeReconciler = undefined;
     }
+    invariant(effects !== undefined);
+    return effects;
   }
 
   clearComponentTreeState(): void {
@@ -1409,7 +1415,8 @@ export class Reconciler {
             return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
           };
 
-          let resolvedEffects = this.realm.evaluateForPureEffects(
+          let resolvedEffects = this.realm.evaluateFunctionForPureEffects(
+            func,
             funcCall,
             /*state*/ null,
             `react resolve nested optimized closure`,
@@ -1524,7 +1531,8 @@ export class Reconciler {
     // we don't try and optimize the nested function.
     let effects;
     try {
-      effects = this.realm.evaluateForPureEffects(
+      effects = this.realm.evaluateFunctionForPureEffects(
+        func,
         () => {
           let result = funcCall();
           return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, false);

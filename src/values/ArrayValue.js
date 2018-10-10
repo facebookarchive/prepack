@@ -67,8 +67,10 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
       }
     }
 
-    let funcCall = () =>
-      realm.evaluateForPureEffects(
+    let funcCall = () => {
+      invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
+      return realm.evaluateFunctionForPureEffects(
+        func,
         Utils.createModelledFunctionCall(realm, funcToModel, undefined, thisValue),
         null,
         "temporalArray nestedOptimizedFunction",
@@ -76,6 +78,7 @@ function evaluatePossibleNestedOptimizedFunctionsAndStoreEffects(
           throw new NestedOptimizedFunctionSideEffect();
         }
       );
+    };
     // We take the modelled function and wrap it in a pure evaluation so we can check for
     // side-effects that occur when evaluating the function. If there are side-effects, then
     // we don't try and optimize the nested function.

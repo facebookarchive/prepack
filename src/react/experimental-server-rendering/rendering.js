@@ -359,7 +359,8 @@ class ReactDOMServerRenderer {
           };
 
           let resolvedEffects;
-          resolvedEffects = this.realm.evaluateForPureEffects(
+          resolvedEffects = this.realm.evaluateFunctionForPureEffects(
+            func,
             funcCall,
             /*state*/ null,
             `react SSR resolve nested optimized closure`,

@@ -15384,13 +15384,13 @@ ReactStatistics {
 }
 `;
 
-exports[`fb-www 15: (JSX => JSX) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`fb-www 15: (JSX => JSX) 1`] = `"Failed to render React component root \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
-exports[`fb-www 15: (JSX => createElement) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`fb-www 15: (JSX => createElement) 1`] = `"Failed to render React component root \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
-exports[`fb-www 15: (createElement => JSX) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`fb-www 15: (createElement => JSX) 1`] = `"Failed to render React component root \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
-exports[`fb-www 15: (createElement => createElement) 1`] = `"Failed to render React component \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
+exports[`fb-www 15: (createElement => createElement) 1`] = `"Failed to render React component root \\"Outer\\" due to side-effects from mutating the binding \\"result\\""`;
 
 exports[`fb-www 16: (JSX => JSX) 1`] = `"Failed to render React component root \\"ViewCount\\" due to side-effects from mutating a property "`;
 

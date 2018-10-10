@@ -97,7 +97,7 @@ export type PropertyBindings = Map<PropertyBinding, void | Descriptor>;
 export type CreatedObjects = Set<ObjectValue>;
 export type CreatedAbstracts = Set<AbstractValue>;
 
-export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "EXCEPTION_THROWN" | "MODIFIED_GLOBAL";
+export type SideEffectType = "MODIFIED_BINDING" | "MODIFIED_PROPERTY" | "MODIFIED_GLOBAL";
 
 export type SideEffectCallback = (
   sideEffectType: SideEffectType,
@@ -331,8 +331,6 @@ export class Realm {
       usedReactElementKeys: new Set(),
       verbose: opts.reactVerbose || false,
     };
-
-    this.reportSideEffectCallbacks = new Set();
 
     this.alreadyDescribedLocations = new WeakMap();
     this.stripFlow = opts.stripFlow || false;
@@ -787,13 +785,16 @@ export class Realm {
     return this.wrapInGlobalEnv(() => this.evaluateForEffects(func, state, generatorName));
   }
 
-  evaluateForPureEffectsInGlobalEnv(
-    func: () => Value,
+  evaluateFunctionForPureEffectsInGlobalEnv(
+    func: FunctionValue,
+    f: () => Value,
     sideEffectCallback: SideEffectCallback,
     state?: any,
-    generatorName?: string = "evaluateForPureEffectsInGlobalEnv"
+    generatorName?: string = "evaluateFunctionForPureEffectsInGlobalEnv"
   ): Effects {
-    return this.wrapInGlobalEnv(() => this.evaluateForPureEffects(func, state, generatorName, sideEffectCallback));
+    return this.wrapInGlobalEnv(() =>
+      this.evaluateFunctionForPureEffects(func, f, state, generatorName, sideEffectCallback)
+    );
   }
 
   // NB: does not apply generators because there's no way to cleanly revert them.
@@ -856,14 +857,15 @@ export class Realm {
     }
   }
 
-  evaluateForPureEffects(
+  evaluateFunctionForPureEffects(
+    func: FunctionValue,
     f: () => Completion | Value,
     state: any,
     generatorName: string,
     sideEffectCallback: SideEffectCallback
   ): Effects {
     let effects = this.evaluateForEffects(f, state, generatorName);
-
+    Utils.reportSideEffectsFromEffects(this, effects, func, sideEffectCallback);
     return effects;
   }
 
@@ -1499,38 +1501,6 @@ export class Realm {
   // Record the current value of binding in this.modifiedBindings unless
   // there is already an entry for binding.
   recordModifiedBinding(binding: Binding, value?: Value): Binding {
-    const isDefinedInsidePureFn = root => {
-      let context = this.getRunningContext();
-      let { lexicalEnvironment: env } = context;
-      while (env !== null) {
-        if (env.environmentRecord === root) {
-          // We can look at whether the lexical environment of the binding was destroyed to
-          // determine if it was defined outside the current pure running context.
-          return !env.destroyed;
-        }
-        env = env.parent;
-      }
-      return false;
-    };
-
-    if (
-      this.modifiedBindings !== undefined &&
-      !this.modifiedBindings.has(binding) &&
-      value !== undefined &&
-      this.isInPureScope()
-    ) {
-      let env = binding.environment;
-
-      if (
-        !(env instanceof DeclarativeEnvironmentRecord) ||
-        (env instanceof DeclarativeEnvironmentRecord && !isDefinedInsidePureFn(env))
-      ) {
-        for (let callback of this.reportSideEffectCallbacks) {
-          callback("MODIFIED_BINDING", binding, value.expressionLocation);
-        }
-      }
-    }
-
     if (binding.environment.isReadOnly) {
       // This only happens during speculative execution and is reported elsewhere
       throw new FatalError("Trying to modify a binding in read-only realm");
