@@ -57,7 +57,6 @@ import type { SerializerOptions } from "../options.js";
 import type { PathConditions, ShapeInformationInterface } from "../types.js";
 import { PreludeGenerator } from "./PreludeGenerator.js";
 import { PropertyDescriptor } from "../descriptors.js";
-import type { AdditionalFunctionEffects } from "../serializer/types.js";
 
 export type OperationDescriptorType =
   | "ABSTRACT_FROM_TEMPLATE"
@@ -681,9 +680,7 @@ export class Generator {
   static _generatorOfEffects(
     realm: Realm,
     name: string,
-    additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
     optimizedFunction: FunctionValue,
-    preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>,
     effects: Effects
   ): Generator {
     let { result, generator, modifiedBindings, modifiedProperties, createdObjects } = effects;
@@ -728,23 +725,9 @@ export class Generator {
 
   // Make sure to to fixup
   // how to apply things around sets of things
-  static fromEffects(
-    effects: Effects,
-    realm: Realm,
-    name: string,
-    additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
-    preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>,
-    optimizedFunction: FunctionValue
-  ): Generator {
+  static fromEffects(effects: Effects, realm: Realm, name: string, optimizedFunction: FunctionValue): Generator {
     return realm.withEffectsAppliedInGlobalEnv(
-      this._generatorOfEffects.bind(
-        this,
-        realm,
-        name,
-        additionalFunctionEffects,
-        optimizedFunction,
-        preEvaluationComponentToWriteEffectFunction
-      ),
+      this._generatorOfEffects.bind(this, realm, name, optimizedFunction),
       effects
     );
   }
