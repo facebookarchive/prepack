@@ -30,7 +30,7 @@ import type {
 import { Value } from "./values/index.js";
 import { Completion } from "./completions.js";
 import type { Descriptor as DescriptorClass } from "./descriptors.js";
-import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
+import { type Binding, EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
 import { ObjectValue } from "./values/index.js";
 import type {
   BabelNode,
@@ -989,6 +989,7 @@ export type UtilsType = {|
   jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
   verboseToDisplayJson: ({}, number) => DisplayResult,
   createModelledFunctionCall: (Realm, FunctionValue, void | string | ArgModel, void | Value) => void => Value,
+  isBindingMutationOutsideFunction: (binding: Binding, effects: Effects, F: FunctionValue) => boolean,
 |};
 
 export type DebuggerConfigArguments = {
