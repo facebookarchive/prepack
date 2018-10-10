@@ -48,6 +48,14 @@ it("Key nesting 8", () => {
   runTest(__dirname + "/Reconciliation/key-nesting-8.js");
 });
 
+it("Key nesting 9", () => {
+  runTest(__dirname + "/Reconciliation/key-nesting-9.js", {
+    expectedCreateElementCalls:
+      /* original 3 reactElements for 6 test cases */ 18 +
+      /* prepacked: one removed by inlining, but we have 6 test cases */ 12,
+  });
+});
+
 it("Key change", () => {
   runTest(__dirname + "/Reconciliation/key-change.js");
 });
