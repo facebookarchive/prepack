@@ -30,7 +30,7 @@ import type {
 import { Value } from "./values/index.js";
 import { Completion } from "./completions.js";
 import type { Descriptor as DescriptorClass } from "./descriptors.js";
-import { EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
+import { type Binding, EnvironmentRecord, LexicalEnvironment, Reference } from "./environment.js";
 import { ObjectValue } from "./values/index.js";
 import type {
   BabelNode,
@@ -42,7 +42,7 @@ import type {
   BabelNodeVariableDeclaration,
   BabelNodeSourceLocation,
 } from "@babel/types";
-import type { Effects, Realm } from "./realm.js";
+import type { BindingEntry, Effects, Realm, SideEffectCallback } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
@@ -58,6 +58,14 @@ export const ElementSize = {
   Uint16: 2,
   Uint32: 4,
   Uint8Clamped: 1,
+};
+
+export type FunctionCallOutliningLossyConfig = {
+  ARRAY_ABSTRACT_PROPERTIES?: boolean,
+  ARRAY_FUNCTION_PROPERTIES?: boolean,
+  OBJECT_ABSTRACT_PROPERTIES?: boolean,
+  OBJECT_FUNCTION_PROPERTIES?: boolean,
+  COMPLEX_ABSTRACT_CONDITIONS?: boolean,
 };
 
 export type ConsoleMethodTypes =
@@ -125,7 +133,7 @@ export type ElementType =
 //
 
 declare class _CallableObjectValue extends ObjectValue {
-  $Call: void | ((thisArgument: Value, argsList: Array<Value>) => Value);
+  $Call: void | ((thisArgument: Value, argsList: Array<Value>, alwaysInline: boolean) => Value);
 }
 export type CallableObjectValue = _CallableObjectValue | FunctionValue | NativeFunctionValue;
 
@@ -284,6 +292,7 @@ export type Intrinsics = {
   __IntrospectionErrorPrototype: ObjectValue,
   __topValue: AbstractValue,
   __bottomValue: AbstractValue,
+  __leakedValue: AbstractValue,
 };
 
 export type PromiseCapability = {
@@ -532,7 +541,13 @@ export type FunctionType = {
   AddRestrictedFunctionProperties(F: FunctionValue, realm: Realm): boolean,
 
   // ECMA262 9.2.1
-  $Call(realm: Realm, F: ECMAScriptFunctionValue, thisArgument: Value, argsList: Array<Value>): Value,
+  $Call(
+    realm: Realm,
+    F: ECMAScriptFunctionValue,
+    thisArgument: Value,
+    argsList: Array<Value>,
+    alwaysInline: boolean
+  ): Value,
 
   // ECMA262 9.2.2
   $Construct(
@@ -989,6 +1004,19 @@ export type UtilsType = {|
   jsonToDisplayString: <T: { toDisplayJson(number): DisplayResult }>(T, number) => string,
   verboseToDisplayJson: ({}, number) => DisplayResult,
   createModelledFunctionCall: (Realm, FunctionValue, void | string | ArgModel, void | Value) => void => Value,
+  isBindingMutationOutsideFunction: (
+    binding: Binding,
+    bindingEntry: BindingEntry,
+    effects: Effects,
+    F: FunctionValue
+  ) => boolean,
+  areEffectsPure: (realm: Realm, effects: Effects, F: FunctionValue) => boolean,
+  reportSideEffectsFromEffects: (
+    realm: Realm,
+    effects: Effects,
+    F: FunctionValue,
+    sideEffectCallback: SideEffectCallback
+  ) => void,
 |};
 
 export type DebuggerConfigArguments = {

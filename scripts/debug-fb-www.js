@@ -77,13 +77,21 @@ let prepackOptions = {
   reactEnabled: true,
   reactOutput: "jsx",
   reactVerbose: true,
-  reactFailOnUnsupportedSideEffects: false,
+  reactFailOnUnsupportedSideEffects: true,
   reactOptimizeNestedFunctions: true,
   arrayNestedOptimizedFunctionsEnabled: true,
   inlineExpressions: true,
   invariantLevel: 0,
   abstractValueImpliesMax: 1000,
   stripFlow: true,
+  functionCallOutliningEnabled: true,
+  functionCallOutliningLossyConfig: {
+    ARRAY_ABSTRACT_PROPERTIES: false,
+    ARRAY_FUNCTION_PROPERTIES: false,
+    OBJECT_ABSTRACT_PROPERTIES: false,
+    OBJECT_FUNCTION_PROPERTIES: false,
+    COMPLEX_ABSTRACT_CONDITIONS: false,
+  },
 };
 let inputPath = path.resolve("fb-www/input.js");
 let outputPath = path.resolve("fb-www/output.js");

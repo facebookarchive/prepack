@@ -356,6 +356,7 @@ function runTest(name, code, options: PrepackOptions, args) {
     );
   else if (code.includes("// initialize more modules")) modulesToInitialize = "ALL";
   if (args.verbose || code.includes("// inline expressions")) options.inlineExpressions = true;
+  if (code.includes("// outline functions")) options.functionCallOutliningEnabled = true;
   options.invariantLevel = code.includes("// omit invariants") || args.verbose ? 0 : 99;
   if (code.includes("// emit concrete model")) options.emitConcreteModel = true;
   if (code.includes("// exceeds stack limit")) options.maxStackDepth = 10;
@@ -801,9 +802,10 @@ function run(args) {
           test.name.includes("react");
 
         let flagPermutations = [
-          [false, false, undefined],
-          [true, true, undefined],
-          [false, false, args.lazyObjectsRuntime],
+          [false, false, undefined, false],
+          [true, true, undefined, false],
+          [true, true, undefined, true],
+          [false, false, args.lazyObjectsRuntime, false],
         ];
         if (isAdditionalFunctionTest || isCaptureTest) {
           flagPermutations.push([false, false, undefined]);
@@ -813,15 +815,26 @@ function run(args) {
         return () =>
           SerialPromises(
             flagPermutations
-              .filter(function([delayInitializations, inlineExpressions, lazyObjectsRuntime]) {
+              .filter(function([
+                delayInitializations,
+                inlineExpressions,
+                lazyObjectsRuntime,
+                functionCallOutliningEnabled,
+              ]) {
                 return !(skipLazyObjects || args.noLazySupport) || !lazyObjectsRuntime;
               })
-              .map(function([delayInitializations, inlineExpressions, lazyObjectsRuntime]) {
+              .map(function([
+                delayInitializations,
+                inlineExpressions,
+                lazyObjectsRuntime,
+                functionCallOutliningEnabled,
+              ]) {
                 total++;
                 let options = {
                   delayInitializations,
                   inlineExpressions,
                   lazyObjectsRuntime,
+                  functionCallOutliningEnabled,
                 };
                 return () =>
                   runTest(test.name, test.file, options, args).then(testResult => {

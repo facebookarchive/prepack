@@ -117,8 +117,6 @@ function applyWriteEffectsForOptimizedComponent(
     effects,
     false,
     "ReactAdditionalFunctionEffects",
-    writeEffects,
-    preEvaluationComponentToWriteEffectFunction,
     writeEffectsKey,
     parentOptimizedFunction,
     transforms

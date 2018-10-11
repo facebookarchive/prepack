@@ -589,7 +589,7 @@ export function PrepareForTailCall(realm: Realm): void {
 }
 
 // ECMA262 7.3.12
-export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>): Value {
+export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>, alwaysInline?: boolean = false): Value {
   // 1. If argumentsList was not passed, let argumentsList be a new empty List.
   argsList = argsList || [];
 
@@ -624,5 +624,5 @@ export function Call(realm: Realm, F: Value, V: Value, argsList?: Array<Value>):
 
   // 3. Return ? F.[[Call]](V, argumentsList).
   invariant(F.$Call, "no call method on this value");
-  return F.$Call(V, argsList);
+  return F.$Call(V, argsList, alwaysInline);
 }

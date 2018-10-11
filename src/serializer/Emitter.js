@@ -283,12 +283,13 @@ export class Emitter {
   // Visitor of dependencies that require delaying serialization
   dependenciesVisitor<T>(
     dependencies: Value | Array<Value>,
-    callbacks: EmitterDependenciesVisitorCallbacks<T>
+    callbacks: EmitterDependenciesVisitorCallbacks<T>,
+    alreadyVisited?: Set<Value> = new Set()
   ): void | T {
     invariant(!this._finalized);
 
     let result;
-    let recurse = value => this.dependenciesVisitor(value, callbacks);
+    let recurse = value => this.dependenciesVisitor(value, callbacks, alreadyVisited);
 
     if (Array.isArray(dependencies)) {
       let values = ((dependencies: any): Array<Value>);
@@ -300,6 +301,11 @@ export class Emitter {
     }
 
     let val = ((dependencies: any): Value);
+    if (alreadyVisited.has(val)) {
+      return;
+    }
+    alreadyVisited.add(val);
+
     if (this._activeValues.has(val)) {
       // If a value is active and it's a function, then we still shouldn't wait on it.
       if (val instanceof FunctionValue && !(val instanceof BoundFunctionValue)) {
@@ -312,6 +318,13 @@ export class Emitter {
       if (result !== undefined) return result;
     }
 
+    let realm = val.$Realm;
+    if (realm.functionCallOutliningDerivedPropertyDependencies.has(val)) {
+      let dependency = realm.functionCallOutliningDerivedPropertyDependencies.get(val);
+      invariant(dependency !== undefined);
+      result = recurse(dependency);
+      if (result !== undefined) return result;
+    }
     if (val instanceof BoundFunctionValue) {
       result = recurse(val.$BoundTargetFunction);
       if (result !== undefined) return result;
@@ -373,7 +386,6 @@ export class Emitter {
           if (result !== undefined) return result;
           break;
         case "ReactElement":
-          let realm = val.$Realm;
           let type = getProperty(realm, val, "type");
           let props = getProperty(realm, val, "props");
           let key = getProperty(realm, val, "key");

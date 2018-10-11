@@ -219,7 +219,14 @@ export function createClassInstanceForFirstRenderOnly(
   context: ObjectValue | AbstractValue,
   evaluatedNode: ReactEvaluatedNode
 ): ObjectValue {
-  let instance = getValueFromFunctionCall(realm, componentType, realm.intrinsics.undefined, [props, context], true);
+  let instance = getValueFromFunctionCall(
+    realm,
+    componentType,
+    realm.intrinsics.undefined,
+    [props, context],
+    true,
+    true
+  );
   let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
   invariant(objectAssign instanceof ECMAScriptFunctionValue);
   let objectAssignCall = objectAssign.$Call;
@@ -242,11 +249,11 @@ export function createClassInstanceForFirstRenderOnly(
     invariant(prevState instanceof ObjectValue);
 
     if (stateToUpdate instanceof ECMAScriptSourceFunctionValue && stateToUpdate.$Call) {
-      stateToUpdate = stateToUpdate.$Call(instance, [prevState]);
+      stateToUpdate = stateToUpdate.$Call(instance, [prevState], true);
     }
     if (stateToUpdate instanceof ObjectValue) {
       let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-      objectAssignCall(realm.intrinsics.undefined, [newState, prevState]);
+      objectAssignCall(realm.intrinsics.undefined, [newState, prevState], false);
       newState.makeFinal();
 
       for (let [key, binding] of stateToUpdate.properties) {
@@ -262,7 +269,7 @@ export function createClassInstanceForFirstRenderOnly(
       Properties.Set(realm, instance, "state", newState, true);
     }
     if (callback instanceof ECMAScriptSourceFunctionValue && callback.$Call) {
-      callback.$Call(instance, []);
+      callback.$Call(instance, [], true);
     }
     return realm.intrinsics.undefined;
   });
@@ -309,28 +316,30 @@ export function evaluateClassConstructor(
   let instanceProperties = new Set();
   let instanceSymbols = new Set();
 
-  realm.evaluatePure(
-    () =>
-      realm.evaluateForEffects(
-        () => {
-          let instance = Construct(realm, constructorFunc, [props, context]);
-          invariant(instance instanceof ObjectValue);
-          for (let [propertyName] of instance.properties) {
-            if (!whitelistedProperties.has(propertyName)) {
-              instanceProperties.add(propertyName);
-            }
+  const funcCall = () =>
+    realm.evaluateForEffects(
+      () => {
+        let instance = Construct(realm, constructorFunc, [props, context]);
+        invariant(instance instanceof ObjectValue);
+        for (let [propertyName] of instance.properties) {
+          if (!whitelistedProperties.has(propertyName)) {
+            instanceProperties.add(propertyName);
           }
-          for (let [symbol] of instance.symbols) {
-            instanceSymbols.add(symbol);
-          }
-          return instance;
-        },
-        /*state*/ null,
-        `react component constructor: ${constructorFunc.getName()}`
-      ),
-    /*bubbles*/ true,
-    /*reportSideEffectFunc*/ null
-  );
+        }
+        for (let [symbol] of instance.symbols) {
+          instanceSymbols.add(symbol);
+        }
+        return instance;
+      },
+      /*state*/ null,
+      `react component constructor: ${constructorFunc.getName()}`
+    );
+
+  if (realm.isInPureScope()) {
+    funcCall();
+  } else {
+    realm.evaluateWithPureScope(funcCall);
+  }
 
   return {
     instanceProperties,
@@ -347,7 +356,7 @@ export function applyGetDerivedStateFromProps(
   let prevState = Get(realm, instance, "state");
   let getDerivedStateFromPropsCall = getDerivedStateFromProps.$Call;
   invariant(getDerivedStateFromPropsCall !== undefined);
-  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState]);
+  let partialState = getDerivedStateFromPropsCall(realm.intrinsics.null, [props, prevState], true);
 
   const deriveState = state => {
     let objectAssign = Get(realm, realm.intrinsics.Object, "assign");
@@ -412,7 +421,7 @@ export function applyGetDerivedStateFromProps(
     } else if (state !== realm.intrinsics.null && state !== realm.intrinsics.undefined) {
       let newState = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
       try {
-        objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state]);
+        objectAssignCall(realm.intrinsics.undefined, [newState, prevState, state], false);
       } catch (e) {
         if (realm.isInPureScope() && e instanceof FatalError) {
           let preludeGenerator = realm.preludeGenerator;

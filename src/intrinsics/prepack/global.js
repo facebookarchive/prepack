@@ -263,22 +263,12 @@ export default function(realm: Realm): void {
         "global.__evaluatePureFunction",
         "__evaluatePureFunction",
         0,
-        (context, [functionValue, callback]) => {
+        (context, [functionValue]) => {
+          invariant(!realm.isInPureScope(), "__evaluatePureFunction cannot be nested in another pure scope");
           invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
           invariant(typeof functionValue.$Call === "function");
           let functionCall: Function = functionValue.$Call;
-          return realm.evaluatePure(
-            () => functionCall(realm.intrinsics.undefined, []),
-            /*bubbles*/ true,
-            /*reportSideEffectFunc*/ callback === undefined || callback === realm.intrinsics.undefined
-              ? null
-              : () => {
-                  invariant(callback instanceof ECMAScriptSourceFunctionValue);
-                  let call = callback.$Call;
-                  invariant(call !== undefined);
-                  call(realm.intrinsics.undefined, []);
-                }
-          );
+          return realm.evaluateWithPureScope(() => functionCall(realm.intrinsics.undefined, []));
         }
       ),
       writable: true,
@@ -695,14 +685,17 @@ export default function(realm: Realm): void {
         (context, [functionValue]) => {
           if (!IsCallable(realm, functionValue) || !(functionValue instanceof FunctionValue))
             throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "argument must be callable function");
-          let functionCall: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value) = functionValue.$Call;
+          let functionCall:
+            | void
+            | ((thisArgument: Value, argumentsList: Array<Value>, alwaysInline: boolean) => Value) =
+            functionValue.$Call;
           if (typeof functionCall !== "function") {
             throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "argument must be directly callable");
           }
           let old = realm.eagerlyRequireModuleDependencies;
           realm.eagerlyRequireModuleDependencies = true;
           try {
-            return functionCall(realm.intrinsics.undefined, []);
+            return functionCall(realm.intrinsics.undefined, [], true);
           } finally {
             realm.eagerlyRequireModuleDependencies = old;
           }

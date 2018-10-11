@@ -137,6 +137,7 @@ ${source}
       inlineExpressions: true,
       invariantLevel: 0,
       stripFlow: true,
+      functionCallOutliningEnabled: true,
     };
     const serialized = prepackSources([{ filePath: "", fileContents: code, sourceMapContents: "" }], prepackOptions);
     if (serialized == null || serialized.reactStatistics == null) {

@@ -1696,10 +1696,11 @@ export function createMockReactNative(realm: Realm, reactNativeRequireName: stri
     reactLibrary !== undefined,
     "Could not find React library in sourcecode. Ensure React is bundled or required."
   );
-  let reactNativeValue = factory(realm.intrinsics.undefined, [
-    reactLibrary,
-    new StringValue(realm, reactNativeRequireName),
-  ]);
+  let reactNativeValue = factory(
+    realm.intrinsics.undefined,
+    [reactLibrary, new StringValue(realm, reactNativeRequireName)],
+    true
+  );
   invariant(reactNativeValue instanceof ObjectValue);
   reactNativeValue.refuseSerialization = true;
 

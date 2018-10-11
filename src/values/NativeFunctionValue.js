@@ -49,8 +49,8 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     this.$HomeObject = undefined;
     this.$FunctionKind = "normal";
 
-    this.$Call = (thisArgument, argsList) => {
-      return Functions.$Call(this.$Realm, this, thisArgument, argsList);
+    this.$Call = (thisArgument, argsList, alwaysInline) => {
+      return Functions.$Call(this.$Realm, this, thisArgument, argsList, alwaysInline);
     };
 
     if (constructor) {

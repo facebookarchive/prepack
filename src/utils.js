@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { Realm } from "./realm.js";
+import type { BindingEntry, Effects, Realm, SideEffectCallback } from "./realm.js";
 import {
   AbstractValue,
   ArrayValue,
@@ -31,6 +31,13 @@ import invariant from "./invariant.js";
 import { ShapeInformation } from "./utils/ShapeInformation.js";
 import type { ArgModel } from "./types.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
+import {
+  DeclarativeEnvironmentRecord,
+  FunctionEnvironmentRecord,
+  GlobalEnvironmentRecord,
+  LexicalEnvironment,
+} from "./environment.js";
+import type { Binding } from "./environment.js";
 import * as t from "@babel/types";
 
 export function typeToString(type: typeof Value): void | string {
@@ -202,10 +209,107 @@ export function createModelledFunctionCall(
     let newPathConditions = funcValue.pathConditionDuringDeclaration || savedPathConditions;
     realm.pathConditions = newPathConditions;
     try {
-      let result = call(thisArg, args);
+      let result = call(thisArg, args, true);
       return result;
     } finally {
       realm.pathConditions = savedPathConditions;
     }
   };
+}
+
+export function isBindingMutationOutsideFunction(
+  binding: Binding,
+  bindingEntry: BindingEntry,
+  effects: Effects,
+  F: FunctionValue
+): boolean {
+  // If either the previous values are uninitialized then this is not a mutation
+  if (binding.value === undefined || bindingEntry.value === undefined) {
+    return false;
+  }
+  // If the binding has a "strict" property then it's const and can never mutate
+  if (binding.strict !== undefined) {
+    return false;
+  }
+  let env = F.$Environment;
+  let bindingName = binding.name;
+  let bindingEnv = binding.environment;
+  // If the bindingEnv is the same env, we know the mutation was only local
+  if (bindingEnv instanceof FunctionEnvironmentRecord && bindingEnv.$FunctionObject === F) {
+    return false;
+  }
+  // Check if the binding was mutated in a scope of F or its parents
+  if (env instanceof LexicalEnvironment) {
+    while (env !== null) {
+      let envRecord = env.environmentRecord;
+
+      if (envRecord instanceof GlobalEnvironmentRecord) {
+        for (let name of envRecord.$VarNames) {
+          if (name === bindingName) {
+            return true;
+          }
+        }
+        envRecord = envRecord.$DeclarativeRecord;
+      }
+      if (envRecord instanceof DeclarativeEnvironmentRecord) {
+        if (envRecord.bindings[bindingName] === binding) {
+          return true;
+        }
+      }
+      env = env.parent;
+    }
+  }
+  let functionBindingWasCreatedIn = bindingEnv.creatingOptimizedFunction;
+  // If it was never created in an optimized function then it was created in a scope
+  // of F and was mutated outside of it.
+  if (functionBindingWasCreatedIn === undefined) {
+    return true;
+  }
+  env = functionBindingWasCreatedIn.$Environment;
+  // Check if the function the binding was created in is a child scope of F,
+  // if it is not, then this binding was mutated outside of F.
+  while (env !== null) {
+    if (env === F.$Environment) {
+      return false;
+    }
+    env = env.parent;
+  }
+  return true;
+}
+
+export function areEffectsPure(realm: Realm, effects: Effects, F: FunctionValue): boolean {
+  for (let [binding] of effects.modifiedProperties) {
+    let obj = binding.object;
+    if (!effects.createdObjects.has(obj)) {
+      return false;
+    }
+  }
+
+  for (let [binding, bindingEntry] of effects.modifiedBindings) {
+    if (isBindingMutationOutsideFunction(binding, bindingEntry, effects, F)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function reportSideEffectsFromEffects(
+  realm: Realm,
+  effects: Effects,
+  F: FunctionValue,
+  sideEffectCallback: SideEffectCallback
+): void {
+  for (let [binding] of effects.modifiedProperties) {
+    let obj = binding.object;
+    if (!effects.createdObjects.has(obj)) {
+      sideEffectCallback("MODIFIED_PROPERTY", binding, binding.object.expressionLocation);
+    }
+  }
+
+  for (let [binding, bindingEntry] of effects.modifiedBindings) {
+    if (isBindingMutationOutsideFunction(binding, bindingEntry, effects, F)) {
+      let value = bindingEntry.value;
+      sideEffectCallback("MODIFIED_BINDING", binding, value && value.expressionLocation);
+    }
+  }
 }

@@ -768,7 +768,10 @@ export class ResidualHeapSerializer {
       if (residualFunctionBinding.hasLeaked) {
         this.referentializer.referentializeLeakedBinding(residualFunctionBinding);
       } else {
-        residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
+        residualFunctionBinding.serializedValue =
+          value !== undefined && value !== this.realm.intrinsics.__leakedValue
+            ? this.serializeValue(value)
+            : voidExpression;
         if (residualFunctionBinding.modified) {
           this.referentializer.referentializeModifiedBinding(residualFunctionBinding);
         }
@@ -2294,6 +2297,18 @@ export class ResidualHeapSerializer {
         if (value instanceof ObjectValue && value.temporalAlias !== undefined) {
           let temporalAlias = value.temporalAlias;
           return !this.referencedDeclaredValues.has(temporalAlias) && !this.residualValues.has(temporalAlias);
+        }
+        if (value.isIntrinsic() && this.realm.functionCallOutliningDerivedValues.has(value)) {
+          let setOfInlinedObjectProperties = this.realm.functionCallOutliningDerivedValues.get(value);
+
+          if (setOfInlinedObjectProperties !== undefined) {
+            for (let propVal of setOfInlinedObjectProperties) {
+              canOmit = !this.referencedDeclaredValues.has(propVal) && !this.residualValues.has(propVal);
+              if (!canOmit) {
+                return false;
+              }
+            }
+          }
         }
         return canOmit;
       },

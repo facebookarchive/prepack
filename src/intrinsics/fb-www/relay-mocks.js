@@ -129,7 +129,7 @@ function createReactRelayContainer(
     if (firstRenderContainerValue instanceof ECMAScriptSourceFunctionValue) {
       let firstRenderContainerValueCall = firstRenderContainerValue.$Call;
       invariant(firstRenderContainerValueCall !== undefined);
-      firstRenderValue = firstRenderContainerValueCall(realm.intrinsics.undefined, args);
+      firstRenderValue = firstRenderContainerValueCall(realm.intrinsics.undefined, args, false);
       invariant(firstRenderValue instanceof ECMAScriptSourceFunctionValue);
     }
 
@@ -144,7 +144,7 @@ export function createMockReactRelay(realm: Realm, relayRequireName: string): Ob
   let factory = reactRelayFirstRenderFactory.$Call;
   invariant(factory !== undefined);
   invariant(realm.fbLibraries.react instanceof ObjectValue, "mock ReactRelay cannot be required before mock React");
-  let reactRelayFirstRenderValue = factory(realm.intrinsics.undefined, [realm.fbLibraries.react]);
+  let reactRelayFirstRenderValue = factory(realm.intrinsics.undefined, [realm.fbLibraries.react], true);
   invariant(reactRelayFirstRenderValue instanceof ObjectValue);
 
   // we set refuseSerialization to true so we don't serialize the below properties straight away

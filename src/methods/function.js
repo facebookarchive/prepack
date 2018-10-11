@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import type { LexicalEnvironment } from "../environment.js";
+import { GlobalEnvironmentRecord, LexicalEnvironment, ObjectEnvironmentRecord } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
@@ -21,7 +21,6 @@ import {
   ReturnCompletion,
   SimpleNormalCompletion,
 } from "../completions.js";
-import { GlobalEnvironmentRecord, ObjectEnvironmentRecord } from "../environment.js";
 import {
   AbstractValue,
   AbstractObjectValue,
@@ -29,6 +28,7 @@ import {
   ECMAScriptSourceFunctionValue,
   EmptyValue,
   FunctionValue,
+  NativeFunctionValue,
   NumberValue,
   ObjectValue,
   StringValue,
@@ -69,8 +69,9 @@ import type {
 } from "@babel/types";
 import * as t from "@babel/types";
 import { PropertyDescriptor } from "../descriptors.js";
+import { PossiblyOutlineInternalCall } from "./function-outlining.js";
 
-function InternalCall(
+export function InternalCall(
   realm: Realm,
   F: ECMAScriptFunctionValue,
   thisArgument: Value,
@@ -102,6 +103,10 @@ function InternalCall(
     // 4. Let calleeContext be PrepareForOrdinaryCall(F, undefined).
     let calleeContext = PrepareForOrdinaryCall(realm, F, undefined);
     let calleeEnv = calleeContext.lexicalEnvironment;
+
+    if (calleeEnv.parent === undefined) {
+      calleeEnv.parent = callerContext.lexicalEnvironment;
+    }
 
     let result;
     try {
@@ -914,8 +919,17 @@ export class FunctionImplementation {
   }
 
   // ECMA262 9.2.1
-  $Call(realm: Realm, F: ECMAScriptFunctionValue, thisArgument: Value, argsList: Array<Value>): Value {
-    return InternalCall(realm, F, thisArgument, argsList, 0);
+  $Call(
+    realm: Realm,
+    F: ECMAScriptFunctionValue,
+    thisArgument: Value,
+    argsList: Array<Value>,
+    alwaysInline: boolean
+  ): Value {
+    if (F instanceof NativeFunctionValue || alwaysInline || !realm.functionCallOutliningEnabled) {
+      return InternalCall(realm, F, thisArgument, argsList, 0);
+    }
+    return PossiblyOutlineInternalCall(realm, F, thisArgument, argsList);
   }
 
   // ECMA262 9.2.2
@@ -964,8 +978,8 @@ export class FunctionImplementation {
     // 7. Set F's essential internal methods to the default ordinary object definitions specified in 9.1.
 
     // 8. Set F's [[Call]] internal method to the definition specified in 9.2.1.
-    F.$Call = (thisArgument, argsList) => {
-      return this.$Call(realm, F, thisArgument, argsList);
+    F.$Call = (thisArgument, argsList, alwaysInline) => {
+      return this.$Call(realm, F, thisArgument, argsList, alwaysInline);
     };
 
     // 9. If needsConstruct is true, then

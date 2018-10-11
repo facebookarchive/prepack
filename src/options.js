@@ -10,6 +10,7 @@
 /* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
+import type { FunctionCallOutliningLossyConfig } from "./types.js";
 
 export type Compatibility = "browser" | "jsc-600-1-4-17" | "mobile" | "node-source-maps" | "fb-www" | "node-react";
 export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "mobile", "node-source-maps", "fb-www", "node-react"];
@@ -61,6 +62,8 @@ export type RealmOptions = {
   abstractValueImpliesMax?: number,
   arrayNestedOptimizedFunctionsEnabled?: boolean,
   reactFailOnUnsupportedSideEffects?: boolean,
+  functionCallOutliningEnabled?: boolean,
+  functionCallOutliningLossyConfig?: FunctionCallOutliningLossyConfig,
 };
 
 export type SerializerOptions = {
