@@ -10,7 +10,6 @@
 /* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
-import type { FunctionCallOutliningLossyConfig } from "./types.js";
 
 export type Compatibility = "browser" | "jsc-600-1-4-17" | "mobile" | "node-source-maps" | "fb-www" | "node-react";
 export const CompatibilityValues = ["browser", "jsc-600-1-4-17", "mobile", "node-source-maps", "fb-www", "node-react"];
@@ -38,6 +37,15 @@ export const DiagnosticSeverityValues = ["FatalError", "RecoverableError", "Warn
 
 export type ReactOutputTypes = "create-element" | "jsx" | "bytecode";
 export const ReactOutputValues = ["create-element", "jsx", "bytecode"];
+
+// To reduce Flow cycles, this is inlined from "types.js"
+type FunctionCallOutliningLossyConfig = {
+  ARRAY_ABSTRACT_PROPERTIES?: boolean,
+  ARRAY_FUNCTION_PROPERTIES?: boolean,
+  OBJECT_ABSTRACT_PROPERTIES?: boolean,
+  OBJECT_FUNCTION_PROPERTIES?: boolean,
+  COMPLEX_ABSTRACT_CONDITIONS?: boolean,
+};
 
 export type RealmOptions = {
   check?: Array<number>,

@@ -637,7 +637,6 @@ export class ResidualHeapVisitor {
     if (residualFunctionBinding.hasLeaked) return;
     let environment = residualFunctionBinding.declarativeEnvironmentRecord;
     invariant(environment !== null);
-
     if (residualFunctionBinding.value === undefined) {
       // The first time we visit, we need to initialize the value to its equivalent value
       invariant(environment instanceof DeclarativeEnvironmentRecord);
