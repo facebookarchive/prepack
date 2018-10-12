@@ -13,10 +13,12 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
+import type { FunctionBodyAstNode } from "../types.js";
 import { Get } from "../methods/index.js";
 import { Environment } from "../singletons.js";
 import {
   Value,
+  BoundFunctionValue,
   FunctionValue,
   ObjectValue,
   NumberValue,
@@ -39,6 +41,7 @@ import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/statistics.js";
 import { PropertyDescriptor } from "../descriptors.js";
+import ECMAScriptSourceFunctionValue from "../../lib/values/ECMAScriptSourceFunctionValue.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
@@ -191,6 +194,18 @@ export class ModuleTracer extends Tracer {
               argumentsList[2],
               "Third argument to define function is present but not a concrete array."
             );
+
+          // Remove if explicitly marked at optimization time
+          let realm = factoryFunction.$Realm;
+          if (realm.rmModuleFuncs) {
+            let targetFunction = factoryFunction;
+            if (factoryFunction instanceof BoundFunctionValue) targetFunction = factoryFunction.$BoundTargetFunction;
+            invariant(targetFunction instanceof ECMAScriptSourceFunctionValue);
+            let body = ((targetFunction.$ECMAScriptCode: any): FunctionBodyAstNode);
+            let uniqueOrderedTag = body.uniqueOrderedTag;
+            invariant(uniqueOrderedTag !== undefined);
+            realm.optimizedFunctionsToRemove.add(uniqueOrderedTag);
+          }
         } else
           this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
       } else

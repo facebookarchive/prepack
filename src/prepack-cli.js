@@ -71,6 +71,7 @@ function run(
     --statsFile              The name of the output file where statistics will be written to.
     --heapGraphFilePath      The name of the output file where heap graph will be written to.
     --dumpIRFilePath         The name of the output file where the intermediate representation will be written to.
+    --rmModuleFuncs         Forces optimized module factory functions to be removed, even if they are reachable.
     --inlineExpressions      When generating code, tells prepack to avoid naming expressions when they are only used once,
                              and instead inline them where they are used.
     --invariantLevel         0: no invariants (default); 1: checks for abstract values; 2: checks for accessed built-ins; 3: internal consistency
@@ -123,6 +124,7 @@ function run(
     debugNames: false,
     emitConcreteModel: false,
     inlineExpressions: false,
+    rmModuleFuncs: false,
     logStatistics: false,
     logModules: false,
     delayInitializations: false,
