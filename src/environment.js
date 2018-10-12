@@ -89,6 +89,7 @@ export class EnvironmentRecord {
   $NewTarget: void | ObjectValue;
   id: number;
   creatingOptimizedFunction: FunctionValue | void;
+  lexicalEnvironment: LexicalEnvironment | void;
 
   static nextId: number = 0;
 
