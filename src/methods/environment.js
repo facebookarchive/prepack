@@ -355,6 +355,7 @@ export class EnvironmentImplementation {
 
     // 2. Let envRec be a new declarative Environment Record containing no bindings.
     let envRec = new DeclarativeEnvironmentRecord(realm);
+    envRec.lexicalEnvironment = env;
 
     // 3. Set env's EnvironmentRecord to envRec.
     env.environmentRecord = envRec;
@@ -536,6 +537,7 @@ export class EnvironmentImplementation {
 
     // 3. Let dclRec be a new declarative Environment Record containing no bindings.
     let dclRec = new DeclarativeEnvironmentRecord(realm);
+    dclRec.lexicalEnvironment = env;
 
     // 4. Let globalRec be a new global Environment Record.
     let globalRec = new GlobalEnvironmentRecord(realm);
@@ -599,6 +601,7 @@ export class EnvironmentImplementation {
 
     // 4. Let envRec be a new function Environment Record containing no bindings.
     let envRec = new FunctionEnvironmentRecord(realm);
+    envRec.lexicalEnvironment = env;
 
     // 5. Set envRec.[[FunctionObject]] to F.
     envRec.$FunctionObject = F;
@@ -625,6 +628,8 @@ export class EnvironmentImplementation {
 
     // 12. Set the outer lexical environment reference of env to the value of F's [[Environment]] internal slot.
     env.parent = F.$Environment;
+    // Set the inner environment so we can easily traverse environmental scopes
+    F.$InnerEnvironment = env;
 
     // 13. Return env.
     return env;

@@ -3648,14 +3648,6 @@ exports[`Mutations - not-safe 2: (createElement => JSX) 1`] = `"Failed to render
 
 exports[`Mutations - not-safe 2: (createElement => createElement) 1`] = `"Failed to render React component root \\"Bar\\" due to side-effects from mutating the binding \\"x\\""`;
 
-exports[`Mutations - not-safe 3: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
-
-exports[`Mutations - not-safe 3: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
-
-exports[`Mutations - not-safe 3: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
-
-exports[`Mutations - not-safe 3: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating a property \\"x\\""`;
-
 exports[`Mutations - safe 1: (JSX => JSX) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
@@ -3799,7 +3791,7 @@ ReactStatistics {
     Object {
       "children": Array [],
       "message": "",
-      "name": "App",
+      "name": "Bar",
       "status": "ROOT",
     },
   ],
@@ -3816,7 +3808,7 @@ ReactStatistics {
     Object {
       "children": Array [],
       "message": "",
-      "name": "App",
+      "name": "Bar",
       "status": "ROOT",
     },
   ],
@@ -3833,7 +3825,7 @@ ReactStatistics {
     Object {
       "children": Array [],
       "message": "",
-      "name": "App",
+      "name": "Bar",
       "status": "ROOT",
     },
   ],
@@ -3844,74 +3836,6 @@ ReactStatistics {
 `;
 
 exports[`Mutations - safe 3: (createElement => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "App",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Mutations - safe 4: (JSX => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Mutations - safe 4: (JSX => createElement) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Mutations - safe 4: (createElement => JSX) 1`] = `
-ReactStatistics {
-  "componentsEvaluated": 1,
-  "evaluatedRootNodes": Array [
-    Object {
-      "children": Array [],
-      "message": "",
-      "name": "Bar",
-      "status": "ROOT",
-    },
-  ],
-  "inlinedComponents": 0,
-  "optimizedNestedClosures": 0,
-  "optimizedTrees": 1,
-}
-`;
-
-exports[`Mutations - safe 4: (createElement => createElement) 1`] = `
 ReactStatistics {
   "componentsEvaluated": 1,
   "evaluatedRootNodes": Array [
@@ -10260,37 +10184,37 @@ ReactStatistics {
 }
 `;
 
-exports[`Simple 8: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 8: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 8: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 8: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 8: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 8: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 9: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 9: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 9: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 9: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 9: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 10: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 10: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 10: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 10: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 10: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (JSX => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 11: (JSX => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (JSX => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 11: (JSX => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (createElement => JSX) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 11: (createElement => JSX) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
-exports[`Simple 11: (createElement => createElement) 1`] = `"Failed to render React component \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
+exports[`Simple 11: (createElement => createElement) 1`] = `"Failed to render React component root \\"App\\" due to side-effects from mutating the binding \\"lazyVariable\\""`;
 
 exports[`Simple 12: (JSX => JSX) 1`] = `
 ReactStatistics {

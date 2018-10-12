@@ -23,6 +23,7 @@ export default class FunctionValue extends ObjectValue {
 
   pathConditionDuringDeclaration: PathConditions | void;
   $Environment: LexicalEnvironment;
+  $InnerEnvironment: LexicalEnvironment;
   $ScriptOrModule: any;
 
   // Indicates whether this function has been referenced by a __residual call.

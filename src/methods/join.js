@@ -380,8 +380,8 @@ export class JoinImplementation {
       else if (l1 && !l2) [g2, rewritten2] = leak(b, g2, v2, rewritten2);
       let hasLeaked = l1 || l2;
       // For leaked (and mutable) bindings, the actual value is no longer directly available.
-      // In that case, we reset the value to undefined to prevent any use of the last known value.
-      let value = hasLeaked ? undefined : this.joinValues(realm, v1, v2, getAbstractValue);
+      // In that case, we reset the value to realm.intrinsics.__leakedValue to prevent any use of the last known value.
+      let value = hasLeaked ? realm.intrinsics.__leakedValue : this.joinValues(realm, v1, v2, getAbstractValue);
       invariant(value === undefined || value instanceof Value);
       return { hasLeaked, value };
     };

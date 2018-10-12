@@ -263,22 +263,12 @@ export default function(realm: Realm): void {
         "global.__evaluatePureFunction",
         "__evaluatePureFunction",
         0,
-        (context, [functionValue, callback]) => {
+        (context, [functionValue]) => {
+          invariant(!realm.isInPureScope(), "__evaluatePureFunction cannot be nested in another pure scope");
           invariant(functionValue instanceof ECMAScriptSourceFunctionValue);
           invariant(typeof functionValue.$Call === "function");
           let functionCall: Function = functionValue.$Call;
-          return realm.evaluatePure(
-            () => functionCall(realm.intrinsics.undefined, []),
-            /*bubbles*/ true,
-            /*reportSideEffectFunc*/ callback === undefined || callback === realm.intrinsics.undefined
-              ? null
-              : () => {
-                  invariant(callback instanceof ECMAScriptSourceFunctionValue);
-                  let call = callback.$Call;
-                  invariant(call !== undefined);
-                  call(realm.intrinsics.undefined, []);
-                }
-          );
+          return realm.evaluateWithPureScope(() => functionCall(realm.intrinsics.undefined, []));
         }
       ),
       writable: true,

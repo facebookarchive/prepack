@@ -77,8 +77,8 @@ export function leakBinding(binding: Binding): void {
   // Havoc the binding
   if (binding.mutable === true) {
     // For mutable, i.e. non-const bindings, the actual value is no longer directly available.
-    // Thus, we reset the value to undefined to prevent any use of the last known value.
-    binding.value = undefined;
+    // Thus, we reset the value to realm.intrinsics.__leakedValue to prevent any use of the last known value.
+    binding.value = realm.intrinsics.__leakedValue;
   }
 }
 
@@ -89,6 +89,7 @@ export class EnvironmentRecord {
   $NewTarget: void | ObjectValue;
   id: number;
   creatingOptimizedFunction: FunctionValue | void;
+  lexicalEnvironment: LexicalEnvironment | void;
 
   static nextId: number = 0;
 
