@@ -76,7 +76,8 @@ export type AbstractValueKind =
   | "JSON.stringify(...)"
   | "JSON.parse(...)"
   | "global.Math.imul(A, B)"
-  | "global.__cannotBecomeObject(A)";
+  | "global.__cannotBecomeObject(A)"
+  | "leaked binding value";
 
 // Use AbstractValue.makeKind to make a kind from one of these prefices.
 type AbstractValueKindPrefix =

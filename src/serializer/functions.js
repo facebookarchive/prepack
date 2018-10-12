@@ -198,8 +198,6 @@ export class Functions {
         effects,
         true,
         "AdditionalFunctionEffects",
-        this._writeEffects,
-        this.reactFunctionMap,
         functionValue,
         this.getDeclaringOptimizedFunction(functionValue)
       );
@@ -241,20 +239,22 @@ export class Functions {
         let error = new CompilerDiagnostic(msg, location, "PP1007", "Warning");
         realm.handleError(error);
       };
-      let effects: Effects = realm.evaluatePure(
-        () => realm.evaluateForEffectsInGlobalEnv(call, undefined, "additional function"),
-        /*bubbles*/ true,
-        (sideEffectType, binding, expressionLocation) =>
-          handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation)
-      );
+      const functionCall = () =>
+        realm.evaluateFunctionForPureEffectsInGlobalEnv(
+          functionValue,
+          call,
+          (sideEffectType, binding, expressionLocation) =>
+            handleReportedSideEffect(logCompilerDiagnostic, sideEffectType, binding, expressionLocation),
+          undefined,
+          "additional function"
+        );
+      let effects: Effects = realm.isInPureScope() ? functionCall() : realm.evaluateWithPureScope(functionCall);
       invariant(effects);
       let additionalFunctionEffects = createAdditionalEffects(
         this.realm,
         effects,
         true,
         "AdditionalFunctionEffects",
-        this._writeEffects,
-        this.reactFunctionMap,
         functionValue,
         this.getDeclaringOptimizedFunction(functionValue)
       );

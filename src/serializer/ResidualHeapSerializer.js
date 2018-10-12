@@ -768,7 +768,10 @@ export class ResidualHeapSerializer {
       if (residualFunctionBinding.hasLeaked) {
         this.referentializer.referentializeLeakedBinding(residualFunctionBinding);
       } else {
-        residualFunctionBinding.serializedValue = value !== undefined ? this.serializeValue(value) : voidExpression;
+        residualFunctionBinding.serializedValue =
+          value !== undefined && value !== this.realm.intrinsics.__leakedValue
+            ? this.serializeValue(value)
+            : voidExpression;
         if (residualFunctionBinding.modified) {
           this.referentializer.referentializeModifiedBinding(residualFunctionBinding);
         }

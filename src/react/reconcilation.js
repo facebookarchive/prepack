@@ -185,28 +185,32 @@ export class Reconciler {
         invariant(false, "resolveReactComponentTree error not handled correctly");
       }
     };
+    const funcCall = () =>
+      this.realm.evaluateFunctionForPureEffects(
+        componentType,
+        resolveComponentTree,
+        /*state*/ null,
+        `react component: ${getComponentName(this.realm, componentType)}`,
+        (sideEffectType, binding, expressionLocation) => {
+          if (this.realm.react.failOnUnsupportedSideEffects) {
+            handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation);
+          }
+        }
+      );
 
+    let effects;
     try {
       this.realm.react.activeReconciler = this;
-      return this.realm.wrapInGlobalEnv(() =>
-        this.realm.evaluatePure(
-          () =>
-            this.realm.evaluateForEffects(
-              resolveComponentTree,
-              /*state*/ null,
-              `react component: ${getComponentName(this.realm, componentType)}`
-            ),
-          /*bubbles*/ true,
-          (sideEffectType, binding, expressionLocation) => {
-            if (this.realm.react.failOnUnsupportedSideEffects) {
-              handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation);
-            }
-          }
-        )
+      effects = this.realm.wrapInGlobalEnv(
+        () => (this.realm.isInPureScope() ? funcCall() : this.realm.evaluateWithPureScope(funcCall))
       );
+    } catch (e) {
+      this._handleComponentTreeRootFailure(e, evaluatedRootNode);
     } finally {
       this.realm.react.activeReconciler = undefined;
     }
+    invariant(effects !== undefined);
+    return effects;
   }
 
   clearComponentTreeState(): void {
@@ -1393,6 +1397,7 @@ export class Reconciler {
     evaluatedNode: ReactEvaluatedNode,
     needsKey?: boolean
   ): ArrayValue {
+    invariant(this.realm.isInPureScope());
     if (ArrayValue.isIntrinsicAndHasWidenedNumericProperty(arrayValue)) {
       let nestedOptimizedFunctionEffects = arrayValue.nestedOptimizedFunctionEffects;
 
@@ -1409,16 +1414,14 @@ export class Reconciler {
             invariant(result instanceof Value);
             return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, needsKey);
           };
-          let pureFuncCall = () =>
-            this.realm.evaluatePure(funcCall, /*bubbles*/ true, (sideEffectType, binding, expressionLocation) =>
-              handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
-            );
 
-          let resolvedEffects;
-          resolvedEffects = this.realm.evaluateForEffects(
-            pureFuncCall,
+          let resolvedEffects = this.realm.evaluateFunctionForPureEffects(
+            func,
+            funcCall,
             /*state*/ null,
-            `react resolve nested optimized closure`
+            `react resolve nested optimized closure`,
+            (sideEffectType, binding, expressionLocation) =>
+              handleReportedSideEffect(throwUnsupportedSideEffectError, sideEffectType, binding, expressionLocation)
           );
           this.statistics.optimizedNestedClosures++;
           nestedOptimizedFunctionEffects.set(func, resolvedEffects);
@@ -1520,24 +1523,25 @@ export class Reconciler {
       funcToModel = func.$BoundTargetFunction;
       thisValue = func.$BoundThis;
     }
+    invariant(this.realm.isInPureScope());
     invariant(funcToModel instanceof ECMAScriptSourceFunctionValue);
     let funcCall = Utils.createModelledFunctionCall(this.realm, funcToModel, undefined, thisValue);
     // We take the modelled function and wrap it in a pure evaluation so we can check for
     // side-effects that occur when evaluating the function. If there are side-effects, then
     // we don't try and optimize the nested function.
-    let pureFuncCall = () =>
-      this.realm.evaluatePure(funcCall, /*bubbles*/ false, () => {
-        throw new NestedOptimizedFunctionSideEffect();
-      });
     let effects;
     try {
-      effects = this.realm.evaluateForEffects(
+      effects = this.realm.evaluateFunctionForPureEffects(
+        func,
         () => {
-          let result = pureFuncCall();
+          let result = funcCall();
           return this._resolveDeeply(componentType, result, context, branchStatus, evaluatedNode, false);
         },
         null,
-        "React nestedOptimizedFunction"
+        "React nestedOptimizedFunction",
+        () => {
+          throw new NestedOptimizedFunctionSideEffect();
+        }
       );
     } catch (e) {
       // If the nested optimized function had side-effects, we need to fallback to

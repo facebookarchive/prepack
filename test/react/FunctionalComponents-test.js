@@ -184,12 +184,6 @@ it("Mutations - not-safe 2", () => {
   });
 });
 
-it("Mutations - not-safe 3", () => {
-  runTest(__dirname + "/FunctionalComponents/not-safe3.js", {
-    expectReconcilerError: true,
-  });
-});
-
 it("Mutations - safe 1", () => {
   runTest(__dirname + "/FunctionalComponents/safe.js");
 });
@@ -200,10 +194,6 @@ it("Mutations - safe 2", () => {
 
 it("Mutations - safe 3", () => {
   runTest(__dirname + "/FunctionalComponents/safe3.js");
-});
-
-it("Mutations - safe 4", () => {
-  runTest(__dirname + "/FunctionalComponents/safe4.js");
 });
 
 it("Handle mapped arrays", () => {

@@ -9,7 +9,7 @@
 
 /* @flow strict-local */
 
-import type { Realm } from "./realm.js";
+import type { BindingEntry, Effects, Realm, SideEffectCallback } from "./realm.js";
 import {
   AbstractValue,
   ArrayValue,
@@ -31,6 +31,7 @@ import invariant from "./invariant.js";
 import { ShapeInformation } from "./utils/ShapeInformation.js";
 import type { ArgModel } from "./types.js";
 import { CompilerDiagnostic, FatalError } from "./errors.js";
+import type { Binding } from "./environment.js";
 import * as t from "@babel/types";
 
 export function typeToString(type: typeof Value): void | string {
@@ -208,4 +209,74 @@ export function createModelledFunctionCall(
       realm.pathConditions = savedPathConditions;
     }
   };
+}
+
+export function isBindingMutationOutsideFunction(
+  binding: Binding,
+  bindingEntry: BindingEntry,
+  F: FunctionValue
+): boolean {
+  // If either the previous values are uninitialized then this is not a mutation
+  // TODO validate that the below statement holds for all cases. It's known that
+  // joining effects with a conditional where one side of the effects is missing
+  // a binding that exists in the other effects can cause this.
+  // See issue: https://github.com/facebook/prepack/issues/2599
+  if (binding.value === undefined || bindingEntry.value === undefined) {
+    return false;
+  }
+  // If the binding has a "strict" property then it's const and can never mutate
+  if (binding.strict !== undefined) {
+    return false;
+  }
+  // We traverse the bindings environment and go through each parent until we find
+  // F's inner environment. If we we can't find the environment's matching then we
+  // know that this was a mutation outside of the function.
+  let targetEnv = F.$InnerEnvironment;
+  let env = binding.environment.lexicalEnvironment;
+
+  invariant(env !== undefined);
+  if (env !== null) {
+    if (env === targetEnv) {
+      return false;
+    }
+    env = env.parent;
+  }
+  return true;
+}
+
+export function areEffectsPure(realm: Realm, effects: Effects, F: FunctionValue): boolean {
+  for (let [binding] of effects.modifiedProperties) {
+    let obj = binding.object;
+    if (!effects.createdObjects.has(obj)) {
+      return false;
+    }
+  }
+
+  for (let [binding, bindingEntry] of effects.modifiedBindings) {
+    if (isBindingMutationOutsideFunction(binding, bindingEntry, F)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function reportSideEffectsFromEffects(
+  realm: Realm,
+  effects: Effects,
+  F: FunctionValue,
+  sideEffectCallback: SideEffectCallback
+): void {
+  for (let [binding] of effects.modifiedProperties) {
+    let obj = binding.object;
+    if (!effects.createdObjects.has(obj)) {
+      sideEffectCallback("MODIFIED_PROPERTY", binding, binding.object.expressionLocation);
+    }
+  }
+
+  for (let [binding, bindingEntry] of effects.modifiedBindings) {
+    if (isBindingMutationOutsideFunction(binding, bindingEntry, F)) {
+      let value = bindingEntry.value;
+      sideEffectCallback("MODIFIED_BINDING", binding, value && value.expressionLocation);
+    }
+  }
 }

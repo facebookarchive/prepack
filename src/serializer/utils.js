@@ -205,20 +205,11 @@ export function createAdditionalEffects(
   effects: Effects,
   fatalOnAbrupt: boolean,
   name: string,
-  additionalFunctionEffects: Map<FunctionValue, AdditionalFunctionEffects>,
-  preEvaluationComponentToWriteEffectFunction: Map<FunctionValue, FunctionValue>,
   optimizedFunction: FunctionValue,
   parentOptimizedFunction: FunctionValue | void,
   transforms: Array<AdditionalFunctionTransform> = []
 ): AdditionalFunctionEffects | null {
-  let generator = Generator.fromEffects(
-    effects,
-    realm,
-    name,
-    additionalFunctionEffects,
-    preEvaluationComponentToWriteEffectFunction,
-    optimizedFunction
-  );
+  let generator = Generator.fromEffects(effects, realm, name, optimizedFunction);
   let retValue: AdditionalFunctionEffects = {
     parentAdditionalFunction: parentOptimizedFunction || undefined,
     effects,
