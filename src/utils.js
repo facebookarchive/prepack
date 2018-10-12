@@ -217,6 +217,10 @@ export function isBindingMutationOutsideFunction(
   F: FunctionValue
 ): boolean {
   // If either the previous values are uninitialized then this is not a mutation
+  // TODO validate that the below statement holds for all cases. It's known that
+  // joining effects with a conditional where one side of the effects is missing
+  // a binding that exists in the other effects can cause this.
+  // See issue: https://github.com/facebook/prepack/issues/2599
   if (binding.value === undefined || bindingEntry.value === undefined) {
     return false;
   }
