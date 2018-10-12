@@ -197,14 +197,14 @@ export class ModuleTracer extends Tracer {
 
           // Remove if explicitly marked at optimization time
           let realm = factoryFunction.$Realm;
-          if (realm.rmModuleFuncs) {
+          if (realm.removeModuleFactoryFunctions) {
             let targetFunction = factoryFunction;
             if (factoryFunction instanceof BoundFunctionValue) targetFunction = factoryFunction.$BoundTargetFunction;
             invariant(targetFunction instanceof ECMAScriptSourceFunctionValue);
             let body = ((targetFunction.$ECMAScriptCode: any): FunctionBodyAstNode);
             let uniqueOrderedTag = body.uniqueOrderedTag;
             invariant(uniqueOrderedTag !== undefined);
-            realm.optimizedFunctionsToRemove.add(uniqueOrderedTag);
+            realm.moduleFactoryFunctionsToRemove.set(uniqueOrderedTag, "" + moduleId.value);
           }
         } else
           this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
@@ -260,6 +260,11 @@ export class Modules {
           this.initializedModules.set(moduleId, moduleValue);
         }
       }
+    }
+
+    let moduleFactoryFunctionsToRemove = this.realm.moduleFactoryFunctionsToRemove;
+    for (let [functionId, moduleIdOfFunction] of this.realm.moduleFactoryFunctionsToRemove) {
+      if (!this.initializedModules.has(moduleIdOfFunction)) moduleFactoryFunctionsToRemove.delete(functionId);
     }
     this.getStatistics().initializedModules = this.initializedModules.size;
     this.getStatistics().totalModules = this.moduleIds.size;

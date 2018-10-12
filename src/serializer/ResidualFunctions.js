@@ -500,7 +500,7 @@ export class ResidualFunctions {
               let methodParams = params.slice();
               let classMethod = new ResidualFunctionInstantiator(
                 factoryFunctionInfos,
-                this.realm.optimizedFunctionsToRemove,
+                this.realm.moduleFactoryFunctionsToRemove,
                 this._getIdentifierReplacements(funcBody, residualFunctionBindings),
                 this._getCallReplacements(funcBody),
                 t.classMethod(
@@ -532,7 +532,7 @@ export class ResidualFunctions {
             let isLexical = instance.functionValue.$ThisMode === "lexical";
             funcOrClassNode = new ResidualFunctionInstantiator(
               factoryFunctionInfos,
-              this.realm.optimizedFunctionsToRemove,
+              this.realm.moduleFactoryFunctionsToRemove,
               this._getIdentifierReplacements(funcBody, residualFunctionBindings),
               this._getCallReplacements(funcBody),
               this._createFunctionExpression(params, funcBody, isLexical)
@@ -625,7 +625,7 @@ export class ResidualFunctions {
         factoryParams = factoryParams.concat(params).slice();
         let factoryNode = new ResidualFunctionInstantiator(
           factoryFunctionInfos,
-          this.realm.optimizedFunctionsToRemove,
+          this.realm.moduleFactoryFunctionsToRemove,
           this._getIdentifierReplacements(funcBody, sameResidualBindings),
           this._getCallReplacements(funcBody),
           this._createFunctionExpression(factoryParams, funcBody, false)

@@ -99,20 +99,20 @@ export class ResidualFunctionInstantiator<
   T: BabelNodeClassMethod | BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression
 > {
   factoryFunctionInfos: Map<number, FactoryFunctionInfo>;
-  optimizedFunctionsToRemove: Set<number>;
+  factoryFunctionsToRemove: Map<number, string>;
   identifierReplacements: Map<BabelNodeIdentifier, Replacement>;
   callReplacements: Map<BabelNodeCallExpression, Replacement>;
   root: T;
 
   constructor(
     factoryFunctionInfos: Map<number, FactoryFunctionInfo>,
-    optimizedFunctionsToRemove: Set<number>,
+    factoryFunctionsToRemove: Map<number, string>,
     identifierReplacements: Map<BabelNodeIdentifier, Replacement>,
     callReplacements: Map<BabelNodeCallExpression, Replacement>,
     root: T
   ) {
     this.factoryFunctionInfos = factoryFunctionInfos;
-    this.optimizedFunctionsToRemove = optimizedFunctionsToRemove;
+    this.factoryFunctionsToRemove = factoryFunctionsToRemove;
     this.identifierReplacements = identifierReplacements;
     this.callReplacements = callReplacements;
     this.root = root;
@@ -207,7 +207,7 @@ export class ResidualFunctionInstantiator<
           return t.callExpression(t.memberExpression(factoryId, t.identifier("bind")), [nullExpression]);
         }
 
-        if (this.optimizedFunctionsToRemove.has(functionTag)) {
+        if (this.factoryFunctionsToRemove.has(functionTag)) {
           let newFunctionExpression = Object.assign({}, node);
           newFunctionExpression.body = t.blockStatement([
             t.throwStatement(
