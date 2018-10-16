@@ -45,7 +45,6 @@ export type PrepackOptions = {|
   serialize?: boolean,
   check?: Array<number>,
   inlineExpressions?: boolean,
-  removeModuleFactoryFunctions?: boolean,
   sourceMaps?: boolean,
   modulesToInitialize?: Set<string | number> | "ALL",
   statsFile?: string,
@@ -91,7 +90,6 @@ export function getRealmOptions({
   debugReproArgs,
   arrayNestedOptimizedFunctionsEnabled,
   reactFailOnUnsupportedSideEffects,
-  removeModuleFactoryFunctions,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
@@ -118,7 +116,6 @@ export function getRealmOptions({
     debugReproArgs,
     arrayNestedOptimizedFunctionsEnabled,
     reactFailOnUnsupportedSideEffects,
-    removeModuleFactoryFunctions,
   };
 }
 

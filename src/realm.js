@@ -292,7 +292,6 @@ export class Realm {
     }
 
     this.collectedNestedOptimizedFunctionEffects = new Map();
-    this.moduleFactoryFunctionsToRemove = new Map();
     this.tracers = [];
 
     // These get initialized in construct_realm to avoid the dependency
@@ -355,7 +354,6 @@ export class Realm {
     this.optimizedFunctions = new Map();
     this.arrayNestedOptimizedFunctionsEnabled =
       opts.arrayNestedOptimizedFunctionsEnabled || opts.instantRender || false;
-    this.removeModuleFactoryFunctions = opts.removeModuleFactoryFunctions || false;
   }
 
   statistics: RealmStatistics;
@@ -469,8 +467,6 @@ export class Realm {
   simplifyAndRefineAbstractCondition: AbstractValue => Value;
 
   collectedNestedOptimizedFunctionEffects: Map<ECMAScriptSourceFunctionValue, Effects>;
-  removeModuleFactoryFunctions: boolean;
-  moduleFactoryFunctionsToRemove: Map<number, string>;
   tracers: Array<Tracer>;
 
   MOBILE_JSC_VERSION = "jsc-600-1-4-17";

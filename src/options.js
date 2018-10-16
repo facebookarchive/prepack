@@ -61,7 +61,6 @@ export type RealmOptions = {
   abstractValueImpliesMax?: number,
   arrayNestedOptimizedFunctionsEnabled?: boolean,
   reactFailOnUnsupportedSideEffects?: boolean,
-  removeModuleFactoryFunctions?: boolean,
 };
 
 export type SerializerOptions = {
