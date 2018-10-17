@@ -19,6 +19,7 @@ import { Environment } from "../singletons.js";
 import {
   Value,
   BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
   FunctionValue,
   ObjectValue,
   NumberValue,
@@ -41,7 +42,6 @@ import invariant from "../invariant.js";
 import { Logger } from "./logger.js";
 import { SerializerStatistics } from "../serializer/statistics.js";
 import { PropertyDescriptor } from "../descriptors.js";
-import ECMAScriptSourceFunctionValue from "../../lib/values/ECMAScriptSourceFunctionValue.js";
 
 function downgradeErrorsToWarnings(realm: Realm, f: () => any) {
   let savedHandler = realm.errorHandler;
