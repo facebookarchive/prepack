@@ -218,6 +218,11 @@
       "parser": "flow",
       "trailingComma": "es5",
       "printWidth": 120,
+    }],
+
+  // Reject imports from lib/*
+    "no-restricted-imports": ["error", {
+      "patterns": ["**/../lib/**"]
     }]
   }
 }
