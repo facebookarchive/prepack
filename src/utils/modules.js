@@ -456,7 +456,12 @@ export class Modules {
     let count = 0;
     let body = (moduleId: string) => {
       if (this.initializedModules.has(moduleId)) return;
-      let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
+      let moduleIdNumberIfNumeric = parseInt(moduleId, 10);
+      if (isNaN(moduleIdNumberIfNumeric)) moduleIdNumberIfNumeric = moduleId;
+      let effects = this.tryInitializeModule(
+        moduleIdNumberIfNumeric,
+        `Speculative initialization of module ${moduleId}`
+      );
       if (effects === undefined) return;
       let result = effects.result;
       if (!(result instanceof NormalCompletion)) return; // module might throw
