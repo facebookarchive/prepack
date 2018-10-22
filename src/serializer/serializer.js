@@ -176,6 +176,11 @@ export class Serializer {
         if (this.logger.hasErrors()) return undefined;
       }
 
+      let moduleFactoryFunctionsToRemove = this.realm.moduleFactoryFunctionsToRemove;
+      for (let [functionId, moduleIdOfFunction] of this.realm.moduleFactoryFunctionsToRemove) {
+        if (!this.modules.initializedModules.has(moduleIdOfFunction)) moduleFactoryFunctionsToRemove.delete(functionId);
+      }
+
       let heapGraph;
       let ast = (() => {
         // We wrap the following in an anonymous function declaration to ensure

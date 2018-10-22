@@ -99,17 +99,20 @@ export class ResidualFunctionInstantiator<
   T: BabelNodeClassMethod | BabelNodeFunctionExpression | BabelNodeArrowFunctionExpression
 > {
   factoryFunctionInfos: Map<number, FactoryFunctionInfo>;
+  factoryFunctionsToRemove: Map<number, string>;
   identifierReplacements: Map<BabelNodeIdentifier, Replacement>;
   callReplacements: Map<BabelNodeCallExpression, Replacement>;
   root: T;
 
   constructor(
     factoryFunctionInfos: Map<number, FactoryFunctionInfo>,
+    factoryFunctionsToRemove: Map<number, string>,
     identifierReplacements: Map<BabelNodeIdentifier, Replacement>,
     callReplacements: Map<BabelNodeCallExpression, Replacement>,
     root: T
   ) {
     this.factoryFunctionInfos = factoryFunctionInfos;
+    this.factoryFunctionsToRemove = factoryFunctionsToRemove;
     this.identifierReplacements = identifierReplacements;
     this.callReplacements = callReplacements;
     this.root = root;
@@ -202,6 +205,16 @@ export class ResidualFunctionInstantiator<
         if (duplicateFunctionInfo && canShareFunctionBody(duplicateFunctionInfo)) {
           const { factoryId } = duplicateFunctionInfo;
           return t.callExpression(t.memberExpression(factoryId, t.identifier("bind")), [nullExpression]);
+        }
+
+        if (this.factoryFunctionsToRemove.has(functionTag)) {
+          let newFunctionExpression = Object.assign({}, node);
+          newFunctionExpression.body = t.blockStatement([
+            t.throwStatement(
+              t.newExpression(t.identifier("Error"), [t.stringLiteral("Function was specialized out by Prepack")])
+            ),
+          ]);
+          return newFunctionExpression;
         }
       }
     }

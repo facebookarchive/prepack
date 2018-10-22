@@ -1,17 +1,16 @@
 // es6
-// does not contain:27 + 15
-// does contain:42
-// does contain:3 + 4
-// initialize more modules:0
-
+// removeModuleFactoryFunctions
+// does not contain:require(0)
+// does not contain:magic-string-1
+// does contain:magic-string-2
 var modules = Object.create(null);
-__d = define;
 
-require = function(moduleId) {
+__d = define;
+function require(moduleId) {
   var moduleIdReallyIsNumber = moduleId;
   var module = modules[moduleIdReallyIsNumber];
   return module && module.isInitialized ? module.exports : guardedLoadModule(moduleIdReallyIsNumber, module);
-};
+}
 
 function define(factory, moduleId, dependencyMap) {
   if (moduleId in modules) {
@@ -73,6 +72,7 @@ function loadModuleImplementation(moduleId, module) {
     var _moduleObject = { exports: exports };
 
     factory(global, require, _moduleObject, exports, dependencyMap);
+
     module.factory = undefined;
 
     return (module.exports = _moduleObject.exports);
@@ -95,22 +95,38 @@ function moduleThrewError(id) {
 
 // === End require code ===
 
-define(function(global, require, module, exports) {
-  module.exports = { foo: 27 + 15 };
-}, 0, null);
+function defineModules() {
+  define(function(global, require, module, exports) {
+    let z = "magic-string-1";
+    module.exports = { foo: " hello " };
+  }, 0, null);
 
-define(function(global, r, module, exports) {
-  let useless = 3 + 4;
-  module.exports = function() {
-    return r(0);
-  };
-}, 1, null);
+  define(function(global, require, module, exports) {
+    var x = require(0);
+    var y = require(2);
+    let z = "magic-string-2";
+    module.exports = {
+      bar: " goodbye",
+      foo2: x.foo,
+      baz: y.baz,
+    };
+  }, 1, null);
+
+  define(function(global, require, module, exports) {
+    module.exports = { baz: " foo " };
+  }, 2, null);
+}
+
+defineModules();
+
+var x = require(0);
+
+function f() {
+  return x.foo === " hello " && modules[1].exports === undefined && require(1).bar === " goodbye";
+}
 
 inspect = function() {
-  return require(0).foo;
+  // the require( 0) should be entirely eliminated from 1's factory function
+  // but the require(2) will remain
+  return f();
 };
-
-var verboseNamesToModuleIds = {};
-var ErrorUtils = undefined;
-var nativeRequire = undefined;
-if (global.__makePartial) __makePartial(this);

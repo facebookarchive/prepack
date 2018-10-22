@@ -13,10 +13,13 @@ import { GlobalEnvironmentRecord, DeclarativeEnvironmentRecord } from "../enviro
 import { FatalError } from "../errors.js";
 import { Realm, Tracer } from "../realm.js";
 import type { Effects } from "../realm.js";
+import type { FunctionBodyAstNode } from "../types.js";
 import { Get } from "../methods/index.js";
 import { Environment } from "../singletons.js";
 import {
   Value,
+  BoundFunctionValue,
+  ECMAScriptSourceFunctionValue,
   FunctionValue,
   ObjectValue,
   NumberValue,
@@ -153,6 +156,7 @@ export class ModuleTracer extends Tracer {
 
       let moduleId = argumentsList[0];
       let moduleIdValue;
+
       // Do some sanity checks and request require(...) calls with bad arguments
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) moduleIdValue = moduleId.value;
       else return performCall();
@@ -175,7 +179,6 @@ export class ModuleTracer extends Tracer {
     } else if (F === this.modules.getDefine()) {
       // Here, we handle calls of the form
       //   __d(factoryFunction, moduleId, dependencyArray)
-
       let moduleId = argumentsList[1];
       if (moduleId instanceof NumberValue || moduleId instanceof StringValue) {
         let moduleIdValue = moduleId.value;
@@ -191,6 +194,18 @@ export class ModuleTracer extends Tracer {
               argumentsList[2],
               "Third argument to define function is present but not a concrete array."
             );
+
+          // Remove if explicitly marked at optimization time
+          let realm = factoryFunction.$Realm;
+          if (realm.removeModuleFactoryFunctions) {
+            let targetFunction = factoryFunction;
+            if (factoryFunction instanceof BoundFunctionValue) targetFunction = factoryFunction.$BoundTargetFunction;
+            invariant(targetFunction instanceof ECMAScriptSourceFunctionValue);
+            let body = ((targetFunction.$ECMAScriptCode: any): FunctionBodyAstNode);
+            let uniqueOrderedTag = body.uniqueOrderedTag;
+            invariant(uniqueOrderedTag !== undefined);
+            realm.moduleFactoryFunctionsToRemove.set(uniqueOrderedTag, "" + moduleId.value);
+          }
         } else
           this.modules.logger.logError(factoryFunction, "First argument to define function is not a function value.");
       } else
@@ -245,6 +260,11 @@ export class Modules {
           this.initializedModules.set(moduleId, moduleValue);
         }
       }
+    }
+
+    let moduleFactoryFunctionsToRemove = this.realm.moduleFactoryFunctionsToRemove;
+    for (let [functionId, moduleIdOfFunction] of this.realm.moduleFactoryFunctionsToRemove) {
+      if (!this.initializedModules.has(moduleIdOfFunction)) moduleFactoryFunctionsToRemove.delete(functionId);
     }
     this.getStatistics().initializedModules = this.initializedModules.size;
     this.getStatistics().totalModules = this.moduleIds.size;
@@ -436,7 +456,12 @@ export class Modules {
     let count = 0;
     let body = (moduleId: string) => {
       if (this.initializedModules.has(moduleId)) return;
-      let effects = this.tryInitializeModule(moduleId, `Speculative initialization of module ${moduleId}`);
+      let moduleIdNumberIfNumeric = parseInt(moduleId, 10);
+      if (isNaN(moduleIdNumberIfNumeric)) moduleIdNumberIfNumeric = moduleId;
+      let effects = this.tryInitializeModule(
+        moduleIdNumberIfNumeric,
+        `Speculative initialization of module ${moduleId}`
+      );
       if (effects === undefined) return;
       let result = effects.result;
       if (!(result instanceof NormalCompletion)) return; // module might throw
