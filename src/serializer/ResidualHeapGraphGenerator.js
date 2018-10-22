@@ -64,7 +64,7 @@ export class ResidualHeapGraphGenerator extends ResidualHeapVisitor {
   _edges: Array<Edge>;
 
   // Override.
-  preProcessValue(val: Value): boolean {
+  _preProcessValue(val: Value): boolean {
     if (this._shouldIgnore(val)) {
       return true;
     }

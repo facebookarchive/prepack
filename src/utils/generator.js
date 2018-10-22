@@ -223,7 +223,7 @@ export type VisitEntryCallbacks = {|
   visitGenerator: (Generator, Generator) => void,
   canOmit: Value => boolean,
   recordDeclaration: (AbstractValue | ObjectValue) => void,
-  recordDelayedEntry: (Generator, GeneratorEntry) => void,
+  recordDelayedEntry: (Generator, Array<Value> | Value | void, GeneratorEntry) => void,
   visitModifiedProperty: PropertyBinding => void,
   visitModifiedBinding: Binding => void,
   visitBindingAssignment: (Binding, Value) => Value,
@@ -325,6 +325,11 @@ export class TemporalOperationEntry extends GeneratorEntry {
   visit(callbacks: VisitEntryCallbacks, containingGenerator: Generator): boolean {
     let omit = this.isPure && this.declared && callbacks.canOmit(this.declared);
 
+    let dependencies = [this.declared];
+    if (this.mutatesOnly) dependencies.push(...this.mutatesOnly);
+    for (let dep in dependencies) if (dep.temporalAlias) dependencies.push(dep.temporalAlias)
+
+
     if (!omit && this.declared && this.mutatesOnly !== undefined) {
       omit = true;
       for (let arg of this.mutatesOnly) {
@@ -334,7 +339,7 @@ export class TemporalOperationEntry extends GeneratorEntry {
       }
     }
     if (omit) {
-      callbacks.recordDelayedEntry(containingGenerator, this);
+      callbacks.recordDelayedEntry(containingGenerator, dependencies, this);
       return false;
     } else {
       if (this.declared) callbacks.recordDeclaration(this.declared);
@@ -462,7 +467,8 @@ export class TemporalObjectAssignEntry extends TemporalOperationEntry {
       // entry and visit that entry instead.
       this.args = result.args;
     } else if (result === "POSSIBLE_OPTIMIZATION") {
-      callbacks.recordDelayedEntry(containingGenerator, this);
+      // TODO: fix this one
+      callbacks.recordDelayedEntry(containingGenerator, undefined, this);
       return false;
     }
     return super.visit(callbacks, containingGenerator);

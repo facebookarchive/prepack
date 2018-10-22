@@ -73,6 +73,13 @@ type BindingState = {|
   capturingScopes: Set<Scope>,
 |};
 
+type DelayedAction = {|
+  scope: Scope,
+  dependencies: Array<Value> | void,
+  // Returns whether it should be re-enqueued
+  action: () => void | boolean
+|};
+
 /* This class visits all values that are reachable in the residual heap.
    In particular, this "filters out" values that are:
    - captured by a DeclarativeEnvironmentRecord, but not actually used by any closure.
@@ -114,12 +121,14 @@ export class ResidualHeapVisitor {
     this.additionalGeneratorRoots = new Map();
     this.residualReactElementVisitor = new ResidualReactElementVisitor(this.realm, this);
     this.generatorTree = new GeneratorTree();
+    this.preProcessValue = this._preProcessValue;
   }
 
   realm: Realm;
   logger: Logger;
   modules: Modules;
   globalGenerator: Generator;
+  preProcessValue: (Value) => boolean;
 
   // Caches that ensure one ResidualFunctionBinding exists per (record, name) pair
   declarativeEnvironmentRecordsBindings: Map<DeclarativeEnvironmentRecord, Map<string, ResidualFunctionBinding>>;
@@ -134,7 +143,7 @@ export class ResidualHeapVisitor {
   conditionalFeasibility: Map<AbstractValue, { t: boolean, f: boolean }>;
   inspector: HeapInspector;
   referencedDeclaredValues: Map<Value, void | FunctionValue>;
-  delayedActions: Array<{| scope: Scope, action: () => void | boolean |}>;
+  delayedActions: Array<DelayedAction>;
   additionalFunctionValuesAndEffects: Map<FunctionValue, AdditionalFunctionEffects>;
   functionInstances: Map<FunctionValue, FunctionInstance>;
   additionalFunctionValueInfos: Map<FunctionValue, AdditionalFunctionInfo>;
@@ -251,7 +260,8 @@ export class ResidualHeapVisitor {
   }
 
   // Queues up an action to be later processed in some arbitrary scope.
-  _enqueueWithUnrelatedScope(scope: Scope, action: () => void | boolean): void {
+  _enqueueWithUnrelatedScope(scope: Scope, dependencies: Array<Value> | Value | void, action: () => void | boolean): void {
+    dependencies = undefined;
     // If we are in a zone with a non-default equivalence set (we are wrapped in a `withCleanEquivalenceSet` call) then
     // we need to save our equivalence set so that we may load it before running our action.
     if (this.residualReactElementVisitor.defaultEquivalenceSet === false) {
@@ -260,14 +270,16 @@ export class ResidualHeapVisitor {
       action = () => this.residualReactElementVisitor.loadEquivalenceSet(save, originalAction);
     }
 
-    this.delayedActions.push({ scope, action });
+    if (dependencies && dependencies instanceof Value) dependencies = [dependencies];
+
+    this.delayedActions.push({ scope, action, dependencies });
   }
 
-  // Queues up visiting a value in some arbitrary scope.
+  // Queues up visiting a value in some arbitrary scope once.
   _visitInUnrelatedScope(scope: Scope, val: Value): void {
     let scopes = this.values.get(val);
     if (scopes !== undefined && scopes.has(scope)) return;
-    this._enqueueWithUnrelatedScope(scope, () => this.visitValue(val));
+    this._enqueueWithUnrelatedScope(scope, undefined, () => this.visitValue(val));
   }
 
   visitObjectProperty(binding: PropertyBinding): void {
@@ -482,16 +494,12 @@ export class ResidualHeapVisitor {
 
       if (key !== undefined && value !== undefined) {
         let fixpoint_rerun = () => {
-          let progress;
           if (this.values.has(key)) {
-            progress = true;
             this.visitValue(key);
             this.visitValue(value);
           } else {
-            progress = false;
-            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
+            this._enqueueWithUnrelatedScope(this.scope, key, fixpoint_rerun);
           }
-          return progress;
         };
         fixpoint_rerun();
       }
@@ -523,15 +531,11 @@ export class ResidualHeapVisitor {
       let entry = entries[i];
       if (entry !== undefined) {
         let fixpoint_rerun = () => {
-          let progress;
           if (this.values.has(entry)) {
-            progress = true;
             this.visitValue(entry);
           } else {
-            progress = false;
-            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
+            this._enqueueWithUnrelatedScope(this.scope, entry, fixpoint_rerun);
           }
-          return progress;
         };
         fixpoint_rerun();
       }
@@ -616,7 +620,7 @@ export class ResidualHeapVisitor {
     if (additionalFunctionEffects) {
       this._visitAdditionalFunction(val, additionalFunctionEffects);
     } else {
-      this._enqueueWithUnrelatedScope(val, () => {
+      this._enqueueWithUnrelatedScope(val, undefined, () => {
         invariant(this.scope === val);
         invariant(functionInfo);
         for (let innerName of functionInfo.unbound.keys()) {
@@ -626,6 +630,7 @@ export class ResidualHeapVisitor {
           residualFunctionBindings.set(innerName, residualBinding);
           if (functionInfo.modified.has(innerName)) residualBinding.modified = true;
         }
+        return true;
       });
     }
     if (isClass && val.$HomeObject instanceof ObjectValue) {
@@ -677,7 +682,7 @@ export class ResidualHeapVisitor {
     // If the binding is new for this bindingState, have all functions capturing bindings from that scope visit it
     if (!bindingState.capturedBindings.has(residualFunctionBinding)) {
       for (let capturingScope of bindingState.capturingScopes) {
-        this._enqueueWithUnrelatedScope(capturingScope, () => this._visitBindingHelper(residualFunctionBinding));
+        this._enqueueWithUnrelatedScope(capturingScope, undefined, () => {this._visitBindingHelper(residualFunctionBinding); return true;});
       }
       bindingState.capturedBindings.add(residualFunctionBinding);
     }
@@ -743,9 +748,10 @@ export class ResidualHeapVisitor {
           potentialReferentializationScopes: new Set(),
         };
         // Queue up visiting of global binding exactly once in the globalGenerator scope.
-        this._enqueueWithUnrelatedScope(this.globalGenerator, () => {
+        this._enqueueWithUnrelatedScope(this.globalGenerator, undefined, () => {
           let value = this.realm.getGlobalLetBinding(name);
           if (value !== undefined) residualFunctionBinding.value = this.visitEquivalentValue(value);
+          return true;
         });
         return residualFunctionBinding;
       });
@@ -986,13 +992,13 @@ export class ResidualHeapVisitor {
 
         if (cf.t && !visitedT) {
           this.visitValue(val.args[1]);
-          progress = visitedT = true;
+          visitedT = true;
         }
         invariant(cf.t === visitedT);
 
         if (cf.f && !visitedF) {
           this.visitValue(val.args[2]);
-          progress = visitedF = true;
+          visitedF = true;
         }
         invariant(cf.f === visitedF);
 
@@ -1001,9 +1007,7 @@ export class ResidualHeapVisitor {
         // In that case, we should also re-visit the corresponding cases in this scope.
         // To this end, calling _enqueueWithUnrelatedScope enqueues this function for later re-execution if
         // any other visiting progress was made.
-        if (!visitedT || !visitedF) this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
-
-        return progress;
+        if (!visitedT || !visitedF) this._enqueueWithUnrelatedScope(this.scope, [val.args[1], val.args[2]], fixpoint_rerun);
       };
 
       fixpoint_rerun();
@@ -1026,7 +1030,7 @@ export class ResidualHeapVisitor {
 
   // Overridable hook for pre-visiting the value.
   // Return false will tell visitor to skip visiting children of this node.
-  preProcessValue(val: Value): boolean {
+  _preProcessValue(val: Value): boolean {
     return this._mark(val);
   }
 
@@ -1091,9 +1095,10 @@ export class ResidualHeapVisitor {
         this.preProcessValue(val);
         this.postProcessValue(val);
       } else
-        this._enqueueWithUnrelatedScope(this._getCommonScope(), () => {
+        this._enqueueWithUnrelatedScope(this._getCommonScope(), undefined, () => {
           this.preProcessValue(val);
           this.postProcessValue(val);
+          return true;
         });
     } else if (val instanceof EmptyValue) {
       this.preProcessValue(val);
@@ -1112,10 +1117,11 @@ export class ResidualHeapVisitor {
       let creationGenerator = this.generatorTree.getCreator(val) || this.globalGenerator;
 
       // 1. Visit function in its creation scope
-      this._enqueueWithUnrelatedScope(creationGenerator, () => {
+      this._enqueueWithUnrelatedScope(creationGenerator, undefined, () => {
         invariant(val instanceof FunctionValue);
         if (this.preProcessValue(val)) this.visitValueFunction(val);
         this.postProcessValue(val);
+        return true;
       });
 
       // 2. If current scope is not related to creation scope,
@@ -1123,9 +1129,10 @@ export class ResidualHeapVisitor {
       //    in the common scope as well.
       let commonScope = this._getCommonScope();
       if (commonScope !== creationGenerator && commonScope !== val) {
-        this._enqueueWithUnrelatedScope(commonScope, () => {
+        this._enqueueWithUnrelatedScope(commonScope, undefined, () => {
           this.preProcessValue(val);
           this.postProcessValue(val);
+          return true;
         });
       }
     } else if (val instanceof SymbolValue) {
@@ -1160,8 +1167,8 @@ export class ResidualHeapVisitor {
       recordDeclaration: (value: Value) => {
         this.referencedDeclaredValues.set(value, this._getAdditionalFunctionOfScope());
       },
-      recordDelayedEntry: (generator, entry: GeneratorEntry) => {
-        this._enqueueWithUnrelatedScope(generator, () => entry.visit(callbacks, generator));
+      recordDelayedEntry: (generator, dependencies: Array<Value> | Value | void, entry: GeneratorEntry) => {
+        this._enqueueWithUnrelatedScope(generator, dependencies, () => entry.visit(callbacks, generator));
       },
       visitModifiedProperty: (binding: PropertyBinding) => {
         let fixpoint_rerun = () => {
@@ -1180,10 +1187,8 @@ export class ResidualHeapVisitor {
             this.visitValue(binding.object);
             if (binding.key instanceof Value) this.visitValue(binding.key);
             this.visitObjectProperty(binding);
-            return true;
           } else {
-            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
-            return false;
+            this._enqueueWithUnrelatedScope(this.scope, [binding.object], fixpoint_rerun);
           }
         };
         fixpoint_rerun();
@@ -1224,7 +1229,8 @@ export class ResidualHeapVisitor {
             residualBinding.potentialReferentializationScopes.add("GLOBAL");
             return true;
           } else {
-            this._enqueueWithUnrelatedScope(this.scope, fixpoint_rerun);
+            // TODO: narrow this
+            this._enqueueWithUnrelatedScope(this.scope, undefined, fixpoint_rerun);
             return false;
           }
         };
@@ -1238,13 +1244,15 @@ export class ResidualHeapVisitor {
         // in that case, we need to figure out which optimized function it is, and referentialize it in that scope.
         let commonScope = this._getCommonScope();
         if (residualBinding.potentialReferentializationScopes.size === 0) {
-          this._enqueueWithUnrelatedScope(commonScope, () => {
+          // TODO: fix this one too
+          this._enqueueWithUnrelatedScope(commonScope, undefined, () => {
             if (additionalFunctionInfo !== undefined) {
               let funcInstance = additionalFunctionInfo.instance;
               invariant(funcInstance !== undefined);
               funcInstance.residualFunctionBindings.set(residualBinding.name, residualBinding);
             }
             this.visitBinding(commonScope, residualBinding);
+            return true;
           });
         }
         return this.visitEquivalentValue(value);
@@ -1313,6 +1321,18 @@ export class ResidualHeapVisitor {
   }
 
   _visitUntilFixpoint(): void {
+    let visitProgress;
+    let valuesUpdated;
+    let fixpointPreProcessValue = (val: Value) => {
+      let progress = this._mark(val);
+      if (progress) {
+        visitProgress = true;
+        valuesUpdated.add(val);
+      }
+      return progress;
+    }
+    this.preProcessValue = fixpointPreProcessValue;
+
     if (this.realm.react.verbose) {
       this.logger.logInformation(`Computing fixed point...`);
     }
@@ -1324,21 +1344,32 @@ export class ResidualHeapVisitor {
       // as applying effects is expensive, and so we don't want to do it
       // more often than necessary.
       let actionsByGenerator = new Map();
+      let previousValuesUpdated = valuesUpdated;
+      valuesUpdated = new Set();
       let expected = 0;
-      for (let { scope, action } of this.delayedActions) {
-        let generator;
-        if (scope instanceof FunctionValue) generator = this.generatorTree.getCreator(scope) || this.globalGenerator;
-        else if (scope === "GLOBAL") generator = this.globalGenerator;
-        else {
-          invariant(scope instanceof Generator);
-          generator = scope;
-        }
-        let a = actionsByGenerator.get(generator);
-        if (a === undefined) actionsByGenerator.set(generator, (a = []));
-        a.push({ action, scope });
-        expected++;
-      }
+      let previousDelayedActions = this.delayedActions;
       this.delayedActions = [];
+      for (let delayEntry of previousDelayedActions) {
+        let { scope, dependencies, action } = delayEntry;
+        // undefined on the first iteration, otherwise, if a dependency was updated in the past iteration
+        if ((previousValuesUpdated === undefined) ||
+            (dependencies === undefined) ||
+            dependencies.some((dep) => previousValuesUpdated.has(dep))) {
+          let generator;
+          if (scope instanceof FunctionValue) generator = this.generatorTree.getCreator(scope) || this.globalGenerator;
+          else if (scope === "GLOBAL") generator = this.globalGenerator;
+          else {
+            invariant(scope instanceof Generator);
+            generator = scope;
+          }
+          let a = actionsByGenerator.get(generator);
+          if (a === undefined) actionsByGenerator.set(generator, (a = []));
+          a.push({ action, scope });
+          expected++;
+        } else {
+          this.delayedActions.push(delayEntry);
+        }
+      }
       progress = false;
       // We build up a tree of effects runner that mirror the nesting of Generator effects.
       // This way, we only have to apply any given effects once, regardless of how many actions we have associated with whatever generators.
@@ -1350,7 +1381,9 @@ export class ResidualHeapVisitor {
           for (let { action, scope } of scopedActions) {
             actual++;
             this._withScope(scope, () => {
-              if (action() !== false) progress = true;
+              visitProgress = false;
+              let progressOverride = action();
+              if (visitProgress || progressOverride) progress = true;
             });
           }
         };
