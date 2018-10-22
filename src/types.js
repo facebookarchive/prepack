@@ -45,7 +45,6 @@ import type {
 import type { BindingEntry, Effects, Realm, SideEffectCallback } from "./realm.js";
 import { CompilerDiagnostic } from "./errors.js";
 import type { Severity } from "./errors.js";
-import type { Binding } from "./environment.js";
 import type { DebugChannel } from "./debugger/server/channel/DebugChannel.js";
 import invariant from "./invariant.js";
 
