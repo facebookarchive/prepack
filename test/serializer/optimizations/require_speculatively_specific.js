@@ -1,5 +1,6 @@
 // es6
-// does not contain:1 + 2
+// does not contain:27 + 15
+// does contain:42
 // does contain:3 + 4
 // initialize more modules:0
 
@@ -95,8 +96,7 @@ function moduleThrewError(id) {
 // === End require code ===
 
 define(function(global, require, module, exports) {
-  let useless = 1 + 2;
-  module.exports = { foo: " hello " };
+  module.exports = { foo: 27 + 15 };
 }, 0, null);
 
 define(function(global, r, module, exports) {
