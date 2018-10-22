@@ -21,7 +21,7 @@ import {
   Value,
 } from "./index.js";
 import { IsAccessorDescriptor, IsPropertyKey, IsArrayIndex } from "../methods/is.js";
-import { Leak, Materialize, Properties, To, Utils } from "../singletons.js";
+import { Leak, Reachability, Properties, To, Utils } from "../singletons.js";
 import { type OperationDescriptor } from "../utils/generator.js";
 import invariant from "../invariant.js";
 import { NestedOptimizedFunctionSideEffect } from "../errors.js";
@@ -150,9 +150,20 @@ function modelUnknownPropertyOfSpecializedArray(
           let effects = array.nestedOptimizedFunctionEffects.get(funcToModel);
           if (effects !== undefined) {
             invariant(effects.result instanceof SimpleNormalCompletion);
-            let reachableObjects = Materialize.computeReachableObjects(realm, effects.result.value);
+            let objectsTrackedForLeaks = realm.createdObjectsTrackedForLeaks;
+            let filterValues = o =>
+              !(o instanceof ObjectValue) ||
+              (!effects.createdObjects.has(o) &&
+                (objectsTrackedForLeaks === undefined || objectsTrackedForLeaks.has(o)));
+            let [reachableObjects, reachableBindings] = Reachability.computeReachableObjectsAndBindings(
+              realm,
+              effects.result.value,
+              filterValues,
+              true /* readOnly */
+            );
+            invariant(reachableBindings !== undefined);
             for (let reachableObject of reachableObjects) {
-              if (!effects.createdObjects.has(reachableObject)) mayAliasedObjects.add(reachableObject);
+              mayAliasedObjects.add(reachableObject);
             }
           }
         }

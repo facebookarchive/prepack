@@ -20,6 +20,7 @@ import type {
   PathType,
   PathConditions,
   PropertiesType,
+  ReachabilityType,
   ToType,
   UtilsType,
   WidenType,
@@ -31,6 +32,7 @@ export let Environment: EnvironmentType = (null: any);
 export let Functions: FunctionType = (null: any);
 export let Leak: LeakType = (null: any);
 export let Materialize: MaterializeType = (null: any);
+export let Reachability: ReachabilityType = (null: any);
 export let Join: JoinType = (null: any);
 export let Path: PathType = (null: any);
 export let createPathConditions: (PathConditions | void) => PathConditions = (null: any);
@@ -62,6 +64,9 @@ export function setMaterialize(singleton: MaterializeType): void {
   Materialize = singleton;
 }
 
+export function setReachability(singleton: ReachabilityType): void {
+  Reachability = singleton;
+}
 export function setJoin(singleton: JoinType): void {
   Join = singleton;
 }
