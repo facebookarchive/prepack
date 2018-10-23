@@ -28,7 +28,7 @@ export default function(realm: Realm): void {
       })
     );
 
-  for (let name of [
+  let names = [
     "document",
     "setTimeout",
     "setInterval",
@@ -46,7 +46,6 @@ export default function(realm: Realm): void {
     "cancelAnimationFrame",
     "requestIdleCallback",
     "cancelIdleCallback",
-    "Symbol",
     "Promise",
     "WeakSet",
     "Proxy",
@@ -61,7 +60,11 @@ export default function(realm: Realm): void {
     "URLSearchParams",
     "FileReader",
     "XMLHttpRequest",
-  ]) {
+  ];
+
+  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) names.push("Symbol");
+
+  for (let name of names) {
     global.$DefineOwnProperty(
       name,
       new PropertyDescriptor({
