@@ -28,7 +28,7 @@ export default function(realm: Realm): void {
       })
     );
 
-  let namesToIgnore = [
+  let namesToInvalidate = [
     "document",
     "setTimeout",
     "setInterval",
@@ -62,9 +62,9 @@ export default function(realm: Realm): void {
     "XMLHttpRequest",
   ];
 
-  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) namesToIgnore.push("Symbol");
+  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) namesToInvalidate.push("Symbol");
 
-  for (let name of namesToIgnore) {
+  for (let name of namesToInvalidate) {
     global.$DefineOwnProperty(
       name,
       new PropertyDescriptor({
