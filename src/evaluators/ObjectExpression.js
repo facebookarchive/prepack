@@ -14,24 +14,15 @@ import type { LexicalEnvironment } from "../environment.js";
 import type { PropertyKeyValue } from "../types.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { AbstractValue, ConcreteValue, ObjectValue, StringValue } from "../values/index.js";
-import {
-  ObjectCreate,
-  SetFunctionName,
-  GetValue,
-  CreateDataPropertyOrThrow,
-  IsAnonymousFunctionDefinition,
-  HasOwnProperty,
-  PropertyDefinitionEvaluation,
-  ToPropertyKey,
-  ToString,
-} from "../methods/index.js";
+import { IsAnonymousFunctionDefinition, HasOwnProperty } from "../methods/index.js";
+import { Create, Environment, Functions, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import type {
   BabelNodeObjectExpression,
   BabelNodeObjectProperty,
   BabelNodeObjectMethod,
   BabelNodeClassMethod,
-} from "babel-types";
+} from "@babel/types";
 
 // Returns the result of evaluating PropertyName.
 export function EvalPropertyName(
@@ -56,17 +47,17 @@ function EvalPropertyNamePartial(
   strictCode: boolean
 ): AbstractValue | PropertyKeyValue {
   if (prop.computed) {
-    let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode));
+    let propertyKeyName = Environment.GetValue(realm, env.evaluate(prop.key, strictCode));
     if (propertyKeyName instanceof AbstractValue) return propertyKeyName;
     invariant(propertyKeyName instanceof ConcreteValue);
-    return ToPropertyKey(realm, propertyKeyName);
+    return To.ToPropertyKey(realm, propertyKeyName);
   } else {
     if (prop.key.type === "Identifier") {
       return new StringValue(realm, prop.key.name);
     } else {
-      let propertyKeyName = GetValue(realm, env.evaluate(prop.key, strictCode));
+      let propertyKeyName = Environment.GetValue(realm, env.evaluate(prop.key, strictCode));
       invariant(propertyKeyName instanceof ConcreteValue); // syntax only allows literals if !prop.computed
-      return ToString(realm, propertyKeyName);
+      return To.ToString(realm, propertyKeyName);
     }
   }
 }
@@ -79,7 +70,7 @@ export default function(
   realm: Realm
 ): ObjectValue {
   // 1. Let obj be ObjectCreate(%ObjectPrototype%).
-  let obj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  let obj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
   // 2. Let status be the result of performing PropertyDefinitionEvaluation of PropertyDefinitionList with arguments obj and true.
   for (let prop of ast.properties) {
@@ -94,7 +85,7 @@ export default function(
       let exprValueRef = env.evaluate(prop.value, strictCode);
 
       // 4. Let propValue be ? GetValue(exprValueRef).
-      let propValue = GetValue(realm, exprValueRef);
+      let propValue = Environment.GetValue(realm, exprValueRef);
 
       // 5. If IsAnonymousFunctionDefinition(AssignmentExpression) is true, then
       if (IsAnonymousFunctionDefinition(realm, prop.value)) {
@@ -105,7 +96,7 @@ export default function(
 
         // b. If hasNameProperty is false, perform SetFunctionName(propValue, propKey).
         invariant(!hasNameProperty); // No expression that passes through IsAnonymousFunctionDefinition can have it here
-        SetFunctionName(realm, propValue, propKey);
+        Functions.SetFunctionName(realm, propValue, propKey);
       }
 
       // 6. Assert: enumerable is true.
@@ -120,11 +111,25 @@ export default function(
         }
         obj.$SetPartial(propKey, propValue, obj);
       } else {
-        CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
+        Create.CreateDataPropertyOrThrow(realm, obj, propKey, propValue);
       }
+    } else if (prop.type === "SpreadElement") {
+      // 1. Let exprValue be the result of evaluating AssignmentExpression.
+      let exprValue = env.evaluate(prop.argument, strictCode);
+
+      // 2. Let fromValue be GetValue(exprValue).
+      let fromValue = Environment.GetValue(realm, exprValue);
+
+      // 3. ReturnIfAbrupt(fromValue).
+
+      // 4. Let excludedNames be a new empty List.
+      let excludedNames = [];
+
+      // 4. Return ? CopyDataProperties(object, fromValue, excludedNames).
+      Create.CopyDataProperties(realm, obj, fromValue, excludedNames);
     } else {
       invariant(prop.type === "ObjectMethod");
-      PropertyDefinitionEvaluation(realm, prop, obj, env, strictCode, true);
+      Properties.PropertyDefinitionEvaluation(realm, prop, obj, (env: any), strictCode, true);
     }
   }
 

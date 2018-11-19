@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import invariant from "../invariant.js";
 import type { SourceType } from "../types.js";
@@ -15,9 +15,9 @@ import type { Realm } from "../realm.js";
 import { ThrowCompletion } from "../completions.js";
 import { StringValue } from "../values/index.js";
 import { Construct } from "../methods/construct.js";
-import traverseFast from "../utils/traverse-fast.js";
-import { parse } from "babylon";
-import type { BabelNodeFile } from "babel-types";
+import traverseFast from "./traverse-fast.js";
+import { parse } from "@babel/parser";
+import type { BabelNodeFile } from "@babel/types";
 
 export default function(
   realm: Realm,
@@ -27,7 +27,14 @@ export default function(
   startLine: number = 1
 ): BabelNodeFile {
   try {
-    let ast = parse(code, { filename, sourceType, startLine });
+    let plugins = ["objectRestSpread"];
+    if (realm.react.enabled) {
+      plugins.push("jsx");
+    }
+    if (realm.stripFlow) {
+      plugins.push("flow");
+    }
+    let ast = parse(code, { filename, sourceType, startLine, plugins });
     traverseFast(ast, node => {
       invariant(node.loc);
       node.loc.source = filename;
@@ -50,6 +57,7 @@ export default function(
       } else {
         error = Construct(realm, realm.intrinsics.SyntaxError, [new StringValue(realm, e.message)]);
       }
+      error = error.throwIfNotConcreteObject();
       // These constructors are currently guaranteed to produce an object with
       // built-in error data. Append location information about the syntax error
       // and the source code to it so that we can use it to print nicer errors.

@@ -7,18 +7,16 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import type { Value } from "../values/index.js";
-import { StringValue, NumberValue } from "../values/index.js";
-import { GetIterator, GetValue } from "../methods/index.js";
-import { Set } from "../methods/index.js";
-import { ArrayCreate, CreateDataProperty } from "../methods/index.js";
+import { StringValue, NumberValue, Value } from "../values/index.js";
+import { GetIterator } from "../methods/index.js";
 import invariant from "../invariant.js";
 import { IteratorStep, IteratorValue } from "../methods/iterator.js";
-import type { BabelNodeArrayExpression } from "babel-types";
+import { Create, Environment, Properties } from "../singletons.js";
+import type { BabelNodeArrayExpression } from "@babel/types";
 
 // ECMA262 2.2.5.3
 export default function(
@@ -28,7 +26,7 @@ export default function(
   realm: Realm
 ): Value {
   // 1. Let array be ArrayCreate(0).
-  let array = ArrayCreate(realm, 0);
+  let array = Create.ArrayCreate(realm, 0);
 
   // 2. Let len be the result of performing ArrayAccumulation for ElementList with arguments array and 0.
   let elements = ast.elements || [];
@@ -47,7 +45,7 @@ export default function(
       let spreadRef = env.evaluate(elem.argument, strictCode);
 
       // 2. Let spreadObj be ? GetValue(spreadRef).
-      let spreadObj = GetValue(realm, spreadRef);
+      let spreadObj = Environment.GetValue(realm, spreadRef);
 
       // 3. Let iterator be ? GetIterator(spreadObj).
       let iterator = GetIterator(realm, spreadObj);
@@ -64,7 +62,7 @@ export default function(
         let nextValue = IteratorValue(realm, next);
 
         // d. Let status be CreateDataProperty(array, ToString(ToUint32(nextIndex)), nextValue).
-        let status = CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), nextValue);
+        let status = Create.CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), nextValue);
 
         // e. Assert: status is true.
         invariant(status === true);
@@ -81,10 +79,10 @@ export default function(
       let initResult = env.evaluate(elem, strictCode);
 
       // 5. Let initValue be ? GetValue(initResult).
-      let initValue = GetValue(realm, initResult);
+      let initValue = Environment.GetValue(realm, initResult);
 
       // 6. Let created be CreateDataProperty(array, ToString(ToUint32(postIndex+padding)), initValue).
-      let created = CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), initValue);
+      let created = Create.CreateDataProperty(realm, array, new StringValue(realm, nextIndex++ + ""), initValue);
 
       // 7. Assert: created is true.
       invariant(created === true, "expected data property creation");
@@ -95,7 +93,7 @@ export default function(
   // 3. ReturnIfAbrupt(len).
 
   // 4. Perform Set(array, "length", ToUint32(len), false).
-  Set(realm, array, "length", new NumberValue(realm, nextIndex), false);
+  Properties.Set(realm, array, "length", new NumberValue(realm, nextIndex), false);
 
   // 5. NOTE: The above Set cannot fail because of the nature of the object returned by ArrayCreate.
 

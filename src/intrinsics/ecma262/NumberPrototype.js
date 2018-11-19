@@ -7,26 +7,33 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue, StringValue, UndefinedValue, AbstractValue, NumberValue } from "../../values/index.js";
-import { ToInteger, ToString, thisNumberValue } from "../../methods/index.js";
+import {
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
+  AbstractValue,
+  NumberValue,
+  IntegralValue,
+} from "../../values/index.js";
+import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3
   obj.$NumberData = realm.intrinsics.zero;
 
   // ECMA262 20.1.3.2
-  obj.defineNativeMethod("toExponential", 1, (context, [fractionDigits]) => {
+  obj.defineNativeMethod("toExponential", 1, (context, [_fractionDigits]) => {
+    let fractionDigits = _fractionDigits;
     // 1. Let x be ? thisNumberValue(this value).
-    let x = thisNumberValue(realm, context).value;
+    let x = To.thisNumberValue(realm, context).value;
 
     // 2. Let f be ? ToInteger(fractionDigits).
     fractionDigits = fractionDigits.throwIfNotConcrete();
-    let f = ToInteger(realm, fractionDigits);
+    let f = To.ToInteger(realm, fractionDigits);
 
     // 3. Assert: f is 0, when fractionDigits is undefined.
     invariant(f === 0 || !(fractionDigits instanceof UndefinedValue));
@@ -64,7 +71,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3.3
   obj.defineNativeMethod("toFixed", 1, (context, [fractionDigits]) => {
     // 1. Let f be ToInteger(fractionDigits). (If fractionDigits is undefined, this step produces the value 0).
-    let f = ToInteger(realm, fractionDigits);
+    let f = To.ToInteger(realm, fractionDigits);
 
     // 2. If f < 0 or f > 20, throw a RangeError exception.
     if (f < 0 || f > 20) {
@@ -72,7 +79,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. Let x be this Number value.
-    let x = thisNumberValue(realm, context).value;
+    let x = To.thisNumberValue(realm, context).value;
 
     // 4. If x is NaN, return the String "NaN".
     if (isNaN(x)) return new StringValue(realm, "NaN");
@@ -81,15 +88,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   let toLocaleStringSrc = "(A).toLocaleString()";
-  let toLocaleString = buildExpressionTemplate(toLocaleStringSrc);
 
   // ECMA262 20.1.3.4
   obj.defineNativeMethod("toLocaleString", 0, context => {
-    let x = thisNumberValue(realm, context);
+    let x = To.thisNumberValue(realm, context);
     if (realm.useAbstractInterpretation) {
       // The locale is environment-dependent and may also be time-dependent
       // so do this at runtime and at this point in time
-      return AbstractValue.createTemporalFromTemplate(realm, toLocaleString, StringValue, [x]);
+      return AbstractValue.createTemporalFromTemplate(realm, toLocaleStringSrc, StringValue, [x]);
     } else {
       return new StringValue(realm, x.toLocaleString());
     }
@@ -98,13 +104,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3.5
   obj.defineNativeMethod("toPrecision", 1, (context, [precision]) => {
     // 1. Let x be ? thisNumberValue(this value).
-    let num = thisNumberValue(realm, context);
     // 2. If precision is undefined, return ! ToString(x).
+    let num = To.thisNumberValue(realm, context);
     if (precision instanceof UndefinedValue) {
-      return new StringValue(realm, ToString(realm, num));
+      return new StringValue(realm, To.ToString(realm, num));
     }
     // 3. Let p be ? ToInteger(precision).
-    let p = ToInteger(realm, precision.throwIfNotConcrete());
+    let p = To.ToInteger(realm, precision.throwIfNotConcrete());
     // 4. If x is NaN, return the String "NaN".
     let x = num.value;
     if (isNaN(x)) {
@@ -136,19 +142,18 @@ export default function(realm: Realm, obj: ObjectValue): void {
     return new StringValue(realm, s + x.toPrecision(p));
   });
 
-  const tsTemplateSrc = "(A).toString()";
-  const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
+  const tsTemplateSrc = "('' + A)";
 
   // ECMA262 20.1.3.6
   obj.defineNativeMethod("toString", 1, (context, [radix]) => {
     if (radix instanceof UndefinedValue) {
       const target = context instanceof ObjectValue ? context.$NumberData : context;
-      if (target instanceof AbstractValue && target.getType() === NumberValue) {
-        return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
+      if (target instanceof AbstractValue && (target.getType() === NumberValue || target.getType() === IntegralValue)) {
+        return AbstractValue.createFromTemplate(realm, tsTemplateSrc, StringValue, [target]);
       }
     }
     // 1. Let x be ? thisNumberValue(this value).
-    let x = thisNumberValue(realm, context);
+    let x = To.thisNumberValue(realm, context);
 
     // 2. If radix is not present, let radixNumber be 10.
     // 3. Else if radix is undefined, let radixNumber be 10.
@@ -157,7 +162,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       radixNumber = 10;
     } else {
       // 4. Else let radixNumber be ? ToInteger(radix).
-      radixNumber = ToInteger(realm, radix.throwIfNotConcrete());
+      radixNumber = To.ToInteger(realm, radix.throwIfNotConcrete());
     }
 
     // 5. If radixNumber < 2 or radixNumber > 36, throw a RangeError exception.
@@ -166,7 +171,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 6. If radixNumber = 10, return ! ToString(x).
-    if (radixNumber === 10) return new StringValue(realm, ToString(realm, x));
+    if (radixNumber === 10) return new StringValue(realm, To.ToString(realm, x));
 
     // 7. Return the String representation of this Number value using the radix specified by radixNumber.
     //    Letters a-z are used for digits with values 10 through 35. The precise algorithm is
@@ -178,6 +183,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 20.1.3.7
   obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? thisNumberValue(this value).
-    return thisNumberValue(realm, context);
+    return To.thisNumberValue(realm, context);
   });
 }

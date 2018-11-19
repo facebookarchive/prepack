@@ -7,6 +7,8 @@ if (!x) {
   Object.setPrototypeOf(ob, { a: 2 });
 }
 
-z = ob.a;
+var z = ob.a;
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

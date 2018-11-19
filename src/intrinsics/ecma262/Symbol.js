@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NativeFunctionValue, StringValue, SymbolValue, UndefinedValue } from "../../values/index.js";
-import { ToStringPartial } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import { SameValue } from "../../methods/abstract.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -30,7 +30,7 @@ export default function(realm: Realm): NativeFunctionValue {
       descString = description;
     } else {
       // 3. Else, let descString be ? ToString(description).
-      descString = ToStringPartial(realm, description);
+      descString = To.ToStringPartial(realm, description);
       descString = new StringValue(realm, descString);
     }
     // 4. Return a new unique Symbol value whose [[Description]] value is descString.
@@ -40,7 +40,7 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.4.2.1
   func.defineNativeMethod("for", 1, (context, [key]) => {
     // 1. Let stringKey be ? ToString(key).
-    let stringKey = ToStringPartial(realm, key);
+    let stringKey = To.ToStringPartial(realm, key);
     stringKey = new StringValue(realm, stringKey);
 
     // 2. For each element e of the GlobalSymbolRegistry List,

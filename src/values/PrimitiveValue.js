@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import { ConcreteValue } from "./index.js";
@@ -17,5 +17,13 @@ export default class PrimitiveValue extends ConcreteValue {
   constructor(realm: Realm, intrinsicName?: string) {
     invariant(realm, "realm required");
     super(realm, intrinsicName);
+  }
+
+  throwIfNotConcretePrimitive(): PrimitiveValue {
+    return this;
+  }
+
+  toDisplayString(): string {
+    invariant(false, "abstract method; please override");
   }
 }

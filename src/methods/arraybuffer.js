@@ -7,17 +7,15 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { DataBlock, ElementType } from "../types.js";
 import { Value, ObjectValue, NumberValue, EmptyValue, NullValue, UndefinedValue } from "../values/index.js";
-import { OrdinaryCreateFromConstructor } from "../methods/create.js";
-import { SpeciesConstructor } from "../methods/construct.js";
-import { IsConstructor } from "../methods/index.js";
-import { ToIndexPartial, ToBooleanPartial, ToNumber, ElementConv } from "./to.js";
-import { IsDetachedBuffer } from "../methods/is.js";
-import { ThrowIfInternalSlotNotWritable } from "../methods/properties.js";
+import { SpeciesConstructor } from "./construct.js";
+import { IsConstructor } from "./index.js";
+import { IsDetachedBuffer } from "./is.js";
+import { Create, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
 import { ElementSize } from "../types.js";
 
@@ -51,11 +49,14 @@ export function CreateByteDataBlock(realm: Realm, size: number): DataBlock {
 export function CopyDataBlockBytes(
   realm: Realm,
   toBlock: DataBlock,
-  toIndex: number,
+  _toIndex: number,
   fromBlock: DataBlock,
-  fromIndex: number,
-  count: number
+  _fromIndex: number,
+  _count: number
 ): EmptyValue {
+  let toIndex = _toIndex;
+  let fromIndex = _fromIndex;
+  let count = _count;
   // 1. Assert: fromBlock and toBlock are distinct Data Block values.
   invariant(toBlock instanceof Uint8Array && fromBlock instanceof Uint8Array && toBlock !== fromBlock);
 
@@ -94,7 +95,7 @@ export function CopyDataBlockBytes(
 // ECMA262 24.1.1.1
 export function AllocateArrayBuffer(realm: Realm, constructor: ObjectValue, byteLength: number): ObjectValue {
   // 1. Let obj be ? OrdinaryCreateFromConstructor(constructor, "%ArrayBufferPrototype%", « [[ArrayBufferData]], [[ArrayBufferByteLength]] »).
-  let obj = OrdinaryCreateFromConstructor(realm, constructor, "ArrayBufferPrototype", {
+  let obj = Create.OrdinaryCreateFromConstructor(realm, constructor, "ArrayBufferPrototype", {
     $ArrayBufferData: undefined,
     $ArrayBufferByteLength: undefined,
   });
@@ -123,10 +124,10 @@ export function DetachArrayBuffer(realm: Realm, arrayBuffer: ObjectValue): NullV
   );
 
   // 2. Set arrayBuffer.[[ArrayBufferData]] to null.
-  ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData = null;
+  Properties.ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData = null;
 
   // 3. Set arrayBuffer.[[ArrayBufferByteLength]] to 0.
-  ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferByteLength").$ArrayBufferByteLength = 0;
+  Properties.ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferByteLength").$ArrayBufferByteLength = 0;
 
   // 4. Return NormalCompletion(null).
   return realm.intrinsics.null;
@@ -135,12 +136,12 @@ export function DetachArrayBuffer(realm: Realm, arrayBuffer: ObjectValue): NullV
 // ECMA262 24.2.1.1
 export function GetViewValue(
   realm: Realm,
-  view: Value,
+  _view: Value,
   requestIndex: Value,
   isLittleEndian: Value,
   type: ElementType
 ): NumberValue {
-  view = view.throwIfNotConcrete();
+  let view = _view.throwIfNotConcrete();
 
   // 1. If Type(view) is not Object, throw a TypeError exception.
   if (!(view instanceof ObjectValue)) {
@@ -159,10 +160,10 @@ export function GetViewValue(
   invariant(view.$ViewedArrayBuffer);
 
   // 4. Let getIndex be ? ToIndex(requestIndex).
-  let getIndex = ToIndexPartial(realm, requestIndex);
+  let getIndex = To.ToIndexPartial(realm, requestIndex);
 
   // 5. Let littleEndian be ToBoolean(isLittleEndian).
-  let littleEndian = ToBooleanPartial(realm, isLittleEndian);
+  let littleEndian = To.ToBooleanPartial(realm, isLittleEndian);
 
   // 6. Let buffer be view.[[ViewedArrayBuffer]].
   let buffer = view.$ViewedArrayBuffer;
@@ -202,8 +203,9 @@ export function GetValueFromBuffer(
   arrayBuffer: ObjectValue,
   byteIndex: number,
   type: ElementType,
-  isLittleEndian?: boolean
+  _isLittleEndian?: boolean
 ): NumberValue {
+  let isLittleEndian = _isLittleEndian;
   // 1. Assert: IsDetachedBuffer(arrayBuffer) is false.
   invariant(IsDetachedBuffer(realm, arrayBuffer) === false);
 
@@ -277,13 +279,13 @@ export function GetValueFromBuffer(
 // ECMA262 24.2.1.2
 export function SetViewValue(
   realm: Realm,
-  view: Value,
+  _view: Value,
   requestIndex: Value,
   isLittleEndian: Value,
   type: ElementType,
   value: Value
 ): UndefinedValue {
-  view = view.throwIfNotConcrete();
+  let view = _view.throwIfNotConcrete();
 
   // 1. If Type(view) is not Object, throw a TypeError exception.
   if (!(view instanceof ObjectValue)) {
@@ -302,13 +304,13 @@ export function SetViewValue(
   invariant(view.$ViewedArrayBuffer);
 
   // 4. Let getIndex be ? ToIndex(requestIndex).
-  let getIndex = ToIndexPartial(realm, requestIndex);
+  let getIndex = To.ToIndexPartial(realm, requestIndex);
 
   // 5. Let numberValue be ? ToNumber(value).
-  let numberValue = ToNumber(realm, value);
+  let numberValue = To.ToNumber(realm, value);
 
   // 6. Let littleEndian be ToBoolean(isLittleEndian).
-  let littleEndian = ToBooleanPartial(realm, isLittleEndian);
+  let littleEndian = To.ToBooleanPartial(realm, isLittleEndian);
 
   // 7. Let buffer be view.[[ViewedArrayBuffer]].
   let buffer = view.$ViewedArrayBuffer;
@@ -347,8 +349,9 @@ export function CloneArrayBuffer(
   realm: Realm,
   srcBuffer: ObjectValue,
   srcByteOffset: number,
-  cloneConstructor?: ObjectValue
+  _cloneConstructor?: ObjectValue
 ): ObjectValue {
+  let cloneConstructor = _cloneConstructor;
   // 1. Assert: Type(srcBuffer) is Object and it has an [[ArrayBufferData]] internal slot.
   invariant(srcBuffer instanceof ObjectValue && srcBuffer.$ArrayBufferData);
 
@@ -361,10 +364,10 @@ export function CloneArrayBuffer(
     if (IsDetachedBuffer(realm, srcBuffer) === true) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "IsDetachedBuffer(srcBuffer) is true");
     }
+  } else {
+    // 3. Else, Assert: IsConstructor(cloneConstructor) is true.
+    invariant(IsConstructor(realm, cloneConstructor) === true, "IsConstructor(cloneConstructor) is true");
   }
-
-  // 3. Else, Assert: IsConstructor(cloneConstructor) is true.
-  invariant(IsConstructor(realm, cloneConstructor) === true, "IsConstructor(cloneConstructor) is true");
 
   // 4. Let srcLength be the value of srcBuffer's [[ArrayBufferByteLength]] internal slot.
   let srcLength = srcBuffer.$ArrayBufferByteLength;
@@ -381,7 +384,7 @@ export function CloneArrayBuffer(
   invariant(srcBlock);
 
   // 8. Let targetBuffer be ? AllocateArrayBuffer(cloneConstructor, srcLength).
-  let targetBuffer = AllocateArrayBuffer(realm, cloneConstructor, srcLength);
+  let targetBuffer = AllocateArrayBuffer(realm, (cloneConstructor: ObjectValue), srcLength);
 
   // 9. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
   if (IsDetachedBuffer(realm, srcBuffer) === true) {
@@ -406,8 +409,9 @@ export function SetValueInBuffer(
   byteIndex: number,
   type: ElementType,
   value: number,
-  isLittleEndian?: boolean
+  _isLittleEndian?: boolean
 ): UndefinedValue {
+  let isLittleEndian = _isLittleEndian;
   // 1. Assert: IsDetachedBuffer(arrayBuffer) is false.
   invariant(IsDetachedBuffer(realm, arrayBuffer) === false);
 
@@ -424,7 +428,7 @@ export function SetValueInBuffer(
   invariant(typeof value === "number");
 
   // 5. Let block be arrayBuffer.[[ArrayBufferData]].
-  let block = ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData;
+  let block = Properties.ThrowIfInternalSlotNotWritable(realm, arrayBuffer, "$ArrayBufferData").$ArrayBufferData;
 
   // 6. Assert: block is not undefined.
   invariant(block instanceof Uint8Array);
@@ -447,7 +451,7 @@ export function SetValueInBuffer(
     let n = ElementSize[type];
 
     // b. Let convOp be the abstract operation named in the Conversion Operation column in Table 50 for Element Type type.
-    let convOp = ElementConv[type];
+    let convOp = To.ElementConv[type];
 
     // c. Let intValue be convOp(value).
     let intValue = convOp(realm, value);

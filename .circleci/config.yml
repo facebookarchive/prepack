@@ -1,0 +1,95 @@
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build
+      - run-tests-1:
+          requires:
+            - build
+      - run-tests-2:
+          requires:
+            - build
+      - run-checks:
+          requires:
+            - build
+
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/node:8.9.4
+    steps:
+      - checkout
+      - run:
+          name: "Checkout Submodules & Prep"
+          command: |
+            git submodule sync
+            git submodule update --init # use submodules
+            echo "export PATH=${PATH}:${HOME}/${CIRCLE_PROJECT_REPONAME}/node_modules/.bin" >> $BASH_ENV
+      - restore_cache:
+          keys:
+            - yarn-v1--{{ .Branch }}--{{ checksum "yarn.lock" }}
+      - run:
+          name: "Install Dependencies"
+          command: yarn install --frozen-lockfile # make sure that lockfile is up-to-date
+      - save_cache:
+          key: yarn-v1--{{ .Branch }}--{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/yarn
+      - run:
+          name: "Build Assets"
+          command: |
+            yarn build
+            yarn build-scripts
+      - persist_to_workspace:
+          root: /home/circleci
+          paths:
+            - project
+
+  run-tests-1:
+    docker:
+      - image: circleci/node:8.9.4
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: "Run Tests"
+          command: |
+            mkdir ~/artifacts
+            yarn test-react
+            yarn test-sourcemaps
+            yarn test-std-in
+            yarn test-test262 --expectedCounts 11944,5641,0 --statusFile ~/artifacts/test262-status.txt --timeout 140 --cpuScale 0.25 --verbose
+            #yarn test-test262-new --statusFile ~/artifacts/test262-new-status.txt --timeout 120 --verbose
+      - store_artifacts:
+          path: ~/artifacts/
+
+  run-tests-2:
+    docker:
+      - image: circleci/node:8.9.4
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: "Run Tests"
+          command: |
+            mkdir ~/artifacts
+            yarn test-serializer-with-coverage
+            mv coverage/lcov-report ~/artifacts/coverage-report
+            mv coverage-sourcemapped ~/artifacts/coverage-report-sourcemapped
+      - store_artifacts:
+          path: ~/artifacts/
+
+  run-checks:
+    docker:
+      - image: circleci/node:8.9.4
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: "Run Checks"
+          command: |
+            yarn prettier-ci
+            yarn lint
+            yarn flow-ci
+            yarn depcheck

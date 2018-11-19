@@ -12,7 +12,10 @@
 import madge from "madge";
 import { exec } from "child_process";
 
-exec("flow check --profile", function(error, stdout, stderr) {
+const MAX_CYCLE_LEN = 56; // NEVER EVER increase this value
+
+const cmd = "flow check --profile --merge-timeout 0";
+exec(cmd, function(error, stdout, stderr) {
   error;
   stdout;
   /*
@@ -25,25 +28,44 @@ exec("flow check --profile", function(error, stdout, stderr) {
       filen
   ... more flow output after unindented line
   */
-  let start = stderr.indexOf("cycle detected among the following files");
-  let lines = stderr.substr(start).split("\n").splice(1);
-  let found_ecma = false;
-  let found_realm = false;
-  let cycle_len = 0;
+  let inCycle = false;
+  let cycles = 0;
+  let cycle_len = 0,
+    max_cycle_len = 0;
+  let found_ecma = false,
+    found_realm = false;
+  let lines = stderr.split("\n");
   for (let line of lines) {
-    if (!line.startsWith("\t")) break;
-    cycle_len += 1;
-    found_ecma = found_ecma || line.includes("/ecma262/");
-    found_realm = found_realm || line.includes("/realm.js");
+    if (inCycle && !line.startsWith("\t")) {
+      if (found_ecma && found_realm) {
+        console.error("Invalid Dependencies: ecma262/ is in a circular dependency with realm.js");
+        console.error("Run the following command to see the cycle: " + cmd);
+        process.exit(1);
+      }
+      max_cycle_len = Math.max(cycle_len, max_cycle_len);
+      cycle_len = 0;
+      found_ecma = found_realm = false;
+      inCycle = false;
+    }
+    if (!inCycle && line === "cycle detected among the following nodes:") {
+      inCycle = true;
+      cycles++;
+    } else if (inCycle) {
+      cycle_len++;
+      found_ecma = found_ecma || line.includes("/ecma262/");
+      found_realm = found_realm || line.includes("/realm.js");
+    }
   }
-  if (found_ecma && found_realm) {
-    console.log("Invalid Dependencies: ecma262/ is in a circular dependency with realm.js");
+  if (inCycle || cycles === 0 || !(max_cycle_len > 0)) {
+    console.error("Error while processing Flow stderr, couldn't find cycle information:");
+    for (let line of lines) console.error(line);
     process.exit(1);
   }
-  console.log("Biggest cycle: " + cycle_len);
-  let MAX_CYCLE_LEN = 58;
-  if (cycle_len > MAX_CYCLE_LEN) {
-    console.log("Error: You increased cycle length from the previous high of " + MAX_CYCLE_LEN);
+  console.log("Biggest cycle: " + max_cycle_len + " (out of " + cycles + " cycles reported by Flow)");
+  if (max_cycle_len > MAX_CYCLE_LEN) {
+    console.error("Error: You increased cycle length from the previous high of " + MAX_CYCLE_LEN);
+    console.error("This is never OK.");
+    console.error("Run the following command to see the cycle: " + cmd);
     process.exit(1);
   }
 });
@@ -55,7 +77,7 @@ madge("./lib/").then(res => {
   let deps = res.obj();
   let idx_deps = res.depends("intrinsics/index");
   if (idx_deps.length !== 1 || idx_deps[0] !== "construct_realm") {
-    console.log("Invalid Dependency: Intrinsics index depends on " + idx_deps[0]);
+    console.error("Invalid Dependency: Intrinsics index depends on " + idx_deps[0]);
     process.exit(1);
   }
 
@@ -70,7 +92,7 @@ madge("./lib/").then(res => {
         .depends(dep)
         .filter(depend => depend !== "intrinsics/index" && !depend.startsWith("intrinsics/ecma262"));
       if (ext_deps.length > 0) {
-        console.log("Invalid Dependency: " + dep + " depends on " + ext_deps);
+        console.error("Invalid Dependency: " + dep + " depends on " + ext_deps);
         process.exit(1);
       }
     }

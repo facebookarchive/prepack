@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue, UndefinedValue } from "../../values/index.js";
-import { CreateIterResultObject, CreateArrayFromList } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -41,7 +41,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let itemKind = O.$SetIterationKind;
 
     // 7. If s is undefined, return CreateIterResultObject(undefined, true).
-    if (!s || s instanceof UndefinedValue) return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+    if (!s || s instanceof UndefinedValue)
+      return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     invariant(s instanceof ObjectValue);
 
     // 8. Assert: s has a [[SetData]] internal slot.
@@ -67,10 +68,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // i. If itemKind is "key+value", then
         if (itemKind === "key+value") {
           // 1. Return CreateIterResultObject(CreateArrayFromList(« e, e »), false).
-          return CreateIterResultObject(realm, CreateArrayFromList(realm, [e, e]), false);
+          return Create.CreateIterResultObject(realm, Create.CreateArrayFromList(realm, [e, e]), false);
         }
         // ii. Return CreateIterResultObject(e, false).
-        return CreateIterResultObject(realm, e, false);
+        return Create.CreateIterResultObject(realm, e, false);
       }
     }
 
@@ -78,7 +79,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     O.$IteratedSet = realm.intrinsics.undefined;
 
     // 12. Return CreateIterResultObject(undefined, true).
-    return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+    return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
   });
 
   // ECMA262 23.2.5.2.2

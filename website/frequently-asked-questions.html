@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Prepack &middot; Partial evaluator for JavaScript</title>
+    <script src="js/prism.js"></script>
+    <link rel="stylesheet" href="css/prism.css"/>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-44373548-29', 'auto');
+      ga('send', 'pageview');
+    </script>
+  </head>
+  <body>
+
+    <nav class="nav">
+      <div class="content-container">
+
+        <div class="nav-left">
+          <a class="nav-item is-brand" href="./">
+            <img class="nav-logo" src="static/images/prepack_logo.png" alt="prepack logo"/>
+            Prepack
+          </a>
+        </div>
+
+        <span id="nav-toggle" class="nav-toggle">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+
+        <div id="nav-menu" class="nav-right nav-menu">
+          <a href="./" class="nav-item">About</a>
+          <a href="getting-started.html" class="nav-item">Getting Started</a>
+          <a href="frequently-asked-questions.html" class="nav-item is-active">FAQs</a>
+          <a href="repl.html" class="nav-item">Try It Out</a>
+          <a href="https://github.com/facebook/prepack" class="nav-item">GitHub</a>
+        </div>
+
+      </div>
+    </nav>
+
+    <div class="content">
+      <div class="section">
+        <div class="content-container">
+          <h2>Why do I get a <code>ReferenceError</code> when trying to prepack my code?</h2>
+
+          <p class="align-left">
+            Trying to prepack a seemingly simple program such as <code>global.result = UnknownProperty;</code> will cause a
+            <code>ReferenceError</code>. The reason is that Prepack actually runs the global code, not knowing anything else
+            about the environment. And the semantics of JavaScript is that an unknown identifier that cannot be resolved
+            causes a <code>ReferenceError</code>. You might want to invest into modeling your environment.
+            Check out the section <i>The Environment matters!</i> on the landing page.
+          </p>
+
+          <h2>Why does <code>global.UnknownProperty</code> prepack to <code>undefined</code>?</h2>
+
+          <p class="align-left">
+            Prepack actually runs the global code, and by default, any accesses to unknown properties of an object result in
+            <code>undefined</code>. Thus, <code>global.UnknownProperty</code> prepacks to <code>undefined</code>.
+            You might want to invest into modeling your environment.
+            Check out the section <i>The Environment matters!</i> on the landing page.
+          </p>
+
+          <h2>What is an <code>__IntrospectionError</code> or a PPxxxx error code?</h2>
+
+          <p class="align-left">
+            Prepack actually runs the global code.
+            When functions such as <code>Date.now</code> or <code>Math.random</code> are invoked,
+            their behavior is <i>non-deterministic</i>. Prepack doesn't know which exact value they will return
+            when the resulting prepacked code will run again later in the real run-time environment.
+            (You can also directly inject such non-deterministic values using Prepack's <code>__abstract</code> built-in, or
+            other modeling built-ins described in the section <i>The Environment matters!</i> on the landing page.)
+          </p>
+          <p class="align-left">
+            When the global code branches over such values,
+            it is not clear at prepack-time which branch will be taken later in the real run-time environment.
+            Therefore, Prepack tries to explore all possible behaviors, and summarize them.
+            However, Prepack is still limited in its abilities, and sometimes it just won't ever make sense to explore all possible behaviors.
+            In those cases, Prepack either throws a generic <code>__IntrospectionError</code>, or reports a specialized PPxxxx error.
+            This is not a user error, but a Prepack limitation.
+            It is sometimes possible to work around these limitations by changing your code. The easiest way to work around the limitation is to move the problematic code out of the global code path into a callback that's only invoked later, or by making the problematic part of the initialization phase lazy.
+          </p>
+          <p class="align-left">
+            If you get such an error while using <code>Math.random</code>,
+            consider setting the <code>mathRandomSeed</code> option to make all random numbers queries along the global code path deterministic.
+          </p>
+          <p class="align-left">
+            All PPxxxx error code are <a href="https://github.com/facebook/prepack/wiki/Prepack-diagnostics">documented on the Prepack wiki</a>.
+          </p>
+
+          <h2>When will Prepack understand all DOM objects?</h2>
+
+          <p class="align-left">
+            Monitor <a href="https://github.com/facebook/prepack/issues/24">this GitHub issue</a>.
+          </p>
+
+          <h2>Why didn't Prepack optimize code that's in a function?</h2>
+
+          <p class="align-left">
+            Prepack only optimizes code that gets executed along the global code path, the initialization phase.
+            Any code that sits behind callbacks is not optimized by default.
+            Check out the <i>Optimize More Code!</i> section on the landing page for information on how to optimize functions.
+          </p>
+
+          <h2>When is Prepack ready to be used in production?</h2>
+
+          <p class="align-left">
+            Wait for our <a href="https://www.npmjs.com/package/prepack">latest release</a> to reach v1.0.
+          </p>
+
+          <h2>Has Prepack been integrated with other tools?</h2>
+
+          <p class="align-left">
+            The following are a few plugins to other tools.
+            They have been created and are maintained separately from Prepack itself.
+            If you run into any issues with those plugins,
+            please ask the plugin maintainers for support.
+          </p>
+          <p class="align-left">
+            <b>Prepack is still in an early development stage and not ready for production use just yet.</b>
+          </p>
+
+          <ul class="align-left">
+            <li>
+              <a href="https://www.npmjs.com/package/rollup-plugin-prepack">A Rollup plugin for Prepack</a>
+            </li>
+            <li>
+              <a href="https://www.npmjs.com/package/prepack-webpack-plugin">A webpack plugin for Prepack</a>
+            </li>
+            <li>
+              <a href="https://marketplace.visualstudio.com/items?itemName=RobinMalfait.prepack-vscode">A Visual Studio code plugin for Prepack</a>
+            </li>
+            <li>
+              <a href="https://www.npmjs.com/package/babel-plugin-flow-prepack">A babel plugin which transforms Flow annotations into prepack model declarations.</a>
+            </li>
+          </ul>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-background">
+      <div class="content-container">
+        <div class="footer">
+          <div>
+            Copyright &copy; 2018 Facebook Inc.
+          </div>
+          <div>
+            <a href="https://code.facebook.com/projects/" target="_blank">
+              <img
+                class="oss-logo"
+                src="./static/images/oss_logo.png"
+                alt="Facebook Open Source"
+                title="Facebook Open Source" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/toggle_menu.js"></script>
+  </body>
+</html>

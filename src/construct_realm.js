@@ -7,19 +7,41 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { Realm } from "./realm.js";
+import initializeSingletons from "./initialize-singletons.js";
 import { initialize as initializeIntrinsics } from "./intrinsics/index.js";
 import initializeGlobal from "./intrinsics/ecma262/global.js";
 import type { RealmOptions } from "./options.js";
+import { RealmStatistics } from "./statistics.js";
 import * as evaluators from "./evaluators/index.js";
-import * as partialEvaluators from "./partial-evaluators/index.js";
-import { NewGlobalEnvironment } from "./methods/index.js";
+import { Environment, DebugReproManager } from "./singletons.js";
 import { ObjectValue } from "./values/index.js";
+import { DebugServer } from "./debugger/server/Debugger.js";
+import simplifyAndRefineAbstractValue from "./utils/simplifier.js";
+import invariant from "./invariant.js";
+import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
 
-export default function(opts: RealmOptions = {}): Realm {
-  let r = new Realm(opts);
+export default function(
+  opts: RealmOptions = {},
+  debuggerConfigArgs: void | DebuggerConfigArguments,
+  statistics: void | RealmStatistics = undefined,
+  debugReproArgs: void | DebugReproArguments
+): Realm {
+  initializeSingletons();
+  let r = new Realm(opts, statistics || new RealmStatistics());
+  // Presence of debugChannel indicates we wish to use debugger.
+  if (debuggerConfigArgs) {
+    let debugChannel = debuggerConfigArgs.debugChannel;
+    if (debugChannel) {
+      invariant(debugChannel.debuggerIsAttached(), "Debugger intends to be used but is not attached.");
+      r.debuggerInstance = new DebugServer(debugChannel, r, debuggerConfigArgs);
+    }
+  }
+
+  if (debugReproArgs !== undefined) r.debugReproManager = DebugReproManager.construct(debugReproArgs);
+
   let i = r.intrinsics;
   initializeIntrinsics(i, r);
   // TODO: Find a way to let different environments initialize their own global
@@ -27,7 +49,8 @@ export default function(opts: RealmOptions = {}): Realm {
   r.$GlobalObject = new ObjectValue(r, i.ObjectPrototype, "global");
   initializeGlobal(r);
   for (let name in evaluators) r.evaluators[name] = evaluators[name];
-  for (let name in partialEvaluators) r.partialEvaluators[name] = partialEvaluators[name];
-  r.$GlobalEnv = NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
+  r.simplifyAndRefineAbstractValue = simplifyAndRefineAbstractValue.bind(null, r, false);
+  r.simplifyAndRefineAbstractCondition = simplifyAndRefineAbstractValue.bind(null, r, true);
+  r.$GlobalEnv = Environment.NewGlobalEnvironment(r, r.$GlobalObject, r.$GlobalObject);
   return r;
 }

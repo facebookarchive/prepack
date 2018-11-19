@@ -11,7 +11,7 @@
 
 import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue } from "../../values/index.js";
-import { SameValuePartial, ThrowIfInternalSlotNotWritable } from "../../methods/index.js";
+import { SameValuePartial } from "../../methods/index.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -35,6 +35,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 4. Let entries be the List that is the value of M's [[WeakMapData]] internal slot.
     let entries = M.$WeakMapData;
+    realm.recordModifiedProperty((M: any).$WeakMapData_binding);
     invariant(entries !== undefined);
 
     // 5. If Type(key) is not Object, return false.
@@ -47,8 +48,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
     for (let p of entries) {
       // a. If p.[[Key]] is not empty and SameValue(p.[[Key]], key) is true, then
       if (p.$Key !== undefined && SameValuePartial(realm, p.$Key, key)) {
-        ThrowIfInternalSlotNotWritable(realm, M, "$WeakMapData");
-
         // i. Set p.[[Key]] to empty.
         p.$Key = undefined;
 
@@ -153,7 +152,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of M's [[WeakMapData]] internal slot.
-    let entries = ThrowIfInternalSlotNotWritable(realm, M, "$WeakMapData").$WeakMapData;
+    realm.recordModifiedProperty((M: any).$WeakMapData_binding);
+    let entries = M.$WeakMapData;
     invariant(entries !== undefined);
 
     // 5. If Type(key) is not Object, throw a TypeError exception.

@@ -7,15 +7,14 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { StringValue } from "../values/index.js";
-import { ToStringPartial } from "../methods/index.js";
-import { GetValue } from "../methods/environment.js";
-import type { BabelNodeTemplateLiteral } from "babel-types";
+import { Environment, To } from "../singletons.js";
+import type { BabelNodeTemplateLiteral } from "@babel/types";
 
 // ECMA262 12.2.9
 export default function(
@@ -34,7 +33,7 @@ export default function(
     // add expression
     let expr = ast.expressions[i];
     if (expr) {
-      str += ToStringPartial(realm, GetValue(realm, env.evaluate(expr, strictCode)));
+      str += To.ToStringPartial(realm, Environment.GetValue(realm, env.evaluate(expr, strictCode)));
     }
   }
 

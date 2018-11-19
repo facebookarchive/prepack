@@ -11,24 +11,18 @@
 
 import { Realm } from "../../realm.js";
 import { FatalError } from "../../errors.js";
-import { AbstractValue, UndefinedValue, NumberValue, ObjectValue, StringValue, NullValue } from "../../values/index.js";
+import { AbstractValue, NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
 import { IsCallable, IsRegExp } from "../../methods/is.js";
 import { GetMethod, GetSubstitution } from "../../methods/get.js";
 import { Call, Invoke } from "../../methods/call.js";
-import { CreateStringIterator, CreateDataProperty, ArrayCreate, CreateHTML } from "../../methods/create.js";
+import { Create, To } from "../../singletons.js";
 import { RegExpCreate } from "../../methods/regexp.js";
-import {
-  ToString,
-  ToStringPartial,
-  thisStringValue,
-  ToInteger,
-  ToUint32,
-  ToNumber,
-  ToLength,
-} from "../../methods/to.js";
 import { SplitMatch, RequireObjectCoercible } from "../../methods/abstract.js";
 import { HasSomeCompatibleType } from "../../methods/has.js";
 import invariant from "../../invariant.js";
+
+const sliceTemplateSrc = "(A).slice(B,C)";
+const splitTemplateSrc = "(A).split(B,C)";
 
 export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   // ECMA262 21.1.3
@@ -43,10 +37,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let position be ? ToInteger(pos).
-    let position = ToInteger(realm, pos);
+    let position = To.ToInteger(realm, pos);
 
     // 4. Let size be the number of elements in S.
     let size = S.length;
@@ -64,10 +58,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let position be ? ToInteger(pos).
-    let position = ToInteger(realm, pos);
+    let position = To.ToInteger(realm, pos);
 
     // 4. Let size be the number of elements in S.
     let size = S.length;
@@ -81,16 +75,16 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.3
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("codePointAt", 1, (context, [pos]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 
       // 2. Let S be ? ToString(O).
-      let S = ToString(realm, O.throwIfNotConcrete());
+      let S = To.ToString(realm, O.throwIfNotConcrete());
 
       // 3. Let position be ? ToInteger(pos).
-      let position = ToInteger(realm, pos);
+      let position = To.ToInteger(realm, pos);
 
       // 4. Let size be the number of elements in S.
       let size = S.length;
@@ -112,7 +106,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let args be a List whose elements are the arguments passed to this function.
     args = argCount === 0 ? [] : args;
@@ -126,7 +120,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       let next = args.shift();
 
       // b. Let nextString be ? ToString(next).
-      let nextString = ToStringPartial(realm, next);
+      let nextString = To.ToStringPartial(realm, next);
 
       // c. Let R be the String value consisting of the code units of the previous value of R followed by the code units of nextString.
       R = R + nextString;
@@ -137,13 +131,13 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.6
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("endsWith", 1, (context, [searchString, endPosition]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 
       // 2. Let S be ? ToString(O).
-      let S = ToString(realm, O.throwIfNotConcrete());
+      let S = To.ToString(realm, O.throwIfNotConcrete());
 
       // 3. Let isRegExp be ? IsRegExp(searchString).
       let isRegExp = IsRegExp(realm, searchString);
@@ -154,7 +148,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       }
 
       // 5. Let searchStr be ? ToString(searchString).
-      let searchStr = ToStringPartial(realm, searchString);
+      let searchStr = To.ToStringPartial(realm, searchString);
 
       // 6. Let len be the number of elements in S.
       let len = S.length;
@@ -164,7 +158,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       if (!endPosition || endPosition instanceof UndefinedValue) {
         pos = len;
       } else {
-        pos = ToInteger(realm, endPosition.throwIfNotConcrete());
+        pos = To.ToInteger(realm, endPosition.throwIfNotConcrete());
       }
 
       // 8. Let end be min(max(pos, 0), len).
@@ -188,13 +182,13 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     });
 
   // ECMA262 21.1.3.7
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("includes", 1, (context, [searchString, position]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 
       // 2. Let S be ? ToString(O).
-      let S = ToString(realm, O.throwIfNotConcrete());
+      let S = To.ToString(realm, O.throwIfNotConcrete());
 
       // 3. Let isRegExp be ? IsRegExp(searchString).
       let isRegExp = IsRegExp(realm, searchString);
@@ -205,10 +199,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       }
 
       // 5. Let searchStr be ? ToString(searchString).
-      let searchStr = ToStringPartial(realm, searchString);
+      let searchStr = To.ToStringPartial(realm, searchString);
 
       // 6. Let pos be ? ToInteger(position). (If position is undefined, this step produces the value 0.)
-      let pos = ToInteger(realm, position || realm.intrinsics.undefined);
+      let pos = To.ToInteger(realm, position || realm.intrinsics.undefined);
 
       // 7. Let len be the number of elements in S.
       let len = S.length;
@@ -245,13 +239,13 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let searchStr be ? ToString(searchString).
-    let searchStr = ToStringPartial(realm, searchString);
+    let searchStr = To.ToStringPartial(realm, searchString);
 
     // 4. Let pos be ? ToInteger(position). (If position is undefined, this step produces the value 0.)
-    let pos = position ? ToInteger(realm, position) : 0;
+    let pos = position ? To.ToInteger(realm, position) : 0;
 
     // 5. Let len be the number of elements in S.
     // 6. Let start be min(max(pos, 0), len).
@@ -269,20 +263,20 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let searchStr be ? ToString(searchString).
-    let searchStr = ToStringPartial(realm, searchString);
+    let searchStr = To.ToStringPartial(realm, searchString);
 
     // 4. Let numPos be ? ToNumber(position). (If position is undefined, this step produces the value NaN.)
-    let numPos = ToNumber(realm, position || realm.intrinsics.undefined);
+    let numPos = To.ToNumber(realm, position || realm.intrinsics.undefined);
 
     // 5. If numPos is NaN, let pos be +∞; otherwise, let pos be ToInteger(numPos).
     let pos;
     if (isNaN(numPos)) {
       pos = Infinity;
     } else {
-      pos = ToInteger(realm, numPos);
+      pos = To.ToInteger(realm, numPos);
     }
 
     // 6. Let len be the number of elements in S.
@@ -301,10 +295,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let That be ? ToString(that).
-    let That = ToStringPartial(realm, that);
+    let That = To.ToStringPartial(realm, that);
 
     return new NumberValue(realm, S.localeCompare(That));
   });
@@ -328,7 +322,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     }
 
     // 3. Let S be ? ToString(O).
-    let S = new StringValue(realm, ToStringPartial(realm, O));
+    let S = new StringValue(realm, To.ToStringPartial(realm, O));
 
     // 4. Let rx be ? RegExpCreate(regexp, undefined).
     let rx = RegExpCreate(realm, regexp, undefined);
@@ -338,19 +332,19 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   });
 
   // ECMA262 21.1.3.12
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("normalize", 0, (context, [form]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 
       // 2. Let S be ? ToString(O).
-      let S = ToString(realm, O.throwIfNotConcrete());
+      let S = To.ToString(realm, O.throwIfNotConcrete());
 
       // 3. If form is not provided or form is undefined, let form be "NFC".
       if (!form || form instanceof UndefinedValue) form = new StringValue(realm, "NFC");
 
       // 4. Let f be ? ToString(form).
-      let f = ToStringPartial(realm, form);
+      let f = To.ToStringPartial(realm, form);
 
       // 5. If f is not one of "NFC", "NFD", "NFKC", or "NFKD", throw a RangeError exception.
       if (f !== "NFC" && f !== "NFD" && f !== "NFKC" && f !== "NFKD") {
@@ -364,16 +358,16 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     });
 
   // ECMA262 21.1.3.13
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("padEnd", 1, (context, [maxLength, fillString]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 
       // 2. Let S be ? ToString(O).
-      let S = ToString(realm, O.throwIfNotConcrete());
+      let S = To.ToString(realm, O.throwIfNotConcrete());
 
       // 3. Let intMaxLength be ? ToLength(maxLength).
-      let intMaxLength = ToLength(realm, maxLength);
+      let intMaxLength = To.ToLength(realm, maxLength);
 
       // 4. Let stringLength be the number of elements in S.
       let stringLength = S.length;
@@ -384,10 +378,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       let filler;
       // 6. If fillString is undefined, let filler be a String consisting solely of the code unit 0x0020 (SPACE).
       if (!fillString || fillString instanceof UndefinedValue) filler = " ";
-      else
+      else {
         // 7. Else, let filler be ? ToString(fillString).
-        filler = ToStringPartial(realm, fillString);
-
+        filler = To.ToStringPartial(realm, fillString);
+      }
       // 8. If filler is the empty String, return S.
       if (filler === "") return new StringValue(realm, S);
 
@@ -402,16 +396,16 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     });
 
   // ECMA262 21.1.3.14
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("padStart", 1, (context, [maxLength, fillString]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 
       // 2. Let S be ? ToString(O).
-      let S = ToString(realm, O.throwIfNotConcrete());
+      let S = To.ToString(realm, O.throwIfNotConcrete());
 
       // 3. Let intMaxLength be ? ToLength(maxLength).
-      let intMaxLength = ToLength(realm, maxLength);
+      let intMaxLength = To.ToLength(realm, maxLength);
 
       // 4. Let stringLength be the number of elements in S.
       let stringLength = S.length;
@@ -422,10 +416,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       let filler;
       // 6. If fillString is undefined, let filler be a String consisting solely of the code unit 0x0020 (SPACE).
       if (!fillString || fillString instanceof UndefinedValue) filler = " ";
-      else
+      else {
         // 7. Else, let filler be ? ToString(fillString).
-        filler = ToStringPartial(realm, fillString);
-
+        filler = To.ToStringPartial(realm, fillString);
+      }
       // 8. If filler is the empty String, return S.
       if (filler === "") return new StringValue(realm, S);
 
@@ -440,16 +434,16 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     });
 
   // ECMA262 21.1.3.13
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("repeat", 1, (context, [count]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 
       // 2. Let S be ? ToString(O).
-      let S = ToString(realm, O.throwIfNotConcrete());
+      let S = To.ToString(realm, O.throwIfNotConcrete());
 
       // 3. Let n be ? ToInteger(count).
-      let n = ToInteger(realm, count);
+      let n = To.ToInteger(realm, count);
 
       // 4. If n < 0, throw a RangeError exception.
       if (n < 0) {
@@ -489,10 +483,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     }
 
     // 3. Let string be ? ToString(O).
-    let string = ToString(realm, O.throwIfNotConcrete());
+    let string = To.ToString(realm, O.throwIfNotConcrete());
 
     // 4. Let searchString be ? ToString(searchValue).
-    let searchString = ToStringPartial(realm, searchValue);
+    let searchString = To.ToStringPartial(realm, searchValue);
 
     // 5. Let functionalReplace be IsCallable(replaceValue).
     let functionalReplace = IsCallable(realm, replaceValue);
@@ -501,12 +495,12 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     // 6. If functionalReplace is false, then
     if (functionalReplace === false) {
       // a. Let replaceValue be ? ToString(replaceValue).
-      replaceValueString = ToStringPartial(realm, replaceValue);
+      replaceValueString = To.ToStringPartial(realm, replaceValue);
     }
 
     // 7. Search string for the first occurrence of searchString and
     //    let pos be the index within string of the first code unit of the matched substring and
-    let pos = string.search(searchString);
+    let pos = string.indexOf(searchString);
 
     //    let matched be searchString.
     let matched = searchString;
@@ -524,7 +518,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       ]);
 
       // b. Let replStr be ? ToString(replValue).
-      replStr = ToStringPartial(realm, replValue);
+      replStr = To.ToStringPartial(realm, replValue);
     } else {
       // 9. Else,
       // a. Let captures be an empty List.
@@ -532,7 +526,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
 
       // b. Let replStr be GetSubstitution(matched, string, pos, captures, replaceValue).
       invariant(typeof replaceValueString === "string");
-      replStr = ToString(realm, GetSubstitution(realm, matched, string, pos, captures, replaceValueString));
+      replStr = To.ToString(realm, GetSubstitution(realm, matched, string, pos, captures, replaceValueString));
     }
 
     // 10. Let tailPos be pos + the number of code units in matched.
@@ -565,7 +559,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     }
 
     // 3. Let string be ? ToString(O).
-    let string = ToStringPartial(realm, O);
+    let string = To.ToStringPartial(realm, O);
 
     // 4. Let rx be ? RegExpCreate(regexp, undefined).
     let rx = RegExpCreate(realm, regexp, undefined);
@@ -579,17 +573,24 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
 
+    if (O instanceof AbstractValue && O.getType() === StringValue) {
+      // This operation is a conditional atemporal
+      // See #2327
+      let absVal = AbstractValue.createFromTemplate(realm, sliceTemplateSrc, StringValue, [O, start, end]);
+      return AbstractValue.convertToTemporalIfArgsAreTemporal(realm, absVal, [O]);
+    }
+
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let len be the number of elements in S.
     let len = S.length;
 
     // 4. Let intStart be ? ToInteger(start).
-    let intStart = ToInteger(realm, start);
+    let intStart = To.ToInteger(realm, start);
 
     // 5. If end is undefined, let intEnd be len; else let intEnd be ? ToInteger(end).
-    let intEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let intEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 6. If intStart < 0, let from be max(len + intStart, 0); otherwise let from be min(intStart, len).
     let from = intStart < 0 ? Math.max(len + intStart, 0) : Math.min(intStart, len);
@@ -609,6 +610,13 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     // 1. Let O be ? RequireObjectCoercible(this value).
     let O = RequireObjectCoercible(realm, context);
 
+    if (O instanceof AbstractValue && O.getType() === StringValue) {
+      // This operation is a conditional atemporal
+      // See #2327
+      let absVal = AbstractValue.createFromTemplate(realm, splitTemplateSrc, ObjectValue, [O, separator, limit]);
+      return AbstractValue.convertToTemporalIfArgsAreTemporal(realm, absVal, [O]);
+    }
+
     // 2. If separator is neither undefined nor null, then
     if (!HasSomeCompatibleType(separator, UndefinedValue, NullValue)) {
       // a. Let splitter be ? GetMethod(separator, @@split).
@@ -622,17 +630,17 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     }
 
     // 3. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 4. Let A be ArrayCreate(0).
-    let A = ArrayCreate(realm, 0);
+    let A = Create.ArrayCreate(realm, 0);
 
     // 5. Let lengthA be 0.
     let lengthA = 0;
 
     // 6. If limit is undefined, let lim be 232-1; else let lim be ? ToUint32(limit).
     let lim =
-      !limit || limit instanceof UndefinedValue ? Math.pow(2, 32) - 1 : ToUint32(realm, limit.throwIfNotConcrete());
+      !limit || limit instanceof UndefinedValue ? Math.pow(2, 32) - 1 : To.ToUint32(realm, limit.throwIfNotConcrete());
 
     // 7. Let s be the number of elements in S.
     let s = S.length;
@@ -641,7 +649,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let p = 0;
 
     // 9. Let R be ? ToString(separator).
-    let R = ToStringPartial(realm, separator);
+    let R = To.ToStringPartial(realm, separator);
 
     // 10. If lim = 0, return A.
     if (lim === 0) return A;
@@ -649,7 +657,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     // 11. If separator is undefined, then
     if (!separator || separator instanceof UndefinedValue) {
       // a. Perform ! CreateDataProperty(A, "0", S).
-      CreateDataProperty(realm, A, "0", new StringValue(realm, S));
+      Create.CreateDataProperty(realm, A, "0", new StringValue(realm, S));
 
       // b. Return A.
       return A;
@@ -664,7 +672,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       if (z !== false) return A;
 
       // c. Perform ! CreateDataProperty(A, "0", S).
-      CreateDataProperty(realm, A, "0", new StringValue(realm, S));
+      Create.CreateDataProperty(realm, A, "0", new StringValue(realm, S));
       // d. Return A.
       return A;
     }
@@ -691,7 +699,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
           let T = S.substring(p, q);
 
           // 2. Perform ! CreateDataProperty(A, ! ToString(lengthA), T).
-          CreateDataProperty(realm, A, new StringValue(realm, lengthA + ""), new StringValue(realm, T));
+          Create.CreateDataProperty(realm, A, new StringValue(realm, lengthA + ""), new StringValue(realm, T));
 
           // 3. Increment lengthA by 1.
           lengthA++;
@@ -712,20 +720,20 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let T = S.substring(p, s);
 
     // 16. Perform ! CreateDataProperty(A, ! ToString(lengthA), T).
-    CreateDataProperty(realm, A, new StringValue(realm, lengthA + ""), new StringValue(realm, T));
+    Create.CreateDataProperty(realm, A, new StringValue(realm, lengthA + ""), new StringValue(realm, T));
 
     // 17. Return A.
     return A;
   });
 
   // ECMA262 21.1.3.18
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("startsWith", 1, (context, [searchString, position]) => {
       // 1. Let O be ? RequireObjectCoercible(this value).
       let O = RequireObjectCoercible(realm, context);
 
       // 2. Let S be ? ToString(O).
-      let S = ToString(realm, O.throwIfNotConcrete());
+      let S = To.ToString(realm, O.throwIfNotConcrete());
 
       // 3. Let isRegExp be ? IsRegExp(searchString).
       let isRegExp = IsRegExp(realm, searchString);
@@ -736,10 +744,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       }
 
       // 5. Let searchStr be ? ToString(searchString).
-      let searchStr = ToStringPartial(realm, searchString);
+      let searchStr = To.ToStringPartial(realm, searchString);
 
       // 6. Let pos be ? ToInteger(position). (If position is undefined, this step produces the value 0.)
-      let pos = ToInteger(realm, position || realm.intrinsics.undefined);
+      let pos = To.ToInteger(realm, position || realm.intrinsics.undefined);
 
       // 7. Let len be the number of elements in S.
       let len = S.length;
@@ -766,16 +774,16 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let len be the number of elements in S.
     let len = S.length;
 
     // 4. Let intStart be ? ToInteger(start).
-    let intStart = ToInteger(realm, start);
+    let intStart = To.ToInteger(realm, start);
 
     // 5. If end is undefined, let intEnd be len; else let intEnd be ? ToInteger(end).
-    let intEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let intEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 6. Let finalStart be min(max(intStart, 0), len).
     let finalStart = Math.min(Math.max(intStart, 0), len);
@@ -799,12 +807,12 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ToString(O)
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
-    if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+    if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) || realm.isCompatibleWith("mobile")) {
       locales = undefined;
     } else {
-      // TODO filter locales for only serialisable values
+      // TODO #1013 filter locales for only serialisable values
       if (locales) locales = locales.serialize();
     }
 
@@ -842,7 +850,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
       return target;
     }
     // 1. Return ? thisStringValue(this value).
-    return thisStringValue(realm, context);
+    return To.thisStringValue(realm, context);
   });
 
   // ECMA262 21.1.3.24
@@ -856,7 +864,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Let T be a String value that is a copy of S with both leading and trailing white space removed. The definition of white space is the union of WhiteSpace and LineTerminator. When determining whether a Unicode code point is in Unicode general category “Zs”, code unit sequences are interpreted as UTF-16 encoded code point sequences as specified in 6.1.4.
     let T = S.trim();
@@ -868,7 +876,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
   // ECMA262 21.1.3.26
   obj.defineNativeMethod("valueOf", 0, context => {
     // 1. Return ? thisStringValue(this value).
-    return thisStringValue(realm, context);
+    return To.thisStringValue(realm, context);
   });
 
   // ECMA262 21.1.3.27
@@ -877,10 +885,10 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ? ToString(O).
-    let S = ToString(realm, O.throwIfNotConcrete());
+    let S = To.ToString(realm, O.throwIfNotConcrete());
 
     // 3. Return CreateStringIterator(S).
-    return CreateStringIterator(realm, new StringValue(realm, S));
+    return Create.CreateStringIterator(realm, new StringValue(realm, S));
   });
 
   // B.2.3.1
@@ -889,12 +897,12 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let O = RequireObjectCoercible(realm, context);
 
     // 2. Let S be ToString(O).
-    let S = ToStringPartial(realm, O);
+    let S = To.ToStringPartial(realm, O);
 
     // 3. ReturnIfAbrupt(S).
 
     // 4. Let intStart be ToInteger(start).
-    let intStart = ToInteger(realm, start);
+    let intStart = To.ToInteger(realm, start);
 
     // 5. ReturnIfAbrupt(intStart).
 
@@ -903,7 +911,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     if (!length || length instanceof UndefinedValue) {
       end = Infinity;
     } else {
-      end = ToInteger(realm, length.throwIfNotConcrete());
+      end = To.ToInteger(realm, length.throwIfNotConcrete());
     }
 
     // 7. ReturnIfAbrupt(end).
@@ -930,7 +938,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. // 2. Return ? CreateHTML(S, "a", "name", name).
-    return CreateHTML(realm, S, "a", "name", name);
+    return Create.CreateHTML(realm, S, "a", "name", name);
   });
 
   // B.2.3.3
@@ -939,7 +947,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "big", "", "").
-    return CreateHTML(realm, S, "big", "", "");
+    return Create.CreateHTML(realm, S, "big", "", "");
   });
 
   // B.2.3.4
@@ -948,7 +956,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "blink", "", "").
-    return CreateHTML(realm, S, "blink", "", "");
+    return Create.CreateHTML(realm, S, "blink", "", "");
   });
 
   // B.2.3.5
@@ -957,7 +965,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "b", "", "").
-    return CreateHTML(realm, S, "b", "", "");
+    return Create.CreateHTML(realm, S, "b", "", "");
   });
 
   // B.2.3.6
@@ -966,7 +974,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "tt", "", "").
-    return CreateHTML(realm, S, "tt", "", "");
+    return Create.CreateHTML(realm, S, "tt", "", "");
   });
 
   // B.2.3.7
@@ -975,7 +983,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "font", "color", color).
-    return CreateHTML(realm, S, "font", "color", color);
+    return Create.CreateHTML(realm, S, "font", "color", color);
   });
 
   // B.2.3.8
@@ -984,7 +992,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "font", "size", size).
-    return CreateHTML(realm, S, "font", "size", size);
+    return Create.CreateHTML(realm, S, "font", "size", size);
   });
 
   // B.2.3.9
@@ -993,7 +1001,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "i", "", "").
-    return CreateHTML(realm, S, "i", "", "");
+    return Create.CreateHTML(realm, S, "i", "", "");
   });
 
   // B.2.3.10
@@ -1002,7 +1010,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "a", "href", url).
-    return CreateHTML(realm, S, "a", "href", url);
+    return Create.CreateHTML(realm, S, "a", "href", url);
   });
 
   // B.2.3.11
@@ -1011,7 +1019,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "small", "", "").
-    return CreateHTML(realm, S, "small", "", "");
+    return Create.CreateHTML(realm, S, "small", "", "");
   });
 
   // B.2.3.12
@@ -1020,7 +1028,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "strike", "", "").
-    return CreateHTML(realm, S, "strike", "", "");
+    return Create.CreateHTML(realm, S, "strike", "", "");
   });
 
   // B.2.3.13
@@ -1029,7 +1037,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "sub", "", "").
-    return CreateHTML(realm, S, "sub", "", "");
+    return Create.CreateHTML(realm, S, "sub", "", "");
   });
 
   // B.2.3.14
@@ -1038,7 +1046,7 @@ export default function(realm: Realm, obj: ObjectValue): ObjectValue {
     let S = context;
 
     // 2. Return ? CreateHTML(S, "sup", "", "").
-    return CreateHTML(realm, S, "sup", "", "");
+    return Create.CreateHTML(realm, S, "sup", "", "");
   });
 
   return obj;

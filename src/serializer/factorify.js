@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
-import * as t from "babel-types";
-import type { BabelNodeStatement, BabelNodeObjectExpression, BabelNodeLVal } from "babel-types";
-import { NameGenerator } from "../utils/generator.js";
+import * as t from "@babel/types";
+import type { BabelNodeStatement, BabelNodeObjectExpression, BabelNodeLVal } from "@babel/types";
+import { NameGenerator } from "../utils/NameGenerator";
 
 function isLiteral(node) {
   switch (node.type) {
@@ -43,7 +43,7 @@ function isSameNode(left, right) {
   }
 
   if (type === "BooleanLiteral" || type === "StringLiteral" || type === "NumericLiteral") {
-    return left.value === right.value;
+    return Object.is(left.value, right.value);
   }
 
   if (type === "UnaryExpression") {
@@ -89,22 +89,47 @@ function getObjectKeys(obj: BabelNodeObjectExpression): string | false {
 // TODO #884: Right now, the visitor below only looks into top-level variable declaration
 // with a flat object literal initializer.
 // It should also look into conditional control flow, residual functions, and nested object literals.
-export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGenerator: NameGenerator) {
+export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGenerator: NameGenerator): void {
   let signatures = Object.create(null);
 
   for (let node of body) {
-    if (node.type !== "VariableDeclaration") continue;
+    switch (node.type) {
+      case "VariableDeclaration":
+        for (let declar of node.declarations) {
+          let { init } = declar;
+          if (!init) continue;
+          if (init.type !== "ObjectExpression") continue;
 
-    for (let declar of node.declarations) {
-      let { init } = declar;
-      if (!init) continue;
-      if (init.type !== "ObjectExpression") continue;
+          let keys = getObjectKeys(init);
+          if (!keys) continue;
 
-      let keys = getObjectKeys(init);
-      if (!keys) continue;
+          let initializerAstNodeName = "init";
+          let declars = (signatures[keys] = signatures[keys] || []);
+          declars.push({ declar, initializerAstNodeName });
+        }
+        break;
 
-      let declars = (signatures[keys] = signatures[keys] || []);
-      declars.push(declar);
+      case "ExpressionStatement":
+        const expr = node.expression;
+        if (expr.type !== "AssignmentExpression") {
+          break;
+        }
+        const { right } = expr;
+        if (right.type !== "ObjectExpression") {
+          break;
+        }
+
+        let keys = getObjectKeys(right);
+        if (!keys) continue;
+
+        let initializerAstNodeName = "right";
+        let declars = (signatures[keys] = signatures[keys] || []);
+        declars.push({ declar: node.expression, initializerAstNodeName });
+        break;
+
+      default:
+        // Continue to next node.
+        break;
     }
   }
 
@@ -114,7 +139,6 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
 
     let keys = signatureKey.split("|");
 
-    //
     let rootFactoryParams: Array<BabelNodeLVal> = [];
     let rootFactoryProps = [];
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
@@ -130,47 +154,45 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
     let rootFactory = t.functionDeclaration(rootFactoryId, rootFactoryParams, rootFactoryBody);
     body.unshift(rootFactory);
 
-    //
-    for (let declar of declars) {
+    for (let { declar, initializerAstNodeName } of declars) {
       let args = [];
-      for (let prop of declar.init.properties) {
+      for (let prop of declar[initializerAstNodeName].properties) {
         args.push(prop.value);
       }
 
-      declar.init = t.callExpression(rootFactoryId, args);
+      declar[initializerAstNodeName] = t.callExpression(rootFactoryId, args);
     }
 
-    //
     let seen = new Set();
-    for (let declar of declars) {
+    for (let { declar, initializerAstNodeName } of declars) {
       if (seen.has(declar)) continue;
 
       // build up a map containing the arguments that are shared
-      let common = new Map();
+      let common = [];
       let mostSharedArgsLength = 0;
-      for (let declar2 of declars) {
+      for (let { declar: declar2, initializerAstNodeName: initializerAstNodeName2 } of declars) {
         if (seen.has(declar2)) continue;
         if (declar === declar2) continue;
 
         let sharedArgs = [];
         for (let i = 0; i < keys.length; i++) {
-          if (isSameNode(declar.init.arguments[i], declar2.init.arguments[i])) {
+          if (isSameNode(declar[initializerAstNodeName].arguments[i], declar2[initializerAstNodeName2].arguments[i])) {
             sharedArgs.push(i);
           }
         }
         if (!sharedArgs.length) continue;
 
         mostSharedArgsLength = Math.max(mostSharedArgsLength, sharedArgs.length);
-        common.set(declar2, sharedArgs);
+        common.push({ declar: declar2, initializerAstNodeName: initializerAstNodeName2, sharedArgs });
       }
 
       // build up a mapping of the argument positions that are shared so we can pick the top one
       let sharedPairs = Object.create(null);
-      for (let [declar2, args] of common.entries()) {
-        if (args.length === mostSharedArgsLength) {
-          args = args.join(",");
-          let pair = (sharedPairs[args] = sharedPairs[args] || []);
-          pair.push(declar2);
+      for (let { declar: declar2, initializerAstNodeName: initializerAstNodeName2, sharedArgs } of common) {
+        if (sharedArgs.length === mostSharedArgsLength) {
+          sharedArgs = sharedArgs.join(",");
+          let pair = (sharedPairs[sharedArgs] = sharedPairs[sharedArgs] || [{ declar, initializerAstNodeName }]);
+          pair.push({ declar: declar2, initializerAstNodeName: initializerAstNodeName2 });
         }
       }
 
@@ -179,20 +201,19 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       let highestPairCount;
       for (let pairArgs in sharedPairs) {
         let pair = sharedPairs[pairArgs];
-        if (!highestPairArgs || pair.length > highestPairCount) {
+        if (highestPairArgs === undefined || pair.length > highestPairCount) {
           highestPairCount = pair.length;
           highestPairArgs = pairArgs;
         }
       }
-      if (!highestPairArgs) continue;
+      if (highestPairArgs === undefined) continue;
 
-      //
-      let declarsSub = sharedPairs[highestPairArgs].concat(declar);
+      let declarsSub = sharedPairs[highestPairArgs];
       let removeArgs = highestPairArgs.split(",");
 
       let subFactoryArgs = [];
       let subFactoryParams = [];
-      let sharedArgs = declarsSub[0].init.arguments;
+      let sharedArgs = declar[initializerAstNodeName].arguments;
       for (let i = 0; i < sharedArgs.length; i++) {
         let arg = sharedArgs[i];
         if (removeArgs.indexOf(i + "") >= 0) {
@@ -209,10 +230,10 @@ export function factorifyObjects(body: Array<BabelNodeStatement>, factoryNameGen
       let subFactory = t.functionDeclaration(subFactoryId, subFactoryParams, subFactoryBody);
       body.unshift(subFactory);
 
-      for (let declarSub of declarsSub) {
-        seen.add(declarSub);
+      for (let { declar: declar2, initializerAstNodeName: initializerAstNodeName2 } of declarsSub) {
+        seen.add(declar2);
 
-        let call = declarSub.init;
+        let call = declar2[initializerAstNodeName2];
         call.callee = subFactoryId;
         call.arguments = call.arguments.filter(function(val, i) {
           return removeArgs.indexOf(i + "") < 0;

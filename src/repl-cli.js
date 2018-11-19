@@ -12,9 +12,10 @@
 import { Realm, ExecutionContext } from "./realm.js";
 import { FatalError } from "./errors.js";
 import { Get } from "./methods/index.js";
-import { ToStringPartial, InstanceofOperator } from "./methods/index.js";
+import { InstanceofOperator } from "./methods/index.js";
 import { AbruptCompletion, ThrowCompletion } from "./completions.js";
 import { Value, ObjectValue } from "./values/index.js";
+import { To } from "./singletons.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
 import repl from "repl";
@@ -31,10 +32,10 @@ function serialize(realm: Realm, res: Value | AbruptCompletion): any {
     try {
       let value = res.value;
       if (value instanceof ObjectValue && InstanceofOperator(realm, value, realm.intrinsics.Error)) {
-        err = new FatalError(ToStringPartial(realm, Get(realm, value, "message")));
-        err.stack = ToStringPartial(realm, Get(realm, value, "stack"));
+        err = new FatalError(To.ToStringPartial(realm, Get(realm, value, "message")));
+        err.stack = To.ToStringPartial(realm, Get(realm, value, "stack"));
       } else {
-        err = new FatalError(ToStringPartial(realm, value));
+        err = new FatalError(To.ToStringPartial(realm, value));
       }
     } finally {
       realm.popContext(context);
@@ -45,7 +46,10 @@ function serialize(realm: Realm, res: Value | AbruptCompletion): any {
   return res;
 }
 
-let realm = construct_realm();
+let realm = construct_realm({
+  reactEnabled: true,
+  reactOutput: "jsx",
+});
 initializeGlobals(realm);
 
 repl.start({
@@ -62,7 +66,7 @@ repl.start({
         callback(null, res);
       }
     } catch (err) {
-      console.log(err);
+      console.error(err);
       callback(err);
     }
   },

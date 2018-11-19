@@ -7,14 +7,23 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import type { LexicalEnvironment } from "../../environment.js";
-import { ObjectValue, FunctionValue, NativeFunctionValue, StringValue } from "../../values/index.js";
-import { OrdinaryCreateFromConstructor, ToStringPartial, Get, DefinePropertyOrThrow } from "../../methods/index.js";
+import {
+  AbstractValue,
+  ObjectValue,
+  FunctionValue,
+  NativeFunctionValue,
+  StringValue,
+  Value,
+} from "../../values/index.js";
+import { Get } from "../../methods/index.js";
+import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   return build("Error", realm, false);
@@ -28,57 +37,74 @@ export function describeLocation(
 ): void | string {
   let locString = "";
   let displayName = "";
+  let key = loc || callerFn;
+
+  // check if we've already encountered the callFn and if so
+  // re-use that described location. plus we may get stuck trying
+  // to get the location by recursively checking the same fun
+  // so this also prevents a stack overflow
+  if (key) {
+    if (realm.alreadyDescribedLocations.has(key)) {
+      return realm.alreadyDescribedLocations.get(key);
+    }
+    realm.alreadyDescribedLocations.set(key, undefined);
+  }
 
   if (callerFn) {
     if (callerFn instanceof NativeFunctionValue) {
       locString = "native";
     }
 
-    let name = callerFn.$Get("name", callerFn);
-    if (!name.mightBeUndefined()) displayName = ToStringPartial(realm, name);
+    let name = callerFn._SafeGetDataPropertyValue("name");
+    if (!name.mightBeUndefined()) displayName = To.ToStringPartial(realm, name);
     else name.throwIfNotConcrete();
 
-    if (env && env.$NewTarget) displayName = `new ${displayName}`;
+    if (env && env.environmentRecord.$NewTarget) displayName = `new ${displayName}`;
   }
 
   if (!locString) {
     if (loc) {
       locString = `${loc.start.line}:${loc.start.column + 1}`;
-      if (loc.source) locString = `${loc.source}:${locString}`;
+      if (loc.source !== null) locString = `${loc.source}:${locString}`;
     } else {
       locString = (loc ? loc.source : undefined) || "unknown";
       if (!displayName) return undefined;
     }
   }
 
+  let location;
   if (displayName) {
-    return `at ${displayName} (${locString})`;
+    location = `at ${displayName} (${locString})`;
   } else {
-    return `at ${locString}`;
+    location = `at ${locString}`;
   }
+  if (key) {
+    realm.alreadyDescribedLocations.set(key, location);
+  }
+  return location;
 }
 
-function buildStack(realm: Realm, context: ObjectValue) {
+const buildStackTemplateSrc = 'A + (B ? ": " + B : "") + C';
+
+function buildStack(realm: Realm, context: ObjectValue): Value {
   invariant(context.$ErrorData);
 
   let stack = context.$ErrorData.contextStack;
   if (!stack) return realm.intrinsics.undefined;
 
   let lines = [];
-  let header = "";
+  let header = To.ToStringPartial(realm, Get(realm, context, "name"));
 
-  header += ToStringPartial(realm, Get(realm, context, "name"));
-
-  let msg = Get(realm, context, "message");
-  if (!msg.mightBeUndefined()) {
-    msg = ToStringPartial(realm, msg);
-    if (msg) header += `: ${msg}`;
+  let message = Get(realm, context, "message");
+  if (!message.mightBeUndefined()) {
+    message = To.ToStringValue(realm, message);
   } else {
-    msg.throwIfNotConcrete();
+    message.throwIfNotConcrete();
   }
 
   for (let executionContext of stack.reverse()) {
     let caller = executionContext.caller;
+    if (!executionContext.loc) continue; // compiler generated helper for destructuring arguments
     let locString = describeLocation(
       realm,
       caller ? caller.function : undefined,
@@ -87,8 +113,15 @@ function buildStack(realm: Realm, context: ObjectValue) {
     );
     if (locString !== undefined) lines.push(locString);
   }
+  let footer = `\n    ${lines.join("\n    ")}`;
 
-  return new StringValue(realm, `${header}\n    ${lines.join("\n    ")}`);
+  return message instanceof StringValue
+    ? new StringValue(realm, `${header}${message.value ? `: ${message.value}` : ""}${footer}`)
+    : AbstractValue.createFromTemplate(realm, buildStackTemplateSrc, StringValue, [
+        new StringValue(realm, header),
+        message,
+        new StringValue(realm, footer),
+      ]);
 }
 
 export function build(name: string, realm: Realm, inheritError?: boolean = true): NativeFunctionValue {
@@ -97,39 +130,39 @@ export function build(name: string, realm: Realm, inheritError?: boolean = true)
     let newTarget = NewTarget || func;
 
     // 2. Let O be ? OrdinaryCreateFromConstructor(newTarget, "%ErrorPrototype%", « [[ErrorData]] »).
-    let O = OrdinaryCreateFromConstructor(realm, newTarget, `${name}Prototype`, { $ErrorData: undefined });
+    let O = Create.OrdinaryCreateFromConstructor(realm, newTarget, `${name}Prototype`, { $ErrorData: undefined });
     O.$ErrorData = {
       contextStack: realm.contextStack.slice(1),
       locationData: undefined,
     };
 
+    // 3. If message is not undefined, then
+    if (!message.mightBeUndefined()) {
+      // a. Let msg be ? ToString(message).
+      let msg = message.getType() === StringValue ? message : To.ToStringValue(realm, message);
+
+      // b. Let msgDesc be the PropertyDescriptor{[[Value]]: msg, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
+      let msgDesc = new PropertyDescriptor({
+        value: msg,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+
+      // c. Perform ! DefinePropertyOrThrow(O, "message", msgDesc).
+      Properties.DefinePropertyOrThrow(realm, O, "message", msgDesc);
+    } else {
+      message.throwIfNotConcrete();
+    }
+
     // Build a text description of the stack.
-    let stackDesc = {
+    let stackDesc = new PropertyDescriptor({
       value: buildStack(realm, O),
       enumerable: false,
       configurable: true,
       writable: true,
-    };
-    DefinePropertyOrThrow(realm, O, "stack", stackDesc);
-
-    // 3. If message is not undefined, then
-    if (!message.mightBeUndefined()) {
-      // a. Let msg be ? ToString(message).
-      let msg = ToStringPartial(realm, message);
-
-      // b. Let msgDesc be the PropertyDescriptor{[[Value]]: msg, [[Writable]]: true, [[Enumerable]]: false, [[Configurable]]: true}.
-      let msgDesc = {
-        value: new StringValue(realm, msg),
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      };
-
-      // c. Perform ! DefinePropertyOrThrow(O, "message", msgDesc).
-      DefinePropertyOrThrow(realm, O, "message", msgDesc);
-    } else {
-      message.throwIfNotConcrete();
-    }
+    });
+    Properties.DefinePropertyOrThrow(realm, O, "stack", stackDesc);
 
     // 4. Return O.
     return O;

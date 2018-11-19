@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import { Value, FunctionValue, ObjectValue } from "./index.js";
@@ -22,6 +22,11 @@ export default class BoundFunctionValue extends FunctionValue {
   $BoundTargetFunction: ObjectValue;
   $BoundThis: Value;
   $BoundArguments: Array<Value>;
+
+  // Override.
+  getName(): string {
+    return "Bound";
+  }
 
   hasDefaultLength(): boolean {
     let f = this.$BoundTargetFunction;

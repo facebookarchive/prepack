@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import { ProxyValue, NullValue, ObjectValue, Value, UndefinedValue } from "../values/index.js";
@@ -15,7 +15,7 @@ import { IsCallable } from "./is.js";
 import { GetMethod } from "./get.js";
 import { Construct } from "./construct.js";
 import { Call } from "./call.js";
-import { CreateArrayFromList } from "./create.js";
+import { Create } from "../singletons.js";
 import invariant from "../invariant.js";
 
 // ECMA262 9.5.12
@@ -44,7 +44,7 @@ export function ProxyCall(realm: Realm, O: ProxyValue, thisArgument: Value, argu
   }
 
   // 7. Let argArray be CreateArrayFromList(argumentsList).
-  let argArray = CreateArrayFromList(realm, argumentsList);
+  let argArray = Create.CreateArrayFromList(realm, argumentsList);
 
   // 8. Return ? Call(trap, handler, « target, thisArgument, argArray »).
   return Call(realm, trap.throwIfNotConcrete(), handler, [target, thisArgument, argArray]);
@@ -81,11 +81,11 @@ export function ProxyConstruct(
     invariant(target.$Construct, "expected construct method");
 
     // b. Return ? Construct(target, argumentsList, newTarget).
-    return Construct(realm, target, argumentsList, newTarget);
+    return Construct(realm, target, argumentsList, newTarget).throwIfNotConcreteObject();
   }
 
   // 7. Let argArray be CreateArrayFromList(argumentsList).
-  let argArray = CreateArrayFromList(realm, argumentsList);
+  let argArray = Create.CreateArrayFromList(realm, argumentsList);
 
   // 8. Let newObj be ? Call(trap, handler, « target, argArray, newTarget »).
   let newObj = Call(realm, trap.throwIfNotConcrete(), handler, [target, argArray, newTarget]).throwIfNotConcrete();
@@ -100,8 +100,9 @@ export function ProxyConstruct(
 }
 
 // ECMA262 9.5.14
-export function ProxyCreate(realm: Realm, target: Value, handler: Value): ProxyValue {
-  target = target.throwIfNotConcrete();
+export function ProxyCreate(realm: Realm, _target: Value, _handler: Value): ProxyValue {
+  let handler = _handler;
+  let target = _target.throwIfNotConcrete();
 
   // 1. If Type(target) is not Object, throw a TypeError exception.
   if (!(target instanceof ObjectValue)) {

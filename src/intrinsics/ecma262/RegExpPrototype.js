@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import invariant from "../../invariant.js";
@@ -20,14 +20,12 @@ import {
   UndefinedValue,
   Value,
 } from "../../values/index.js";
-import { ArrayCreate, CreateDataProperty } from "../../methods/create.js";
 import { SameValue } from "../../methods/abstract.js";
 import { Call } from "../../methods/call.js";
 import { Construct, SpeciesConstructor } from "../../methods/construct.js";
 import { Get, GetSubstitution } from "../../methods/get.js";
-import { Set } from "../../methods/properties.js";
+import { Create, Properties, To } from "../../singletons.js";
 import { IsCallable } from "../../methods/is.js";
-import { ToString, ToStringPartial, ToBooleanPartial, ToLength, ToInteger, ToUint32 } from "../../methods/to.js";
 import { RegExpBuiltinExec, RegExpExec, EscapeRegExpPattern, AdvanceStringIndex } from "../../methods/regexp.js";
 
 function InternalHasFlag(realm: Realm, context: Value, flag: string): Value {
@@ -85,7 +83,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let S be ? ToString(string).
-    let S = ToStringPartial(realm, string);
+    let S = To.ToStringPartial(realm, string);
 
     // 5. Return ? RegExpBuiltinExec(R, S).
     return RegExpBuiltinExec(realm, R, S);
@@ -105,31 +103,31 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let result = "";
 
     // 4. Let global be ToBoolean(? Get(R, "global")).
-    let global = ToBooleanPartial(realm, Get(realm, R, "global"));
+    let global = To.ToBooleanPartial(realm, Get(realm, R, "global"));
 
     // 5. If global is true, append "g" as the last code unit of result.
     if (global) result += "g";
 
     // 6. Let ignoreCase be ToBoolean(? Get(R, "ignoreCase")).
-    let ignoreCase = ToBooleanPartial(realm, Get(realm, R, "ignoreCase"));
+    let ignoreCase = To.ToBooleanPartial(realm, Get(realm, R, "ignoreCase"));
 
     // 7. If ignoreCase is true, append "i" as the last code unit of result.
     if (ignoreCase) result += "i";
 
     // 8. Let multiline be ToBoolean(? Get(R, "multiline")).
-    let multiline = ToBooleanPartial(realm, Get(realm, R, "multiline"));
+    let multiline = To.ToBooleanPartial(realm, Get(realm, R, "multiline"));
 
     // 9. If multiline is true, append "m" as the last code unit of result.
     if (multiline) result += "m";
 
     // 10. Let unicode be ToBoolean(? Get(R, "unicode")).
-    let unicode = ToBooleanPartial(realm, Get(realm, R, "unicode"));
+    let unicode = To.ToBooleanPartial(realm, Get(realm, R, "unicode"));
 
     // 11. If unicode is true, append "u" as the last code unit of result.
     if (unicode) result += "u";
 
     // 12. Let sticky be ToBoolean(? Get(R, "sticky")).
-    let sticky = ToBooleanPartial(realm, Get(realm, R, "sticky"));
+    let sticky = To.ToBooleanPartial(realm, Get(realm, R, "sticky"));
 
     // 13. If sticky is true, append "y" as the last code unit of result.
     if (sticky) result += "y";
@@ -159,10 +157,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. Let S be ? ToString(string).
-    let S = ToStringPartial(realm, string);
+    let S = To.ToStringPartial(realm, string);
 
     // 4. Let global be ToBoolean(? Get(rx, "global")).
-    let global = ToBooleanPartial(realm, Get(realm, rx, "global"));
+    let global = To.ToBooleanPartial(realm, Get(realm, rx, "global"));
 
     // 5. If global is false, then
     if (global === false) {
@@ -171,13 +169,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 6. Else global is true,
       // a. Let fullUnicode be ToBoolean(? Get(rx, "unicode")).
-      let fullUnicode = ToBooleanPartial(realm, Get(realm, rx, "unicode"));
+      let fullUnicode = To.ToBooleanPartial(realm, Get(realm, rx, "unicode"));
 
       // b. Perform ? Set(rx, "lastIndex", 0, true).
-      Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
+      Properties.Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
 
       // c. Let A be ArrayCreate(0).
-      let A = ArrayCreate(realm, 0);
+      let A = Create.ArrayCreate(realm, 0);
 
       // d. Let n be 0.
       let n = 0;
@@ -199,13 +197,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
         } else {
           // iii. Else result is not null,
           // 1. Let matchStr be ? ToString(? Get(result, "0")).
-          let matchStr = ToStringPartial(realm, Get(realm, result, "0"));
+          let matchStr = To.ToStringPartial(realm, Get(realm, result, "0"));
 
           // 2. Let status be CreateDataProperty(A, ! ToString(n), matchStr).
-          let status = CreateDataProperty(
+          let status = Create.CreateDataProperty(
             realm,
             A,
-            ToString(realm, new NumberValue(realm, n)),
+            To.ToString(realm, new NumberValue(realm, n)),
             new StringValue(realm, matchStr)
           );
 
@@ -215,13 +213,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
           // 4. If matchStr is the empty String, then
           if (matchStr === "") {
             // a. Let thisIndex be ? ToLength(? Get(rx, "lastIndex")).
-            let thisIndex = ToLength(realm, Get(realm, rx, "lastIndex"));
+            let thisIndex = To.ToLength(realm, Get(realm, rx, "lastIndex"));
 
             // b. Let nextIndex be AdvanceStringIndex(S, thisIndex, fullUnicode).
             let nextIndex = AdvanceStringIndex(realm, S, thisIndex, fullUnicode);
 
             // c .Perform ? Set(rx, "lastIndex", nextIndex, true).
-            Set(realm, rx, "lastIndex", new NumberValue(realm, nextIndex), true);
+            Properties.Set(realm, rx, "lastIndex", new NumberValue(realm, nextIndex), true);
           }
 
           // 5. Increment n.
@@ -239,7 +237,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 21.2.5.8
-  obj.defineNativeMethod(realm.intrinsics.SymbolReplace, 2, (context, [string, replaceValue]) => {
+  obj.defineNativeMethod(realm.intrinsics.SymbolReplace, 2, (context, [string, _replaceValue]) => {
+    let replaceValue = _replaceValue;
     // 1. Let rx be the this value.
     let rx = context.throwIfNotConcrete();
 
@@ -249,7 +248,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. Let S be ? ToString(string).
-    let S = ToStringPartial(realm, string);
+    let S = To.ToStringPartial(realm, string);
 
     // 4. Let lengthS be the number of code unit elements in S.
     let lengthS = S.length;
@@ -260,20 +259,20 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 6. If functionalReplace is false, then
     if (functionalReplace === false) {
       // a. Let replaceValue be ? ToString(replaceValue).
-      replaceValue = new StringValue(realm, ToStringPartial(realm, replaceValue));
+      replaceValue = new StringValue(realm, To.ToStringPartial(realm, replaceValue));
     }
 
     // 7. Let global be ToBoolean(? Get(rx, "global")).
-    let global = ToBooleanPartial(realm, Get(realm, rx, "global"));
+    let global = To.ToBooleanPartial(realm, Get(realm, rx, "global"));
 
     let fullUnicode;
     // 8. If global is true, then
     if (global === true) {
       // a. Let fullUnicode be ToBoolean(? Get(rx, "unicode")).
-      fullUnicode = ToBooleanPartial(realm, Get(realm, rx, "unicode"));
+      fullUnicode = To.ToBooleanPartial(realm, Get(realm, rx, "unicode"));
 
       // b. Perform ? Set(rx, "lastIndex", 0, true).
-      Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
+      Properties.Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
     }
 
     // 9. Let results be a new empty List.
@@ -303,18 +302,18 @@ export default function(realm: Realm, obj: ObjectValue): void {
           invariant(fullUnicode !== undefined);
 
           // 1. Let matchStr be ? ToString(? Get(result, "0")).
-          let matchStr = ToStringPartial(realm, Get(realm, result, "0"));
+          let matchStr = To.ToStringPartial(realm, Get(realm, result, "0"));
 
           // 2. If matchStr is the empty String, then
           if (matchStr === "") {
             // a. Let thisIndex be ? ToLength(? Get(rx, "lastIndex")).
-            let thisIndex = ToLength(realm, Get(realm, rx, "lastIndex"));
+            let thisIndex = To.ToLength(realm, Get(realm, rx, "lastIndex"));
 
             // b. Let nextIndex be AdvanceStringIndex(S, thisIndex, fullUnicode).
             let nextIndex = AdvanceStringIndex(realm, S, thisIndex, fullUnicode);
 
             // c. Perform ? Set(rx, "lastIndex", nextIndex, true).
-            Set(realm, rx, "lastIndex", new NumberValue(realm, nextIndex), true);
+            Properties.Set(realm, rx, "lastIndex", new NumberValue(realm, nextIndex), true);
           }
         }
       }
@@ -329,19 +328,19 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 14. Repeat, for each result in results,
     for (let result of results) {
       // a. Let nCaptures be ? ToLength(? Get(result, "length")).
-      let nCaptures = ToLength(realm, Get(realm, result, "length"));
+      let nCaptures = To.ToLength(realm, Get(realm, result, "length"));
 
       // b. Let nCaptures be max(nCaptures - 1, 0).
       nCaptures = Math.max(nCaptures - 1, 0);
 
       // c. Let matched be ? ToString(? Get(result, "0")).
-      let matched = ToStringPartial(realm, Get(realm, result, "0"));
+      let matched = To.ToStringPartial(realm, Get(realm, result, "0"));
 
       // d. Let matchLength be the number of code units in matched.
       let matchLength = matched.length;
 
       // e. Let position be ? ToInteger(? Get(result, "index")).
-      let position = ToInteger(realm, Get(realm, result, "index"));
+      let position = To.ToInteger(realm, Get(realm, result, "index"));
 
       // f. Let position be max(min(position, lengthS), 0).
       position = Math.max(Math.min(position, lengthS), 0);
@@ -355,12 +354,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // i. Repeat while n ≤ nCaptures
       while (n <= nCaptures) {
         // i. Let capN be ? Get(result, ! ToString(n)).
-        let capN = Get(realm, result, ToString(realm, new NumberValue(realm, n)));
+        let capN = Get(realm, result, To.ToString(realm, new NumberValue(realm, n)));
 
         // ii. If capN is not undefined, then
         if (!capN.mightBeUndefined()) {
           // 1. Let capN be ? ToString(capN).
-          capN = ToStringPartial(realm, capN);
+          capN = To.ToStringPartial(realm, capN);
         } else {
           capN.throwIfNotConcrete();
           capN = undefined;
@@ -391,7 +390,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let replValue = Call(realm, replaceValue, realm.intrinsics.undefined, replacerArgs);
 
         // v. Let replacement be ? ToString(replValue).
-        replacement = ToStringPartial(realm, replValue);
+        replacement = To.ToStringPartial(realm, replValue);
       } else {
         // k. Else,
         invariant(replaceValue instanceof StringValue);
@@ -428,19 +427,19 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. Let S be ? ToString(string).
-    let S = ToStringPartial(realm, string);
+    let S = To.ToStringPartial(realm, string);
 
     // 4. Let previousLastIndex be ? Get(rx, "lastIndex").
     let previousLastIndex = Get(realm, rx, "lastIndex");
 
     // 5. Perform ? Set(rx, "lastIndex", 0, true).
-    Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
+    Properties.Set(realm, rx, "lastIndex", realm.intrinsics.zero, true);
 
     // 6. Let result be ? RegExpExec(rx, S).
     let result = RegExpExec(realm, rx, S);
 
     // 7. Perform ? Set(rx, "lastIndex", previousLastIndex, true).
-    Set(realm, rx, "lastIndex", previousLastIndex, true);
+    Properties.Set(realm, rx, "lastIndex", previousLastIndex, true);
 
     // 8. If result is null, return -1.
     if (result instanceof NullValue) return new NumberValue(realm, -1);
@@ -499,13 +498,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. Let S be ? ToString(string).
-    let S = ToStringPartial(realm, string);
+    let S = To.ToStringPartial(realm, string);
 
     // 4. Let C be ? SpeciesConstructor(rx, %RegExp%).
     let C = SpeciesConstructor(realm, rx, realm.intrinsics.RegExp);
 
     // 5. Let flags be ? ToString(? Get(rx, "flags")).
-    let flags = ToStringPartial(realm, Get(realm, rx, "flags"));
+    let flags = To.ToStringPartial(realm, Get(realm, rx, "flags"));
 
     let unicodeMatching;
     // 6. If flags contains "u", let unicodeMatching be true.
@@ -526,16 +525,16 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 10. Let splitter be ? Construct(C, « rx, newFlags »).
-    let splitter = Construct(realm, C, [rx, new StringValue(realm, newFlags)]);
+    let splitter = Construct(realm, C, [rx, new StringValue(realm, newFlags)]).throwIfNotConcreteObject();
 
     // 11. Let A be ArrayCreate(0).
-    let A = ArrayCreate(realm, 0);
+    let A = Create.ArrayCreate(realm, 0);
 
     // 12. Let lengthA be 0.
     let lengthA = 0;
 
     // 13. If limit is undefined, let lim be 2^32-1; else let lim be ? ToUint32(limit).
-    let lim = limit instanceof UndefinedValue ? Math.pow(2, 32) - 1 : ToUint32(realm, limit.throwIfNotConcrete());
+    let lim = limit instanceof UndefinedValue ? Math.pow(2, 32) - 1 : To.ToUint32(realm, limit.throwIfNotConcrete());
 
     // 14. Let size be the number of elements in S.
     let size = S.length;
@@ -555,7 +554,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (!(z instanceof NullValue)) return A;
 
       // c. Perform ! CreateDataProperty(A, "0", S).
-      CreateDataProperty(realm, A, "0", new StringValue(realm, S));
+      Create.CreateDataProperty(realm, A, "0", new StringValue(realm, S));
 
       // d Return A.
       return A;
@@ -567,7 +566,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 19. Repeat, while q < size
     while (q < size) {
       // a. Perform ? Set(splitter, "lastIndex", q, true).
-      Set(realm, splitter, "lastIndex", new NumberValue(realm, q), true);
+      Properties.Set(realm, splitter, "lastIndex", new NumberValue(realm, q), true);
 
       // b. Let z be ? RegExpExec(splitter, S).
       let z = RegExpExec(realm, splitter, S);
@@ -578,7 +577,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       } else {
         // d. Else z is not null,
         // i. Let e be ? ToLength(? Get(splitter, "lastIndex")).
-        let e = ToLength(realm, Get(realm, splitter, "lastIndex"));
+        let e = To.ToLength(realm, Get(realm, splitter, "lastIndex"));
 
         // ii. Let e be min(e, size).
         e = Math.min(e, size);
@@ -592,7 +591,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let T = S.substr(p, q - p);
 
           // 2. Perform ! CreateDataProperty(A, ! ToString(lengthA), T).
-          CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, lengthA)), new StringValue(realm, T));
+          Create.CreateDataProperty(
+            realm,
+            A,
+            To.ToString(realm, new NumberValue(realm, lengthA)),
+            new StringValue(realm, T)
+          );
 
           // 3. Let lengthA be lengthA + 1.
           lengthA = lengthA + 1;
@@ -604,7 +608,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
           p = e;
 
           // 6. Let numberOfCaptures be ? ToLength(? Get(z, "length")).
-          let numberOfCaptures = ToLength(realm, Get(realm, z, "length"));
+          let numberOfCaptures = To.ToLength(realm, Get(realm, z, "length"));
 
           // 7. Let numberOfCaptures be max(numberOfCaptures-1, 0).
           numberOfCaptures = Math.max(numberOfCaptures - 1, 0);
@@ -615,10 +619,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
           // 9. Repeat, while i ≤ numberOfCaptures,
           while (i <= numberOfCaptures) {
             // a. Let nextCapture be ? Get(z, ! ToString(i)).
-            let nextCapture = Get(realm, z, ToString(realm, new NumberValue(realm, i)));
+            let nextCapture = Get(realm, z, To.ToString(realm, new NumberValue(realm, i)));
 
             // b. Perform ! CreateDataProperty(A, ! ToString(lengthA), nextCapture).
-            CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, lengthA)), nextCapture);
+            Create.CreateDataProperty(realm, A, To.ToString(realm, new NumberValue(realm, lengthA)), nextCapture);
 
             // c. Let i be i + 1.
             i = i + 1;
@@ -640,7 +644,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let T = S.substr(p, size - p);
 
     // 21. Perform ! CreateDataProperty(A, ! ToString(lengthA), T).
-    CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, lengthA)), new StringValue(realm, T));
+    Create.CreateDataProperty(realm, A, To.ToString(realm, new NumberValue(realm, lengthA)), new StringValue(realm, T));
 
     // 22. Return A.
     return A;
@@ -662,7 +666,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. Let string be ? ToString(S).
-    let string = ToStringPartial(realm, S);
+    let string = To.ToStringPartial(realm, S);
 
     // 4. Let match be ? RegExpExec(R, string).
     let match = RegExpExec(realm, R, string);
@@ -682,10 +686,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 3. Let pattern be ? ToString(? Get(R, "source")).
-    let pattern = ToStringPartial(realm, Get(realm, R, "source"));
+    let pattern = To.ToStringPartial(realm, Get(realm, R, "source"));
 
     // 4. Let flags be ? ToString(? Get(R, "flags")).
-    let flags = ToStringPartial(realm, Get(realm, R, "flags"));
+    let flags = To.ToStringPartial(realm, Get(realm, R, "flags"));
 
     // 5. Let result be the String value formed by concatenating "/", pattern, "/", and flags.
     let result = "/" + pattern + "/" + flags;

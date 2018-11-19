@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import {
@@ -19,7 +19,6 @@ import {
 } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
 import {
-  OrdinaryCreateFromConstructor,
   Get,
   IsCallable,
   IteratorStep,
@@ -29,17 +28,19 @@ import {
   Call,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
-  let func = new NativeFunctionValue(realm, "Map", "Map", 0, (context, [iterable], argCount, NewTarget) => {
+  let func = new NativeFunctionValue(realm, "Map", "Map", 0, (context, [_iterable], argCount, NewTarget) => {
+    let iterable = _iterable;
     // 1. If NewTarget is undefined, throw a TypeError exception.
     if (!NewTarget) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 
     // 2. Let map be ? OrdinaryCreateFromConstructor(NewTarget, "%MapPrototype%", « [[MapData]] »).
-    let map = OrdinaryCreateFromConstructor(realm, NewTarget, "MapPrototype", {
+    let map = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "MapPrototype", {
       $MapData: undefined,
     });
 

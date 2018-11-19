@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 export { default as ArrayExpression } from "./ArrayExpression.js";
 export { default as ArrowFunctionExpression } from "./ArrowFunctionExpression.js";
@@ -62,3 +62,4 @@ export { default as VariableDeclaration } from "./VariableDeclaration.js";
 export { default as WhileStatement } from "./WhileStatement.js";
 export { default as WithStatement } from "./WithStatement.js";
 export { default as YieldExpression } from "./YieldExpression.js";
+export { default as JSXElement } from "./JSXElement.js";

@@ -7,23 +7,21 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, SymbolValue, AbstractValue } from "../../values/index.js";
 import { SymbolDescriptiveString } from "../../methods/index.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
-  const tsTemplateSrc = "(A).toString()";
-  const tsTemplate = buildExpressionTemplate(tsTemplateSrc);
+  const tsTemplateSrc = "('' + A)";
 
   // ECMA262 19.4.3.2
   obj.defineNativeMethod("toString", 0, context => {
     const target = context instanceof ObjectValue ? context.$SymbolData : context;
     if (target instanceof AbstractValue && target.getType() === SymbolValue) {
-      return AbstractValue.createFromTemplate(realm, tsTemplate, StringValue, [target], tsTemplateSrc);
+      return AbstractValue.createFromTemplate(realm, tsTemplateSrc, StringValue, [target]);
     }
     // 1. Let s be the this value.
     let s = context.throwIfNotConcrete();

@@ -1,4 +1,4 @@
-// delay unsupported requires
+// es6
 
 var modules = Object.create(null);
 
@@ -18,13 +18,13 @@ function define(factory, moduleId, dependencyMap) {
     exports: undefined,
     factory: factory,
     hasError: false,
-    isInitialized: false
+    isInitialized: false,
   };
 
   var _verboseName = arguments[3];
   if (_verboseName) {
     modules[moduleId].verboseName = _verboseName;
-    verboseNamesToModuleIds[_verboseName] = moduleId;
+    global.verboseNamesToModuleIds[_verboseName] = moduleId;
   }
 }
 
@@ -61,25 +61,24 @@ function loadModuleImplementation(moduleId, module) {
   }
 
   module.isInitialized = true;
-  var exports = module.exports = {};
+  var exports = (module.exports = {});
   var _module = module,
-      factory = _module.factory,
-      dependencyMap = _module.dependencyMap;
-      try {
+    factory = _module.factory,
+    dependencyMap = _module.dependencyMap;
+  try {
+    var _moduleObject = { exports: exports };
 
-   var _moduleObject = { exports: exports };
+    factory(global, require, _moduleObject, exports, dependencyMap);
 
-   factory(global, require, _moduleObject, exports, dependencyMap);
+    module.factory = undefined;
 
-      module.factory = undefined;
-
-   return module.exports = _moduleObject.exports;
- } catch (e) {
-   module.hasError = true;
-   module.isInitialized = false;
-   module.exports = undefined;
-   throw e;
- }
+    return (module.exports = _moduleObject.exports);
+  } catch (e) {
+    module.hasError = true;
+    module.isInitialized = false;
+    module.exports = undefined;
+    throw e;
+  }
 }
 
 function unknownModuleError(id) {
@@ -94,23 +93,24 @@ function moduleThrewError(id) {
 // === End require code ===
 
 define(function(global, require, module, exports) {
-  let condition = global.__abstract ? __abstract("boolean", "true") : true;
-  let obj1 = global.__abstract ? __abstract("object", "({ foo: 5 })") : { foo: 5 };
-  let obj2 = global.__abstract ? __abstract("object", "({ foo: 8 })") : { foo: 8 };
+  let condition = global.__abstract ? global.__abstract("boolean", "true") : true;
+  let obj1 = global.__abstract ? global.__abstract("object", "({ foo: 5 })") : { foo: 5 };
+  let obj2 = global.__abstract ? global.__abstract("object", "({ foo: 8 })") : { foo: 8 };
   module.exports = condition ? obj1 : obj2;
 }, 0, null);
 
 define(function(global, require, module, exports) {
   //let condition = global.__abstract ? __abstract("boolean", "true") : true;
-  let topNum = global.__abstract ? __abstract("number", "5") : 5;
+  let topNum = global.__abstract ? global.__abstract("number", "5") : 5;
   module.exports = topNum;
 }, 4, null);
 
 define(function(global, require, module, exports) {
   var x = require(0);
-  module.exports = function() { return x; }
+  module.exports = function() {
+    return x;
+  };
 }, 1, null);
-
 
 define(function(global, require, module, exports) {
   module.exports = { foo: 5 };
@@ -118,4 +118,6 @@ define(function(global, require, module, exports) {
 
 var f = require(1);
 
-inspect = function() { return f().magic + require(1).foo; }
+inspect = function() {
+  return f().magic + require(1).foo;
+};

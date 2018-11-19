@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Prepack &middot; Partial evaluator for JavaScript</title>
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+    <script src="js/prism.js"></script>
+    <link rel="stylesheet" href="css/prism.css"/>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-44373548-29', 'auto');
+      ga('send', 'pageview');
+    </script>
+  </head>
+  <body>
+
+    <nav class="nav">
+      <div class="content-container">
+
+        <div class="nav-left">
+          <a class="nav-item is-brand" href="./">
+            <img class="nav-logo" src="static/images/prepack_logo.png" alt="prepack logo"/>
+            Prepack
+          </a>
+        </div>
+
+        <span id="nav-toggle" class="nav-toggle">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+
+        <div id="nav-menu" class="nav-right nav-menu">
+          <a href="./" class="nav-item is-active">About</a>
+          <a href="getting-started.html" class="nav-item">Getting Started</a>
+          <a href="frequently-asked-questions.html" class="nav-item">FAQs</a>
+          <a href="repl.html" class="nav-item">Try It Out</a>
+          <a href="https://github.com/facebook/prepack" class="nav-item">GitHub</a>
+        </div>
+
+      </div>
+    </nav>
+
+    <div class="content">
+      <div class="hero">
+        <div class="content-container">
+          <h1 class="text">Prepack</h1>
+          <h2 class="minitext">
+            A tool for making JavaScript code run faster.
+          </h2>
+          <div class="disclaimer">
+            *Prepack is still in an early development stage and not ready for production use just yet. Please try it out, give feedback, and help fix bugs.
+          </div>
+          <div class="buttons-unit">
+            <a class="button" href="getting-started.html">Getting Started</a>
+            <a class="button" href="repl.html">Try It Out</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="content-container">
+          <h2>What does it do?</h2>
+          <p class="align-left">
+            Prepack is a tool that optimizes JavaScript source code:
+            Computations that can be done at compile-time instead of run-time get eliminated.
+            Prepack replaces the global code of a JavaScript bundle with equivalent code that is a simple sequence of assignments. This gets rid of most intermediate computations and object allocations.
+          </p>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="content-container">
+          <h2>Examples</h2>
+
+          <h3>Hello World</h3>
+          <div class="example">
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
+  function hello() { return 'hello'; }
+  function world() { return 'world'; }
+  global.s = hello() + ' ' + world();
+})();</code></pre>
+              </div>
+            </div>
+            <div class="example-output">
+              <div class="example-code">
+                <pre><code class="language-js">s = "hello world";</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <h3>Elimination of abstraction tax</h3>
+          <div class="example">
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
+  var self = this;
+  ['A', 'B', 42].forEach(function(x) {
+    var name = '_' + x.toString()[0].toLowerCase();
+    var y = parseInt(x);
+    self[name] = y ? y : x;
+  });
+})();</code></pre>
+              </div>
+            </div>
+            <div class="example-output">
+              <div class="example-code">
+                <pre><code class="language-js">_a = "A";
+_b = "B";
+_4 = 42;</code></pre>
+              </div>
+            </div>
+          </div>
+
+
+          <h3>Fibonacci</h3>
+          <div class="example">
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
+  function fibonacci(x) {
+    return x <= 1 ? x : fibonacci(x - 1) + fibonacci(x - 2);
+  }
+  global.x = fibonacci(15);
+})();</code></pre>
+              </div>
+            </div>
+            <div class="example-output">
+              <div class="example-code">
+                <pre><code class="language-js">x = 610;</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <h3>Module Initialization</h3>
+          <div class="example">
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
+  let moduleTable = {};
+  function define(id, f) { moduleTable[id] = f; }
+  function require(id) {
+    let x = moduleTable[id];
+    return x instanceof Function ? (moduleTable[id] = x()) : x;
+  }
+  global.require = require;
+  define("one", function() { return 1; });
+  define("two", function() { return require("one") + require("one"); });
+  define("three", function() { return require("two") + require("one"); });
+  define("four", function() { return require("three") + require("one"); });
+})();
+three = require("three");</code></pre>
+              </div>
+            </div>
+            <div class="example-output">
+              <div class="example-code">
+                <pre><code class="language-js">(function () {
+  var _0 = function (id) {
+    let x = _1[id];
+    return x instanceof Function ? _1[id] = x() : x;
+  };
+
+  var _5 = function () {
+    return _0("three") + _0("one");
+  };
+
+  var _1 = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: _5
+  };
+  require = _0;
+  three = 3;
+})();</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <p>
+            Note how most computations have been pre-initialized. However, the function that computes four (_5) remains in the residual program since it was not called at initialization time.
+          </p>
+
+          <h3>Environment Interactions and Branching</h3>
+          <div class="example">
+            <div class="example-input">
+              <div class="example-code">
+                <pre><code class="language-js">(function(){
+  function fib(x) { return x <= 1 ? x : fib(x - 1) + fib(x - 2); }
+  let x = Date.now();
+  if (x === 0) x = fib(10);
+  global.result = x;
+})();</code></pre>
+              </div>
+            </div>
+            <div class="example-output">
+              <div class="example-code">
+              <pre><code class="language-js">(function () {
+  var _$1 = this;
+  var _$0 = _$1.Date.now();
+  var _1 = 0 === _$0;
+  var _0 = _1 ? 55 : _$0;
+  result = _0;
+})();</code></pre>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="section">
+          <div class="content-container">
+            <h2>How does it work?</h2>
+            <div class="align-left">
+              <p>
+                A few things have to come together to realize Prepack:
+              </p>
+              <ul>
+                <li>
+                  <b>Abstract Syntax Tree (AST)</b>
+                  <p>
+                    Prepack operates at the AST level, using <a href="https://babeljs.io/">Babel</a> to parse and generate JavaScript source code.
+                  </p>
+                </li>
+                <li>
+                  <b>Concrete Execution</b>
+                  <p>
+                    At the core of Prepack is an almost ECMAScript 5 compatible interpreter &mdash; implemented in JavaScript!
+                    The interpreter closely follows the <a href="http://www.ecma-international.org/ecma-262/7.0/">ECMAScript 2016 Language Specification</a>, with a focus on correctness and spec conformance.
+                    You can think of the interpreter in Prepack as a clean reference implementation of JavaScript.
+                  </p>
+                  <p>
+                    The interpreter has the ability to track and undo all effects, including all object mutations. This enables speculative optimizations.
+                  </p>
+                </li>
+                <li>
+                  <b>Symbolic Execution</b>
+                  <p>
+                    In addition to computing over concrete values, Prepack's interpreter has the ability to operate on <b>abstract values</b> which typically arise from environment interactions. For example, <code>Date.now</code> can return an abstract value. You can also manually inject abstract values via auxiliary helper functions such as <code>__abstract()</code>. Prepack tracks all operations that are performed over abstract values. When branching over abstract values, Prepack will fork execution and explore all possibilities. Thus, Prepack implements a <a href="https://en.wikipedia.org/wiki/Symbolic_execution">Symbolic Execution</a> engine for JavaScript.
+                  </p>
+                </li>
+                <li>
+                  <b>Abstract Interpretation</b>
+                  <p>
+                    Symbolic execution will fork when it encounters branches over abstract values. At control-flow merge-points, Prepack will join the diverged executions, implementing a form of <a href="https://en.wikipedia.org/wiki/Abstract_interpretation">Abstract Interpretation</a>. Joining variables and heap properties may result in conditional abstract values. Prepack tracks information about value and type domains of abstract values.
+                  </p>
+                </li>
+                <li>
+                  <b>Heap Serialization</b>
+                  <p>
+                    At the end of the initialization phase when the global code returns, Prepack captures the final heap.
+                    Prepack walks the heap in order, generating fresh straightforward JavaScript code that creates and links all objects reachable in the initialized heap. Some of the values in the heap might be result of computations over abstract values. For those values, Prepack generates code that performs those computations as the original program would have done.
+                  </p>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="content-container">
+            <h2>The Environment matters!</h2>
+            <div class="align-left">
+              <p>
+                Out of the box, Prepack does not fully model a browser or node.js environment: Prepack has no built-in knowledge of <code>document</code> or <code>window</code>. In fact, when prepacking code which references such properties, they will evaluate to <code>undefined</code>. You would have to insert a model of the relevant functionality at the beginning of the code you want to prepack.
+              </p>
+              <p>The following helper functions aid in writing models.
+              <pre><code class="language-js">// Assume that a certain property has a simple known value.
+__assumeDataProperty(global, "obscure", undefined);
+// Assume that a certain property has a simple unknown value.
+__assumeDataProperty(global, "notSoObscure", __abstract());
+// Assume that a richly structured value exists
+__assumeDataProperty(global, "rich", __abstract({
+  x: __abstract("number"),
+  y: __abstract("boolean"),
+  z: __abstract("string"),
+  nested: __abstract({
+    x: __abstract()
+  })
+}));
+// Forbid any accesses to an object except at known positions
+__makePartial(global);
+// At this point, accessing global.obscure, global.notSoObscure, global.rich.nested.x is okay,
+// but accessing global.unknown or global.rich.unknown would cause an introspection error.
+
+// The following tells Prepack to embed and call some code in the residual program.
+// The code must not have any side effects on the reachable JavaScript heap.
+__residual("object", function(delay) {
+  return global.pushSelfDestructButton(delay);
+}, "5 minutes");
+</code></pre>
+</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="content-container">
+            <h2>Optimize More Code!</h2>
+            <div class="align-left">
+              <p>
+                Out of the box, Prepack only optimizes code that gets executed along the global code path, the initialization phase.
+                You can explicitly instruct Prepack to optimize particular functions as shown in the following example.
+              </p>
+              <pre><code class="language-js">global.f = function() {
+  var res = 0;
+  for (var i = 0; i < 100; i++) res += i;
+  return res;
+}
+
+// A call to __optimize along the global code instructs Prepack to optimize the given function.
+__optimize(global.f);
+</code></pre>
+              <p>
+                <b>Note:</b> Prepack makes a significant assumption:
+                The optimized function (and all other functions it might transitively call) does not depend on any state that is mutated after the global code finished executing. Also, Prepack does check and reject two different optimized functions that mutate the same state.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="content-container">
+            <h2>Roadmap</h2>
+            <div class="align-left">
+
+
+              <h3>Short Term</h3>
+              <ul>
+                <li>Stabilizing existing feature set for Prepacking of React Native bundles</li>
+                <li>Integration with React Native tool chain</Li>
+                <li>Build out optimizations based on assumptions of the module system used by React Native</li>
+              </ul>
+              <h3>Medium Term</h3>
+              <ul>
+                <li>Implement further serialization optimizations, including
+                  <ul>
+                    <li>elimination of objects whose identity isn't exposed,</li>
+                    <li>elimination of unused exported properties,</li>
+                    <li>...</li>
+                  </ul>
+                </li>
+                <li>Prepack individual functions, basic blocks, statements, expressions</li>
+                <li>Full ES6 Conformance</Li>
+                <li>Generalize support for module systems</li>
+                <li>Assuming ES6 support for certain features, delay / ignore application of <a href="https://en.wikipedia.org/wiki/Polyfill">Polyfills</a></li>
+                <li>Implement further compatibility targets, in particular the web and node.js</li>
+                <li>Deeper Integration with a JavaScript VM to improve the heap deserialization process, including
+                  <ul>
+                    <li>expose a lazy object initialization concept &mdash; lazily initialize an object the moment it is touched for the first time, in a way that is not observable by JavaScript code</li>
+                    <li>efficient encoding of common object creations via specialized bytecodes</li>
+                    <li>splitting the code into two phases: 1) a non-environment dependent phase; the VM could safely capture &amp; restore the resulting heap; followed by 2) an environment dependent phase which patches up the concrete heap by performing any residual computations over values obtained from the environment</li>
+                    <li>...</li>
+                  </ul>
+                </li>
+                <li>Summarizing loops and recursion</li>
+              </ul>
+              <h3>Long Term &mdash; leveraging Prepack as a platform</h3>
+              <ul>
+                <li>JavaScript Playground &mdash; experiment with JavaScript features by tweaking a JavaScript engine written in JavaScript, all hosted just in a browser; think of it as a "Babel VM", realizing new JavaScript features that cannot just be compiled away</li>
+                <li>Bug Finding &mdash; finding unconditional crashes, performance issues, ...</li>
+                <li>Effect Analyzer, e.g. to detect possible side effects of module factory functions or to enforce pureness annotations</li>
+                <li>Type Analysis</li>
+                <li>Information Flow Analysis</li>
+                <li>Call Graph Inference, allowing inlining and code indexing</li>
+                <li>Automated Test Generation, leveraging the symbolic execution features in combination with a constraint solver to compute inputs that exercise different execution paths</li>
+                <li>Smart Fuzzing</li>
+                <li>JavaScript Sandbox &mdash; effectively instrument JavaScript code in a way that is not observable</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="content-container">
+            <h2>Related Technologies</h2>
+            <div class="align-left">
+
+              <p>
+                The <a href="https://developers.google.com/closure/compiler/">Closure Compiler</a> also optimizes JavaScript code. Prepack goes further by truly running the global code at initialization phase, unrolling loops and recursion. Prepack focuses on runtime performance, while the Closure Compiler emphasizes JavaScript code size.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="content-container">
+            <h2>Contributing</h2>
+            <div class="align-left">
+
+              <p>
+                You can follow the <a href="https://github.com/facebook/prepack/blob/master/CONTRIBUTING.md">contributing guidelines</a>. There is also a <a href="https://github.com/facebook/prepack/wiki/Suggested-reading">suggested reading list </a> to learn more about the internals of the project.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-background">
+      <div class="content-container">
+        <div class="footer">
+          <div>
+            Copyright &copy; 2018 Facebook Inc.
+          </div>
+          <div>
+            <a href="https://code.facebook.com/projects/" target="_blank">
+              <img
+                class="oss-logo"
+                src="./static/images/oss_logo.png"
+                alt="Facebook Open Source"
+                title="Facebook Open Source" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+    <script src="js/toggle_menu.js"></script>
+  </body>
+</html>

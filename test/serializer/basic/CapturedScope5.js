@@ -1,16 +1,18 @@
 // serialized function clone count: 0
-function f (x) {
+function f(x) {
   var valueA = 1;
   var valueB = 2;
   var valueC = 3;
 
-  function a() { // Prevent Inline foo bar
+  function a() {
+    // Prevent Inline foo bar
     valueA++;
     valueC++;
     return c();
   }
 
-  function b() { // Prevent Inline foo bar
+  function b() {
+    // Prevent Inline foo bar
     valueB++;
     return c();
   }
@@ -38,5 +40,5 @@ var s = f();
 var r = f();
 
 inspect = function() {
-  return s[0]() + ' ' + r[1]() + " " + r[2]() + " " + r[3]()[0]();
-}
+  return s[0]() + " " + r[1]() + " " + r[2]() + " " + r[3]()[0]();
+};

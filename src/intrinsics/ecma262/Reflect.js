@@ -7,21 +7,12 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { BooleanValue, ObjectValue, NullValue } from "../../values/index.js";
-import {
-  CreateArrayFromList,
-  FromPropertyDescriptor,
-  ToPropertyDescriptor,
-  Construct,
-  ToPropertyKey,
-  IsCallable,
-  CreateListFromArrayLike,
-  Call,
-  IsConstructor,
-} from "../../methods/index.js";
+import { Call, Construct, IsCallable, IsConstructor } from "../../methods/index.js";
+import { Create, Properties, To } from "../../singletons.js";
 
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Reflect");
@@ -34,16 +25,17 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let args be ? CreateListFromArrayLike(argumentsList).
-    let args = CreateListFromArrayLike(realm, argumentsList);
+    let args = Create.CreateListFromArrayLike(realm, argumentsList);
 
-    // TODO 3. Perform PrepareForTailCall().
+    // TODO #1008 3. Perform PrepareForTailCall().
 
     // 4. Return ? Call(target, thisArgument, args).
     return Call(realm, target, thisArgument, args);
   });
 
   // ECMA262 26.1.2
-  obj.defineNativeMethod("construct", 2, (context, [target, argumentsList, newTarget]) => {
+  obj.defineNativeMethod("construct", 2, (context, [target, argumentsList, _newTarget]) => {
+    let newTarget = _newTarget;
     // 1. If IsConstructor(target) is false, throw a TypeError exception.
     if (!IsConstructor(realm, target)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
@@ -58,15 +50,15 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 4. Let args be ? CreateListFromArrayLike(argumentsList).
-    let args = CreateListFromArrayLike(realm, argumentsList);
+    let args = Create.CreateListFromArrayLike(realm, argumentsList);
 
     // 5. Return ? Construct(target, args, newTarget).
     return Construct(realm, target, args, newTarget);
   });
 
   // ECMA262 26.1.3
-  obj.defineNativeMethod("defineProperty", 3, (context, [target, propertyKey, attributes]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("defineProperty", 3, (context, [_target, propertyKey, attributes]) => {
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -74,18 +66,18 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. Let desc be ? ToPropertyDescriptor(attributes).
-    let desc = ToPropertyDescriptor(realm, attributes);
+    let desc = To.ToPropertyDescriptor(realm, attributes);
 
     // 4. Return ? target.[[DefineOwnProperty]](key, desc).
     return new BooleanValue(realm, target.$DefineOwnProperty(key, desc));
   });
 
   // ECMA262 26.1.4
-  obj.defineNativeMethod("deleteProperty", 2, (context, [target, propertyKey]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("deleteProperty", 2, (context, [_target, propertyKey]) => {
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -93,15 +85,16 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. Return ? target.[[Delete]](key).
     return new BooleanValue(realm, target.$Delete(key));
   });
 
   // ECMA262 26.1.5
-  obj.defineNativeMethod("get", 2, (context, [target, propertyKey, receiver]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("get", 2, (context, [_target, propertyKey, _receiver]) => {
+    let receiver = _receiver;
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -109,7 +102,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. If receiver is not present, then
     if (!receiver) {
@@ -122,8 +115,8 @@ export default function(realm: Realm): ObjectValue {
   });
 
   // ECMA262 26.1.6
-  obj.defineNativeMethod("getOwnPropertyDescriptor", 2, (context, [target, propertyKey]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("getOwnPropertyDescriptor", 2, (context, [_target, propertyKey]) => {
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -131,18 +124,18 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. Let desc be ? target.[[GetOwnProperty]](key).
     let desc = target.$GetOwnProperty(key);
 
     // 4. Return FromPropertyDescriptor(desc).
-    return FromPropertyDescriptor(realm, desc);
+    return Properties.FromPropertyDescriptor(realm, desc);
   });
 
   // ECMA262 26.1.7
-  obj.defineNativeMethod("getPrototypeOf", 1, (context, [target]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("getPrototypeOf", 1, (context, [_target]) => {
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -162,15 +155,15 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. Return ? target.[[HasProperty]](key).
     return new BooleanValue(realm, target.$HasProperty(key));
   });
 
   // ECMA262 26.1.9
-  obj.defineNativeMethod("isExtensible", 1, (context, [target]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("isExtensible", 1, (context, [_target]) => {
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -182,8 +175,8 @@ export default function(realm: Realm): ObjectValue {
   });
 
   // ECMA262 26.1.10
-  obj.defineNativeMethod("ownKeys", 1, (context, [target]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("ownKeys", 1, (context, [_target]) => {
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -194,12 +187,12 @@ export default function(realm: Realm): ObjectValue {
     let keys = target.$OwnPropertyKeys();
 
     // 3. Return CreateArrayFromList(keys).
-    return CreateArrayFromList(realm, keys);
+    return Create.CreateArrayFromList(realm, keys);
   });
 
   // ECMA262 26.1.11
-  obj.defineNativeMethod("preventExtensions", 1, (context, [target]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("preventExtensions", 1, (context, [_target]) => {
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -211,8 +204,9 @@ export default function(realm: Realm): ObjectValue {
   });
 
   // ECMA262 26.1.12
-  obj.defineNativeMethod("set", 3, (context, [target, propertyKey, V, receiver]) => {
-    target = target.throwIfNotConcrete();
+  obj.defineNativeMethod("set", 3, (context, [_target, propertyKey, V, _receiver]) => {
+    let receiver = _receiver;
+    let target = _target.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {
@@ -220,7 +214,7 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 2. Let key be ? ToPropertyKey(propertyKey).
-    let key = ToPropertyKey(realm, propertyKey);
+    let key = To.ToPropertyKey(realm, propertyKey);
 
     // 3. If receiver is not present, then
     if (!receiver) {
@@ -233,9 +227,9 @@ export default function(realm: Realm): ObjectValue {
   });
 
   // ECMA262 26.1.13
-  obj.defineNativeMethod("setPrototypeOf", 2, (context, [target, proto]) => {
-    target = target.throwIfNotConcrete();
-    proto = proto.throwIfNotConcrete();
+  obj.defineNativeMethod("setPrototypeOf", 2, (context, [_target, _proto]) => {
+    let target = _target.throwIfNotConcrete();
+    let proto = _proto.throwIfNotConcrete();
 
     // 1. If Type(target) is not Object, throw a TypeError exception.
     if (!(target instanceof ObjectValue)) {

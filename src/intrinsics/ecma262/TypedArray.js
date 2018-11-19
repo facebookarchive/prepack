@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import type { ElementType, TypedArrayKind } from "../../types.js";
@@ -21,9 +21,8 @@ import {
   TypedArrayCreate,
 } from "../../methods/typedarray.js";
 import { SpeciesConstructor } from "../../methods/construct.js";
-import { ToIndexPartial, ToLength, ToString, ToObjectPartial } from "../../methods/to.js";
 import { Get, GetMethod } from "../../methods/get.js";
-import { Set } from "../../methods/properties.js";
+import { Properties, To } from "../../singletons.js";
 import { IterableToList } from "../../methods/iterator.js";
 import { IsDetachedBuffer, IsConstructor, IsCallable } from "../../methods/is.js";
 import { Call } from "../../methods/call.js";
@@ -91,7 +90,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // e. Repeat, while k < len
       while (k < len) {
         // i. Let Pk be ! ToString(k).
-        let Pk = ToString(realm, new NumberValue(realm, k));
+        let Pk = To.ToString(realm, new NumberValue(realm, k));
 
         // ii. Let kValue be the first element of values and remove that element from values.
         let kValue = values.shift();
@@ -107,7 +106,7 @@ export default function(realm: Realm): NativeFunctionValue {
         }
 
         // v. Perform ? Set(targetObj, Pk, mappedValue, true).
-        Set(realm, targetObj, Pk, mappedValue, true);
+        Properties.Set(realm, targetObj, Pk, mappedValue, true);
 
         // vi. Increase k by 1.
         k = k + 1;
@@ -123,10 +122,10 @@ export default function(realm: Realm): NativeFunctionValue {
     // 8. NOTE: source is not an Iterable so assume it is already an array-like object.
 
     // 9. Let arrayLike be ! ToObject(source).
-    let arrayLike = ToObjectPartial(realm, source);
+    let arrayLike = To.ToObject(realm, source);
 
     // 10. Let len be ? ToLength(? Get(arrayLike, "length")).
-    let len = ToLength(realm, Get(realm, arrayLike, "length"));
+    let len = To.ToLength(realm, Get(realm, arrayLike, "length"));
 
     // 11. Let targetObj be ? TypedArrayCreate(C, « len »).
     let targetObj = TypedArrayCreate(realm, C, [new NumberValue(realm, len)]);
@@ -137,7 +136,7 @@ export default function(realm: Realm): NativeFunctionValue {
     // 13. Repeat, while k < len
     while (k < len) {
       // a. Let Pk be ! ToString(k).
-      let Pk = ToString(realm, new NumberValue(realm, k));
+      let Pk = To.ToString(realm, new NumberValue(realm, k));
 
       // b. Let kValue be ? Get(arrayLike, Pk).
       let kValue = Get(realm, arrayLike, Pk);
@@ -153,7 +152,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // e. Perform ? Set(targetObj, Pk, mappedValue, true).
-      Set(realm, targetObj, Pk, mappedValue, true);
+      Properties.Set(realm, targetObj, Pk, mappedValue, true);
 
       // f. Increase k by 1.
       k = k + 1;
@@ -192,10 +191,10 @@ export default function(realm: Realm): NativeFunctionValue {
       let kValue = items[k];
 
       // b. Let Pk be ! ToString(k).
-      let Pk = ToString(realm, new NumberValue(realm, k));
+      let Pk = To.ToString(realm, new NumberValue(realm, k));
 
       // c. Perform ? Set(newObj, Pk, kValue, true).
-      Set(realm, newObj, Pk, kValue, true);
+      Properties.Set(realm, newObj, Pk, kValue, true);
 
       // d. Increase k by 1.
       k = k + 1;
@@ -268,7 +267,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       }
 
       // 3. Let elementLength be ? ToIndex(length).
-      let elementLength = ToIndexPartial(realm, length);
+      let elementLength = To.ToIndexPartial(realm, length);
 
       // 4. Let constructorName be the String value of the Constructor Name value specified in Table 50 for this TypedArray constructor.
       let constructorName = getConstructorName(type);
@@ -434,13 +433,13 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
         // e. Repeat, while k < len
         while (k < len) {
           // i. Let Pk be ! ToString(k).
-          let Pk = new StringValue(realm, ToString(realm, new NumberValue(realm, k)));
+          let Pk = new StringValue(realm, To.ToString(realm, new NumberValue(realm, k)));
 
           // ii. Let kValue be the first element of values and remove that element from values.
           let kValue = values.shift();
 
           // iii. Perform ? Set(O, Pk, kValue, true).
-          Set(realm, O, Pk, kValue, true);
+          Properties.Set(realm, O, Pk, kValue, true);
 
           // iv. Increase k by 1.
           k = k + 1;
@@ -459,7 +458,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       let arrayLike = object;
 
       // 9. Let len be ? ToLength(? Get(arrayLike, "length")).
-      let len = ToLength(realm, Get(realm, arrayLike, "length"));
+      let len = To.ToLength(realm, Get(realm, arrayLike, "length"));
 
       // 10. Perform ? AllocateTypedArrayBuffer(O, len).
       AllocateTypedArrayBuffer(realm, O, len);
@@ -470,13 +469,13 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       // 12. Repeat, while k < len
       while (k < len) {
         // a. Let Pk be ! ToString(k).
-        let Pk = new StringValue(realm, ToString(realm, new NumberValue(realm, k)));
+        let Pk = new StringValue(realm, To.ToString(realm, new NumberValue(realm, k)));
 
         // b. Let kValue be ? Get(arrayLike, Pk).
         let kValue = Get(realm, arrayLike, Pk);
 
         // c. Perform ? Set(O, Pk, kValue, true).
-        Set(realm, O, Pk, kValue, true);
+        Properties.Set(realm, O, Pk, kValue, true);
 
         // d. Increase k by 1.
         k += 1;
@@ -512,7 +511,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       let elementSize = ArrayElementSize[constructorName];
 
       // 7. Let offset be ? ToIndex(byteOffset).
-      let offset = ToIndexPartial(realm, byteOffset);
+      let offset = To.ToIndexPartial(realm, byteOffset);
 
       // 8. If offset modulo elementSize ≠ 0, throw a RangeError exception.
       if (offset % elementSize !== 0) {
@@ -548,7 +547,7 @@ export function build(realm: Realm, type: ElementType): NativeFunctionValue {
       } else {
         // 12. Else,
         // a. Let newLength be ? ToIndex(length).
-        let newLength = ToIndexPartial(realm, length);
+        let newLength = To.ToIndexPartial(realm, length);
 
         // b. Let newByteLength be newLength × elementSize.
         newByteLength = newLength * elementSize;

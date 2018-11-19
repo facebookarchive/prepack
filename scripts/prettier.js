@@ -13,27 +13,26 @@
 // https://github.com/facebook/react/blob/master/scripts/prettier/index.js
 
 const chalk = require("chalk");
+const fs = require("fs");
 const glob = require("glob");
-const path = require("path");
+const prettier = require("prettier");
 const execFileSync = require("child_process").execFileSync;
 
 const mode = process.argv[2] || "check";
+const prettierConfigPath = require.resolve("../.prettierrc");
 const shouldWrite = mode === "write" || mode === "write-changed";
 const onlyChanged = mode === "check-changed" || mode === "write-changed";
 
-const isWindows = process.platform === "win32";
-const prettier = isWindows ? "prettier.cmd" : "prettier";
-const prettierCmd = path.resolve(__dirname, "../node_modules/.bin/" + prettier);
-const defaultOptions = {
-  "trailing-comma": "es5",
-  "print-width": 120,
-};
 const config = {
   default: {
     patterns: ["src/**/*.js"],
   },
   scripts: {
     patterns: ["scripts/**/*.js"],
+  },
+  jest: {
+    patterns: ["test/**/*.js"],
+    ignore: ["test/**/syntaxError.js", "test/test262/**/*.js"],
   },
 };
 
@@ -49,7 +48,6 @@ const changedFiles = new Set(
 
 Object.keys(config).forEach(key => {
   const patterns = config[key].patterns;
-  const options = config[key].options;
   const ignore = config[key].ignore;
 
   const globPattern = patterns.length > 1 ? `{${patterns.join(",")}}` : `${patterns.join(",")}`;
@@ -59,27 +57,45 @@ Object.keys(config).forEach(key => {
     return;
   }
 
-  const args = Object.keys(defaultOptions).map(k => `--${k}=${(options && options[k]) || defaultOptions[k]}`);
-  args.push(`--${shouldWrite ? "write" : "l"}`);
+  let didWarn = false;
+  let didError = false;
 
-  let result;
-  try {
-    result = exec(prettierCmd, [...args, ...files]);
-  } catch (e) {
-    if (!shouldWrite) {
-      console.log(
-        "\n" +
-          e.output[1] +
-          "\n" +
-          chalk.red(`  This project uses prettier to format all JavaScript code.\n`) +
-          chalk.dim(`    Please run `) +
-          chalk.reset("yarn prettier") +
-          chalk.dim(` and add changes to files listed above to your commit.`) +
-          `\n`
-      );
-      process.exit(1);
+  files.forEach(file => {
+    const options = prettier.resolveConfig.sync(file, {
+      config: prettierConfigPath,
+    });
+    try {
+      const input = fs.readFileSync(file, "utf8");
+      if (shouldWrite) {
+        const output = prettier.format(input, options);
+        if (output !== input) {
+          fs.writeFileSync(file, output, "utf8");
+        }
+      } else {
+        if (!prettier.check(input, options)) {
+          if (!didWarn) {
+            console.log(
+              "\n" +
+                chalk.red(`  This project uses prettier to format all JavaScript code.\n`) +
+                chalk.dim(`  Please run `) +
+                chalk.reset("yarn prettier-all") +
+                chalk.dim(` and add changes to files listed below to your commit:`) +
+                `\n`
+            );
+            didWarn = true;
+          }
+          console.log(`  ${file}`);
+        }
+      }
+    } catch (error) {
+      didError = true;
+      console.log("\n\n" + error.message);
+      console.log(file);
     }
-    throw e;
+  });
+
+  if (didWarn || didError) {
+    console.log();
+    process.exit(1);
   }
-  console.log("\n" + result);
 });

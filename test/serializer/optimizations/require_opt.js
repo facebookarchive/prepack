@@ -1,4 +1,5 @@
-// does not contain:(0)
+// es6
+// does not contain:require(0)
 var modules = Object.create(null);
 
 __d = define;
@@ -17,13 +18,13 @@ function define(factory, moduleId, dependencyMap) {
     exports: undefined,
     factory: factory,
     hasError: false,
-    isInitialized: false
+    isInitialized: false,
   };
 
   var _verboseName = arguments[3];
   if (_verboseName) {
     modules[moduleId].verboseName = _verboseName;
-    verboseNamesToModuleIds[_verboseName] = moduleId;
+    global.verboseNamesToModuleIds[_verboseName] = moduleId;
   }
 }
 
@@ -60,25 +61,24 @@ function loadModuleImplementation(moduleId, module) {
   }
 
   module.isInitialized = true;
-  var exports = module.exports = {};
+  var exports = (module.exports = {});
   var _module = module,
-      factory = _module.factory,
-      dependencyMap = _module.dependencyMap;
-      try {
+    factory = _module.factory,
+    dependencyMap = _module.dependencyMap;
+  try {
+    var _moduleObject = { exports: exports };
 
-   var _moduleObject = { exports: exports };
+    factory(global, require, _moduleObject, exports, dependencyMap);
 
-   factory(global, require, _moduleObject, exports, dependencyMap);
+    module.factory = undefined;
 
-      module.factory = undefined;
-
-   return module.exports = _moduleObject.exports;
- } catch (e) {
-   module.hasError = true;
-   module.isInitialized = false;
-   module.exports = undefined;
-   throw e;
- }
+    return (module.exports = _moduleObject.exports);
+  } catch (e) {
+    module.hasError = true;
+    module.isInitialized = false;
+    module.exports = undefined;
+    throw e;
+  }
 }
 
 function unknownModuleError(id) {
@@ -102,7 +102,7 @@ define(function(global, require, module, exports) {
   module.exports = {
     bar: " goodbye",
     foo2: x.foo,
-    baz: y.baz
+    baz: y.baz,
   };
 }, 1, null);
 
@@ -113,12 +113,11 @@ define(function(global, require, module, exports) {
 var x = require(0);
 
 function f() {
-  return x.foo === " hello " && modules[1].exports === undefined &&
-    require(1).bar === " goodbye";
+  return x.foo === " hello " && modules[1].exports === undefined && require(1).bar === " goodbye";
 }
 
 inspect = function() {
   // the require( 0) should be entirely eliminated from 1's factory function
   // but the require(2) will remain
   return f();
-}
+};

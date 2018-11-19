@@ -7,13 +7,13 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import { NumberValue } from "../values/index.js";
-import type { BabelNodeNumericLiteral } from "babel-types";
+import { IntegralValue } from "../values/index.js";
+import type { BabelNodeNumericLiteral } from "@babel/types";
 
 export default function(
   ast: BabelNodeNumericLiteral,
@@ -21,5 +21,5 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  return new NumberValue(realm, ast.value);
+  return IntegralValue.createFromNumberValue(realm, ast.value);
 }

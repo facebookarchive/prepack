@@ -7,22 +7,25 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
 import type { Intrinsics } from "../types.js";
 import type { Realm } from "../realm.js";
 import {
-  NumberValue,
-  StringValue,
-  NullValue,
-  UndefinedValue,
-  EmptyValue,
-  ObjectValue,
-  SymbolValue,
+  AbstractValue,
   BooleanValue,
+  EmptyValue,
   NativeFunctionValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  UndefinedValue,
+  Value,
 } from "../values/index.js";
-import { AddRestrictedFunctionProperties } from "../methods/function.js";
+import { Functions } from "../singletons.js";
 
 import initializeObject from "./ecma262/Object.js";
 import initializeObjectPrototype from "./ecma262/ObjectPrototype.js";
@@ -156,6 +159,7 @@ import initializeThrowTypeError from "./ecma262/ThrowTypeError.js";
 
 import initialize__IntrospectionError from "./prepack/__IntrospectionError.js";
 import initialize__IntrospectionErrorPrototype from "./prepack/__IntrospectionErrorPrototype.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.undefined = new UndefinedValue(realm);
@@ -205,7 +209,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.ObjectProto_toString = initializeObjectProto_toString(realm);
 
   //
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     i.TypedArrayProto_values = initializeTypedArrayProto_values(realm);
 
   //
@@ -233,13 +237,18 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.MapPrototype = new ObjectValue(realm, i.ObjectPrototype, "Map.prototype");
   i.SetPrototype = new ObjectValue(realm, i.ObjectPrototype, "Set.prototype");
   i.WeakMapPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakMap.prototype");
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     i.WeakSetPrototype = new ObjectValue(realm, i.ObjectPrototype, "WeakSet.prototype");
   }
 
   // typed array prototypes
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-    i.TypedArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "TypedArray.prototype");
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    i.TypedArrayPrototype = new ObjectValue(
+      realm,
+      i.ObjectPrototype,
+      "TypedArray.prototype",
+      /* refuseSerialization */ true
+    );
   i.Float32ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float32Array.prototype");
   i.Float64ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Float64Array.prototype");
   i.Int8ArrayPrototype = new ObjectValue(realm, i.ObjectPrototype, "Int8Array.prototype");
@@ -277,7 +286,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initialize__IntrospectionErrorPrototype(realm, i.__IntrospectionErrorPrototype);
   initializeDataViewPrototype(realm, i.DataViewPrototype);
   initializeWeakMapPrototype(realm, i.WeakMapPrototype);
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     initializeTypedArrayPrototype(realm, i.TypedArrayPrototype);
     initializeWeakSetPrototype(realm, i.WeakSetPrototype);
   }
@@ -315,7 +324,8 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.Symbol = initializeSymbol(realm);
   i.JSON = initializeJSON(realm);
   i.Proxy = initializeProxy(realm);
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) i.Reflect = initializeReflect(realm);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    i.Reflect = initializeReflect(realm);
   i.Promise = initializePromise(realm);
   i.DataView = initializeDataView(realm);
 
@@ -323,13 +333,14 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.Set = initializeSet(realm);
   i.Map = initializeMap(realm);
   i.WeakMap = initializeWeakMap(realm);
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     i.WeakSet = initializeWeakSet(realm);
   }
   i.ArrayBuffer = initializeArrayBuffer(realm);
 
   // typed arrays
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) i.TypedArray = initializeTypedArray(realm);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    i.TypedArray = initializeTypedArray(realm);
   i.Float32Array = initializeFloat32Array(realm);
   i.Float64Array = initializeFloat64Array(realm);
   i.Int8Array = initializeInt8Array(realm);
@@ -384,7 +395,7 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     "Uint32Array",
     "ArrayBuffer",
   ];
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile")) {
     builtins = builtins.concat(["WeakSet", "TypedArray"]);
   }
 
@@ -392,26 +403,35 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
     let fn = i[name];
     let proto = i[`${name}Prototype`];
 
-    proto.$DefineOwnProperty("constructor", {
-      value: fn,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    proto.$DefineOwnProperty(
+      "constructor",
+      new PropertyDescriptor({
+        value: fn,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
 
-    fn.$DefineOwnProperty("prototype", {
-      value: proto,
-      writable: false,
-      enumerable: false,
-      configurable: false,
-    });
+    fn.$DefineOwnProperty(
+      "prototype",
+      new PropertyDescriptor({
+        value: proto,
+        writable: false,
+        enumerable: false,
+        configurable: false,
+      })
+    );
 
-    fn.$DefineOwnProperty("constructor", {
-      value: i.Function,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    fn.$DefineOwnProperty(
+      "constructor",
+      new PropertyDescriptor({
+        value: i.Function,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
   }
 
   //
@@ -421,31 +441,43 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   initializeGenerator(realm, i.Generator);
   i.GeneratorFunction = initializeGeneratorFunction(realm);
 
-  i.Generator.$DefineOwnProperty("prototype", {
-    value: i.GeneratorPrototype,
-    writable: false,
-    enumerable: false,
-    configurable: true,
-  });
-  i.GeneratorPrototype.$DefineOwnProperty("constructor", {
-    value: i.Generator,
-    writable: false,
-    enumerable: false,
-    configurable: true,
-  });
+  i.Generator.$DefineOwnProperty(
+    "prototype",
+    new PropertyDescriptor({
+      value: i.GeneratorPrototype,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    })
+  );
+  i.GeneratorPrototype.$DefineOwnProperty(
+    "constructor",
+    new PropertyDescriptor({
+      value: i.Generator,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    })
+  );
 
-  i.GeneratorFunction.$DefineOwnProperty("prototype", {
-    value: i.Generator,
-    writable: false,
-    enumerable: false,
-    configurable: false,
-  });
-  i.Generator.$DefineOwnProperty("constructor", {
-    value: i.GeneratorFunction,
-    writable: false,
-    enumerable: false,
-    configurable: true,
-  });
+  i.GeneratorFunction.$DefineOwnProperty(
+    "prototype",
+    new PropertyDescriptor({
+      value: i.Generator,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    })
+  );
+  i.Generator.$DefineOwnProperty(
+    "constructor",
+    new PropertyDescriptor({
+      value: i.GeneratorFunction,
+      writable: false,
+      enumerable: false,
+      configurable: true,
+    })
+  );
 
   //
   i.isNaN = initializeIsNaN(realm);
@@ -458,7 +490,24 @@ export function initialize(i: Intrinsics, realm: Realm): Intrinsics {
   i.eval = initializeEval(realm);
 
   // 8.2.2, step 12
-  AddRestrictedFunctionProperties(i.FunctionPrototype, realm);
+  Functions.AddRestrictedFunctionProperties(i.FunctionPrototype, realm);
+
+  //
+  if (realm.useAbstractInterpretation) {
+    TypesDomain.topVal = new TypesDomain(undefined);
+    ValuesDomain.topVal = new ValuesDomain(undefined);
+    i.__topValue = new AbstractValue(realm, TypesDomain.topVal, ValuesDomain.topVal, Number.MAX_SAFE_INTEGER, []);
+    TypesDomain.bottomVal = new TypesDomain(EmptyValue);
+    ValuesDomain.bottomVal = new ValuesDomain(new Set());
+    i.__bottomValue = new AbstractValue(
+      realm,
+      TypesDomain.bottomVal,
+      ValuesDomain.bottomVal,
+      Number.MIN_SAFE_INTEGER,
+      []
+    );
+    i.__leakedValue = AbstractValue.createFromType(realm, Value, "leaked binding value", []);
+  }
 
   return i;
 }

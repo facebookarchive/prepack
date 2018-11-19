@@ -9,20 +9,18 @@
 
 /* @flow */
 
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import type { Realm } from "../realm.js";
 import {
-  EmptyValue,
-  UndefinedValue,
-  NullValue,
+  AbstractObjectValue,
+  AbstractValue,
   BooleanValue,
-  StringValue,
-  SymbolValue,
+  ConcreteValue,
   NumberValue,
   ObjectValue,
-  ConcreteValue,
-  AbstractObjectValue,
-  FunctionValue,
+  PrimitiveValue,
+  StringValue,
+  SymbolValue,
 } from "./index.js";
 import invariant from "../invariant.js";
 
@@ -37,6 +35,16 @@ export default class Value {
   // Name from original source if existant
   __originalName: void | string;
 
+  toDisplayString(): string {
+    return (
+      "[" + this.constructor.name + " originally; " + (this.__originalName ? this.__originalName : "undefined") + "]"
+    );
+  }
+
+  equals(x: Value): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
   getHash(): number {
     invariant(false, "abstract method; please override");
   }
@@ -45,33 +53,8 @@ export default class Value {
     return this.constructor;
   }
 
-  static getTypeFromName(typeName: string): void | typeof Value {
-    switch (typeName) {
-      case "empty":
-        return EmptyValue;
-      case "void":
-        return UndefinedValue;
-      case "null":
-        return NullValue;
-      case "boolean":
-        return BooleanValue;
-      case "string":
-        return StringValue;
-      case "symbol":
-        return SymbolValue;
-      case "number":
-        return NumberValue;
-      case "object":
-        return ObjectValue;
-      case "function":
-        return FunctionValue;
-      default:
-        return undefined;
-    }
-  }
-
   static isTypeCompatibleWith(type: typeof Value, Constructor: typeof Value): boolean {
-    return type.prototype instanceof Constructor || type.prototype === Constructor.prototype;
+    return (type: any).prototype instanceof Constructor || (type: any).prototype === Constructor.prototype;
   }
 
   intrinsicName: void | string;
@@ -80,8 +63,26 @@ export default class Value {
   expressionLocation: ?BabelNodeSourceLocation;
   $Realm: Realm;
 
+  // this => val. A false value does not imply that !(this => val).
+  implies(val: AbstractValue, depth: number = 0): boolean {
+    if (!this.mightNotBeFalse()) return true;
+    if (this.equals(val)) return true;
+    return false;
+  }
+
+  // this => !val. A false value does not imply that !(this => !val).
+  impliesNot(val: AbstractValue, depth: number = 0): boolean {
+    if (!this.mightNotBeFalse()) return true;
+    if (this.equals(val)) return false;
+    return false;
+  }
+
   isIntrinsic(): boolean {
     return !!this.intrinsicName;
+  }
+
+  isTemporal() {
+    invariant(false, "abstract method; please override");
   }
 
   isPartialObject(): boolean {
@@ -101,6 +102,10 @@ export default class Value {
   }
 
   mightBeNull(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
+  mightNotBeNull(): boolean {
     invariant(false, "abstract method; please override");
   }
 
@@ -140,6 +145,10 @@ export default class Value {
     invariant(false, "abstract method; please override");
   }
 
+  mightNotBeUndefined(): boolean {
+    invariant(false, "abstract method; please override");
+  }
+
   mightHaveBeenDeleted(): boolean {
     invariant(false, "abstract method; please override");
   }
@@ -172,11 +181,11 @@ export default class Value {
     invariant(false, "abstract method; please override");
   }
 
-  throwIfNotObject(): ObjectValue | AbstractObjectValue {
+  throwIfNotConcretePrimitive(): PrimitiveValue {
     invariant(false, "abstract method; please override");
   }
 
-  throwIfNotConcreteString(): StringValue {
+  throwIfNotObject(): ObjectValue | AbstractObjectValue {
     invariant(false, "abstract method; please override");
   }
 
@@ -195,5 +204,9 @@ export default class Value {
 
   _serialize(set: Function, stack: Map<Value, any>): any {
     invariant(false, "abstract method; please override");
+  }
+
+  getDebugName(): string | void {
+    return this.intrinsicName || this.__originalName;
   }
 }

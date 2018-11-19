@@ -7,26 +7,19 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
-export * from "./to.js";
 export * from "./abstract.js";
 export * from "./call.js";
 export * from "./construct.js";
-export * from "./create.js";
 export * from "./date.js";
-export * from "./descriptor.js";
-export * from "./environment.js";
-export * from "./function.js";
 export * from "./get.js";
 export * from "./has.js";
 export * from "./hash.js";
 export * from "./integrity.js";
 export * from "./is.js";
 export * from "./iterator.js";
-export * from "./join.js";
 export * from "./own.js";
-export * from "./properties.js";
 export * from "./destructuring.js";
 export * from "./regexp.js";
 export * from "./promise.js";

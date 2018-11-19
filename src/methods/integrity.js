@@ -7,18 +7,25 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import { ObjectValue } from "../values/index.js";
-import { IsExtensible, IsDataDescriptor, IsAccessorDescriptor, ThrowIfMightHaveBeenDeleted } from "./index.js";
-import { DefinePropertyOrThrow } from "./properties.js";
+import { IsExtensible, IsDataDescriptor, IsAccessorDescriptor } from "./index.js";
+import { Properties } from "../singletons.js";
+import { FatalError } from "../errors.js";
 import invariant from "../invariant.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 type IntegrityLevels = "sealed" | "frozen";
 
 // ECMA262 9.1.4.1
 export function OrdinaryPreventExtensions(realm: Realm, O: ObjectValue): boolean {
+  if (O.mightBeLeakedObject() && O.getExtensible()) {
+    // todo: emit a diagnostic messsage
+    throw new FatalError();
+  }
+
   // 1. Set the value of the [[Extensible]] internal slot of O to false.
   O.setExtensible(false);
 
@@ -48,9 +55,14 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
     // a. Repeat for each element k of keys,
     for (let k of keys) {
       // i. Perform ? DefinePropertyOrThrow(O, k, PropertyDescriptor{[[Configurable]]: false}).
-      DefinePropertyOrThrow(realm, O, k, {
-        configurable: false,
-      });
+      Properties.DefinePropertyOrThrow(
+        realm,
+        O,
+        k,
+        new PropertyDescriptor({
+          configurable: false,
+        })
+      );
     }
   } else if (level === "frozen") {
     // 7. Else level is "frozen",
@@ -61,21 +73,21 @@ export function SetIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrity
 
       // ii. If currentDesc is not undefined, then
       if (currentDesc) {
-        ThrowIfMightHaveBeenDeleted(currentDesc.value);
+        Properties.ThrowIfMightHaveBeenDeleted(currentDesc);
         let desc;
 
         // 1. If IsAccessorDescriptor(currentDesc) is true, then
         if (IsAccessorDescriptor(realm, currentDesc)) {
           // a. Let desc be the PropertyDescriptor{[[Configurable]]: false}.
-          desc = { configurable: false };
+          desc = new PropertyDescriptor({ configurable: false });
         } else {
           // 2. Else,
           // b. Let desc be the PropertyDescriptor { [[Configurable]]: false, [[Writable]]: false }.
-          desc = { configurable: false, writable: false };
+          desc = new PropertyDescriptor({ configurable: false, writable: false });
         }
 
         // 3. Perform ? DefinePropertyOrThrow(O, k, desc).
-        DefinePropertyOrThrow(realm, O, k, desc);
+        Properties.DefinePropertyOrThrow(realm, O, k, desc);
       }
     }
   }
@@ -110,7 +122,8 @@ export function TestIntegrityLevel(realm: Realm, O: ObjectValue, level: Integrit
 
     // b. If currentDesc is not undefined, then
     if (currentDesc) {
-      ThrowIfMightHaveBeenDeleted(currentDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(currentDesc);
+      currentDesc = currentDesc.throwIfNotConcrete(realm);
 
       // i. If currentDesc.[[Configurable]] is true, return false.
       if (currentDesc.configurable === true) return false;

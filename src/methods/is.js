@@ -13,7 +13,6 @@ import { FatalError } from "../errors.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
-import { ToBooleanPartial, ToUint32, ToString } from "./to.js";
 import { Get } from "./get.js";
 import {
   FunctionValue,
@@ -27,13 +26,16 @@ import {
   AbstractValue,
   AbstractObjectValue,
 } from "../values/index.js";
+import { To } from "../singletons.js";
 import { Value } from "../values/index.js";
 import invariant from "../invariant.js";
 import { HasName, HasCompatibleType } from "./has.js";
-import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "babel-types";
+import type { BabelNodeExpression, BabelNodeCallExpression, BabelNodeLVal, BabelNodeClassMethod } from "@babel/types";
+import { PropertyDescriptor } from "../descriptors.js";
 
 // ECMA262 22.1.3.1.1
-export function IsConcatSpreadable(realm: Realm, O: Value): boolean {
+export function IsConcatSpreadable(realm: Realm, _O: Value): boolean {
+  let O = _O;
   // 1. If Type(O) is not Object, return false.
   if (!O.mightBeObject()) return false;
   O = O.throwIfNotObject();
@@ -42,7 +44,7 @@ export function IsConcatSpreadable(realm: Realm, O: Value): boolean {
   let spreadable = Get(realm, O, realm.intrinsics.SymbolIsConcatSpreadable);
 
   // 3. If spreadable is not undefined, return ToBoolean(spreadable).
-  if (!spreadable.mightBeUndefined()) return ToBooleanPartial(realm, spreadable);
+  if (!spreadable.mightBeUndefined()) return To.ToBooleanPartial(realm, spreadable);
   spreadable.throwIfNotConcrete();
 
   // 4. Return ? IsArray(O).
@@ -50,7 +52,7 @@ export function IsConcatSpreadable(realm: Realm, O: Value): boolean {
 }
 
 // ECMA262 6.2.4.3
-export function IsGenericDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
+function IsGenericDescriptorInternal(realm: Realm, Desc: ?Descriptor): boolean {
   // 1. If Desc is undefined, return false.
   if (!Desc) return false;
 
@@ -62,27 +64,45 @@ export function IsGenericDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
 }
 
 // ECMA262 6.2.4.1
-export function IsAccessorDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
+function IsAccessorDescriptorInternal(realm: Realm, Desc: ?Descriptor): boolean {
   // 1. If Desc is undefined, return false.
   if (!Desc) return false;
 
   // 2. If both Desc.[[Get]] and Desc.[[Set]] are absent, return false.
-  if (!("get" in Desc) && !("set" in Desc)) return false;
+  Desc = Desc.throwIfNotConcrete(realm);
+  if (Desc.get === undefined && Desc.set === undefined) return false;
 
   // 3. Return true.
   return true;
 }
 
 // ECMA262 6.2.4.2
-export function IsDataDescriptor(realm: Realm, Desc: ?Descriptor): boolean {
+function IsDataDescriptorInternal(realm: Realm, Desc: ?Descriptor): boolean {
   // If Desc is undefined, return false.
   if (!Desc) return false;
 
   // If both Desc.[[Value]] and Desc.[[Writable]] are absent, return false.
-  if (!("value" in Desc) && !("writable" in Desc)) return false;
+  Desc = Desc.throwIfNotConcrete(realm);
+  if (Desc.value === undefined && Desc.writable === undefined) return false;
 
   // Return true.
   return true;
+}
+
+// Flow wrappers that provide refinements using Predicate Functions.
+// These wrappers also assert that the type is PropertyDescriptor so that if this returns
+// true, then Flow can refine that the type of Desc as PropertyDescriptor.
+
+export function IsGenericDescriptor(realm: Realm, Desc: ?Descriptor): boolean %checks {
+  return IsGenericDescriptorInternal(realm, Desc) && Desc instanceof PropertyDescriptor;
+}
+
+export function IsAccessorDescriptor(realm: Realm, Desc: ?Descriptor): boolean %checks {
+  return IsAccessorDescriptorInternal(realm, Desc) && Desc instanceof PropertyDescriptor;
+}
+
+export function IsDataDescriptor(realm: Realm, Desc: ?Descriptor): boolean %checks {
+  return IsDataDescriptorInternal(realm, Desc) && Desc instanceof PropertyDescriptor;
 }
 
 // ECMA262 9.1.3.1
@@ -100,10 +120,22 @@ export function IsExtensible(realm: Realm, O: ObjectValue | AbstractObjectValue)
 }
 
 // ECMA262 7.2.3
-export function IsCallable(realm: Realm, func: Value): boolean {
+export function IsCallable(realm: Realm, _func: Value): boolean {
+  let func = _func;
   // 1. If Type(argument) is not Object, return false.
   if (!func.mightBeObject()) return false;
   if (HasCompatibleType(func, FunctionValue)) return true;
+  if (func.isSimpleObject()) return false;
+
+  if (func instanceof AbstractObjectValue && !func.values.isTop()) {
+    let result;
+    for (let element of func.values.getElements()) {
+      let isCallable = IsCallable(realm, element);
+      if (result === undefined) result = isCallable;
+      else if (result !== isCallable) func.throwIfNotConcreteObject();
+    }
+    if (result !== undefined) return result;
+  }
 
   // 2. If argument has a [[Call]] internal method, return true.
   func = func.throwIfNotConcreteObject();
@@ -114,7 +146,8 @@ export function IsCallable(realm: Realm, func: Value): boolean {
 }
 
 // ECMA262 7.2.4
-export function IsConstructor(realm: Realm, argument: Value): boolean {
+export function IsConstructor(realm: Realm, _argument: Value): boolean {
+  let argument = _argument;
   // 1. If Type(argument) is not Object, return false.
   if (!argument.mightBeObject()) return false;
 
@@ -184,18 +217,19 @@ export function IsArray(realm: Realm, argument: Value): boolean {
   }
 
   // 4. Return false.
-  argument.throwIfNotConcrete();
+  if (argument instanceof AbstractValue && !argument.isSimpleObject()) argument.throwIfNotConcrete();
   return false;
 }
 
 // ECMA262 14.6.1
 export function IsInTailPosition(realm: Realm, node: BabelNodeCallExpression): boolean {
-  // TODO: implement tail calls
+  // TODO #1008: implement tail calls
   return false;
 }
 
 // ECMA262 7.2.8
-export function IsRegExp(realm: Realm, argument: Value): boolean {
+export function IsRegExp(realm: Realm, _argument: Value): boolean {
+  let argument = _argument;
   // 1. If Type(argument) is not Object, return false.
   if (!argument.mightBeObject()) return false;
   argument = argument.throwIfNotObject();
@@ -204,10 +238,10 @@ export function IsRegExp(realm: Realm, argument: Value): boolean {
   let isRegExp = Get(realm, argument, realm.intrinsics.SymbolMatch);
 
   // 3. If isRegExp is not undefined, return ToBoolean(isRegExp).
-  if (isRegExp !== undefined) return ToBooleanPartial(realm, isRegExp) === true;
+  if (isRegExp !== undefined) return To.ToBooleanPartial(realm, isRegExp) === true;
 
   // 4. If argument has a [[RegExpMatcher]] internal slot, return true.
-  if (argument.$RegExpMatcher) return true;
+  if (argument.$RegExpMatcher !== undefined) return true;
 
   // 5. Return false.
   return false;
@@ -221,9 +255,7 @@ export function IsIdentifierRef(realm: Realm, node: BabelNodeLVal): boolean {
     case "Identifier":
       return true;
     // ECMA262 12.3.1.4 Static Semantics: IsIdentifierRef
-    case "CallExpression":
     case "MemberExpression":
-    case "NewExpression":
       return false;
     default:
       throw Error("Unexpected AST form : " + node.type);
@@ -247,7 +279,6 @@ export function IsFunctionDefinition(realm: Realm, node: BabelNodeExpression): b
     case "RegExpLiteral":
     case "ArrayExpression":
     case "ObjectExpression":
-    case "RegularExpressionLiteral":
     case "TemplateLiteral":
     case "ConditionalExpression":
       return false;
@@ -314,18 +345,19 @@ export function IsArrayIndex(realm: Realm, P: PropertyKeyValue): boolean {
     return false;
   }
 
-  let i = ToUint32(realm, new StringValue(realm, key));
-  return i !== Math.pow(2, 32) - 1 && ToString(realm, new NumberValue(realm, i)) === key;
+  let i = To.ToUint32(realm, new StringValue(realm, key));
+  return i !== Math.pow(2, 32) - 1 && To.ToString(realm, new NumberValue(realm, i)) === key;
 }
 
 // ECMA262 25.4.1.6
-export function IsPromise(realm: Realm, x: Value): boolean {
+export function IsPromise(realm: Realm, _x: Value): boolean {
+  let x = _x;
   // 1. If Type(x) is not Object, return false.
   if (!x.mightBeObject()) return false;
 
   // 2. If x does not have a [[PromiseState]] internal slot, return false.
   x = x.throwIfNotConcreteObject();
-  if (!x.$PromiseState) return false;
+  if (x.$PromiseState === undefined) return false;
 
   // 3. Return true.
   return true;
@@ -343,7 +375,8 @@ export function IsDetachedBuffer(realm: Realm, arrayBuffer: ObjectValue): boolea
   return false;
 }
 
-export function IsIntrospectionError(realm: Realm, value: Value): boolean {
+export function IsIntrospectionError(realm: Realm, _value: Value): boolean {
+  let value = _value;
   if (!value.mightBeObject()) return false;
   value = value.throwIfNotConcreteObject();
   return value.$GetPrototypeOf() === realm.intrinsics.__IntrospectionErrorPrototype;

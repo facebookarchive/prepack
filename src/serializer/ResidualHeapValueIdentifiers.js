@@ -7,40 +7,60 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { Value } from "../values/index.js";
-import type { BabelNodeIdentifier } from "babel-types";
+import type { BabelNodeIdentifier } from "@babel/types";
 import invariant from "../invariant.js";
+import type { PreludeGenerator } from "../utils/PreludeGenerator.js";
+import type { NameGenerator } from "../utils/NameGenerator.js";
+import * as t from "@babel/types";
 
 // This class maintains a map of values to babel identifiers.
 // This class can optionally track how often such value identifiers are referenced
 // when pass 1 is activated, which is usually followed by pass 2 in which
 // unneeded identifiers (those which were only ever referenced once) are
-// eliminated as  the defining expression can be inlined.
+// eliminated as the defining expression can be inlined.
 export class ResidualHeapValueIdentifiers {
-  constructor() {
+  constructor(values: Iterator<Value>, preludeGenerator: PreludeGenerator) {
     this.collectValToRefCountOnly = false;
-    this.refs = new Map();
+    this._valueNameGenerator = preludeGenerator.createNameGenerator("_");
+    this._populateIdentifierMap(values);
   }
 
-  initPass1() {
+  initPass1(): void {
     this.collectValToRefCountOnly = true;
     this.valToRefCount = new Map();
   }
 
-  initPass2() {
+  initPass2(): void {
     this.collectValToRefCountOnly = false;
-    this.refs = new Map();
   }
 
   collectValToRefCountOnly: boolean;
   valToRefCount: void | Map<Value, number>;
   refs: Map<Value, BabelNodeIdentifier>;
+  _valueNameGenerator: NameGenerator;
 
-  setIdentifier(val: Value, id: BabelNodeIdentifier) {
+  _populateIdentifierMap(values: Iterator<Value>): void {
+    this.refs = new Map();
+    for (const val of values) {
+      this._setIdentifier(val, this._createNewIdentifier(val));
+    }
+  }
+
+  _createNewIdentifier(val: Value): BabelNodeIdentifier {
+    const name = this._valueNameGenerator.generate(val.__originalName || "");
+    return t.identifier(name);
+  }
+
+  _setIdentifier(val: Value, id: BabelNodeIdentifier) {
     invariant(!this.refs.has(val));
     this.refs.set(val, id);
+  }
+
+  hasIdentifier(val: Value): boolean {
+    return this.refs.has(val);
   }
 
   getIdentifier(val: Value): BabelNodeIdentifier {
@@ -49,31 +69,24 @@ export class ResidualHeapValueIdentifiers {
     return id;
   }
 
-  deleteIdentifier(val: Value) {
+  deleteIdentifier(val: Value): void {
     invariant(this.refs.has(val));
     this.refs.delete(val);
   }
 
   getIdentifierAndIncrementReferenceCount(val: Value): BabelNodeIdentifier {
-    let id = this.getIdentifierAndIncrementReferenceCountOptional(val);
+    this.incrementReferenceCount(val);
+    let id = this.refs.get(val);
     invariant(id !== undefined, "Value Id cannot be null or undefined");
     return id;
   }
 
-  getIdentifierAndIncrementReferenceCountOptional(val: Value): void | BabelNodeIdentifier {
-    let id = this.refs.get(val);
-    if (id !== undefined) {
-      this.incrementReferenceCount(val);
-    }
-    return id;
-  }
-
-  incrementReferenceCount(val: Value) {
+  incrementReferenceCount(val: Value): void {
     if (this.collectValToRefCountOnly) {
       let valToRefCount = this.valToRefCount;
       invariant(valToRefCount !== undefined);
       let refCount = valToRefCount.get(val);
-      if (refCount) {
+      if (refCount !== undefined) {
         refCount++;
       } else {
         refCount = 1;
@@ -82,7 +95,7 @@ export class ResidualHeapValueIdentifiers {
     }
   }
 
-  needsIdentifier(val: Value) {
+  needsIdentifier(val: Value): boolean {
     if (this.collectValToRefCountOnly || this.valToRefCount === undefined) return true;
     let refCount = this.valToRefCount.get(val);
     invariant(refCount !== undefined && refCount > 0);

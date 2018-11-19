@@ -7,24 +7,23 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, BooleanValue } from "../../values/index.js";
-import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
-import { ToBooleanPartial } from "../../methods/to.js";
+import { Create, To } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 19.3.1.1
   let func = new NativeFunctionValue(realm, "Boolean", "Boolean", 1, (context, [value], argCount, NewTarget) => {
     // 1. Let b be ToBoolean(value).
-    let b = new BooleanValue(realm, ToBooleanPartial(realm, value));
+    let b = new BooleanValue(realm, To.ToBooleanPartial(realm, value));
 
     // 2. If NewTarget is undefined, return b.
     if (!NewTarget) return b;
 
     // 3. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%BooleanPrototype%", « [[BooleanData]] »).
-    let O = OrdinaryCreateFromConstructor(realm, NewTarget, "BooleanPrototype", { $BooleanData: undefined });
+    let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "BooleanPrototype", { $BooleanData: undefined });
 
     // 4. Set the value of O's [[BooleanData]] internal slot to b.
     O.$BooleanData = b;

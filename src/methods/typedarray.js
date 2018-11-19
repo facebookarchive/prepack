@@ -14,18 +14,19 @@ import type { TypedArrayKind } from "../types.js";
 import { FatalError } from "../errors.js";
 import {
   AbstractValue,
+  AbstractObjectValue,
   IntegerIndexedExotic,
   ObjectValue,
   Value,
   NumberValue,
   UndefinedValue,
 } from "../values/index.js";
-import { GetPrototypeFromConstructor } from "../methods/get.js";
-import { AllocateArrayBuffer } from "../methods/arraybuffer.js";
-import { IsDetachedBuffer, IsInteger } from "../methods/is.js";
-import { GetValueFromBuffer, SetValueInBuffer } from "../methods/arraybuffer.js";
-import { Construct, SpeciesConstructor } from "../methods/construct.js";
-import { ToNumber } from "../methods/to.js";
+import { GetPrototypeFromConstructor } from "./get.js";
+import { AllocateArrayBuffer } from "./arraybuffer.js";
+import { IsDetachedBuffer, IsInteger } from "./is.js";
+import { GetValueFromBuffer, SetValueInBuffer } from "./arraybuffer.js";
+import { Construct, SpeciesConstructor } from "./construct.js";
+import { To } from "../singletons.js";
 import invariant from "../invariant.js";
 
 export const ArrayElementSize = {
@@ -55,7 +56,7 @@ export const ArrayElementType = {
 // ECMA262 9.4.5.7
 export function IntegerIndexedObjectCreate(
   realm: Realm,
-  prototype: ObjectValue,
+  prototype: ObjectValue | AbstractObjectValue,
   internalSlotsList: { [key: string]: void }
 ): ObjectValue {
   // 1. Assert: internalSlotsList contains the names [[ViewedArrayBuffer]], [[ArrayLength]], [[ByteOffset]], and [[TypedArrayName]].
@@ -159,7 +160,7 @@ export function IntegerIndexedElementSet(realm: Realm, O: ObjectValue, index: nu
   );
 
   // 3. Let numValue be ? ToNumber(value).
-  let numValue = ToNumber(realm, value);
+  let numValue = To.ToNumber(realm, value);
 
   // 4. Let buffer be O.[[ViewedArrayBuffer]].
   let buffer = O.$ViewedArrayBuffer;
@@ -208,7 +209,7 @@ export function IntegerIndexedElementSet(realm: Realm, O: ObjectValue, index: nu
 }
 
 // ECMA262 22.2.3.5.1
-export function ValidateTypedArray(realm: Realm, O: Value) {
+export function ValidateTypedArray(realm: Realm, O: Value): ObjectValue {
   O = O.throwIfNotConcrete();
 
   // 1. If Type(O) is not Object, throw a TypeError exception.
@@ -331,7 +332,7 @@ export function AllocateTypedArrayBuffer(realm: Realm, O: ObjectValue, length: n
 // ECMA262 22.2.4.6
 export function TypedArrayCreate(realm: Realm, constructor: ObjectValue, argumentList: Array<Value>): ObjectValue {
   // 1. Let newTypedArray be ? Construct(constructor, argumentList).
-  let newTypedArray = Construct(realm, constructor, argumentList);
+  let newTypedArray = Construct(realm, constructor, argumentList).throwIfNotConcreteObject();
 
   // 2. Perform ? ValidateTypedArray(newTypedArray).
   ValidateTypedArray(realm, newTypedArray);

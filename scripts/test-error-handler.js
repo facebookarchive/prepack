@@ -54,7 +54,7 @@ function runTest(name: string, code: string): boolean {
   console.log(chalk.inverse(name));
 
   let recover = code.includes("// recover-from-errors");
-  let additionalFunctions = code.includes("// additional functions");
+  let compatibility = code.includes("// jsc") ? "jsc-600-1-4-17" : undefined;
 
   let expectedErrors = code.match(/\/\/\s*expected errors:\s*(.*)/);
   invariant(expectedErrors);
@@ -70,21 +70,24 @@ function runTest(name: string, code: string): boolean {
       mathRandomSeed: "0",
       errorHandler: errorHandler.bind(null, recover ? "Recover" : "Fail", errors),
       serialize: true,
-      initializeMoreModules: true,
+      instantRender: false,
+      compatibility,
     };
-    if (additionalFunctions) (options: any).additionalFunctions = ["global.additional1", "global['additional2']"];
+
+    if (code.includes("// instant render")) options.instantRender = true;
     prepackFileSync([name], options);
     if (!recover) {
-      console.log(chalk.red("Serialization succeeded though it should have failed"));
+      console.error(chalk.red("Serialization succeeded though it should have failed"));
       return false;
     }
   } catch (e) {
     if (!(e instanceof FatalError)) {
-      console.log(chalk.red(`Unexpected error: ${e.message}`));
+      console.error(chalk.red(`Unexpected error: ${e.message}`));
+      return false;
     }
   }
   if (errors.length !== expectedErrors.length) {
-    console.log(chalk.red(`Expected ${expectedErrors.length} errors, but found ${errors.length}`));
+    console.error(chalk.red(`Expected ${expectedErrors.length} errors, but found ${errors.length}`));
     return false;
   }
 
@@ -98,7 +101,7 @@ function runTest(name: string, code: string): boolean {
         expected = JSON.stringify(expected);
       }
       if (expected !== actual) {
-        console.log(chalk.red(`Error ${i + 1}: Expected ${expected} errors, but found ${actual}`));
+        console.error(chalk.red(`Error ${i + 1}: Expected ${expected} errors, but found ${actual}`));
         return false;
       }
     }
@@ -122,7 +125,7 @@ function run() {
     else failed++;
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
   return failed === 0;
 }
 

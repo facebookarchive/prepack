@@ -10,13 +10,24 @@
 /* @flow */
 
 import type { Realm } from "../../realm.js";
-import { NumberValue, StringValue, ObjectValue, UndefinedValue, NullValue, Value } from "../../values/index.js";
+import {
+  AbstractValue,
+  ArrayValue,
+  BooleanValue,
+  BoundFunctionValue,
+  ConcreteValue,
+  ECMAScriptSourceFunctionValue,
+  NativeFunctionValue,
+  NullValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  UndefinedValue,
+  Value,
+} from "../../values/index.js";
 import invariant from "../../invariant.js";
-import { ObjectCreate, CreateDataProperty } from "../../methods/create.js";
 import { SameValueZeroPartial, AbstractRelationalComparison } from "../../methods/abstract.js";
 import {
-  ToLength,
-  ToObject,
   StrictEqualityComparisonPartial,
   IsCallable,
   IsConcatSpreadable,
@@ -25,20 +36,11 @@ import {
   HasProperty,
   Call,
   Invoke,
-  CreateDataPropertyOrThrow,
-  CreateArrayIterator,
-  ArraySpeciesCreate,
-  ToString,
-  ToStringPartial,
-  ToInteger,
-  ToNumber,
-  ToBooleanPartial,
   Get,
-  DeletePropertyOrThrow,
-  Set,
   HasSomeCompatibleType,
-  ThrowIfMightHaveBeenDeleted,
 } from "../../methods/index.js";
+import { Create, Join, Properties, To } from "../../singletons.js";
+import { createOperationDescriptor } from "../../utils/generator.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.31
@@ -50,10 +52,23 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.1
   obj.defineNativeMethod("concat", 1, (context, args, argCount) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("concat") === undefined
+    ) {
+      let newArgs = [O, new StringValue(realm, "concat"), ...args];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        newArgs,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let A be ? ArraySpeciesCreate(O, 0).
-    let A = ArraySpeciesCreate(realm, O, 0);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
 
     // 3. Let n be 0.
     let n = 0;
@@ -65,19 +80,20 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 5. Repeat, while items is not empty
     while (items.length) {
       // a. Remove the first element from items and let E be the value of the element.
-      let E = items.shift().throwIfNotConcrete();
+      let E = items.shift();
 
       // b. Let spreadable be ? IsConcatSpreadable(E).
       let spreadable = IsConcatSpreadable(realm, E);
 
       // c. If spreadable is true, then
       if (spreadable) {
-        invariant(E instanceof ObjectValue);
+        E = E.throwIfNotConcreteObject();
+
         // i. Let k be 0.
         let k = 0;
 
         // ii. Let len be ? ToLength(? Get(E, "length")).
-        let len = ToLength(realm, Get(realm, E, "length"));
+        let len = To.ToLength(realm, Get(realm, E, "length"));
 
         // ii. If n + len > 2^53-1, throw a TypeError exception.
         if (n + len > Math.pow(2, 53) - 1) {
@@ -98,7 +114,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
             let subElement = Get(realm, E, P);
 
             // b. Perform ? CreateDataPropertyOrThrow(A, ! ToString(n), subElement).
-            CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), subElement);
+            Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), subElement);
           }
 
           // 4. Increase n by 1.
@@ -115,7 +131,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         }
 
         // ii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(n), E).
-        CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), E);
+        Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), E);
 
         // iii. Increase n by 1.
         n++;
@@ -123,35 +139,59 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 6. Perform ? Set(A, "length", n, true).
-    Set(realm, A, "length", new NumberValue(realm, n), true);
+    Properties.Set(realm, A, "length", new NumberValue(realm, n), true);
 
     // 7. Return A.
     return A;
   });
 
   // ECMA262 22.1.3.3
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("copyWithin", 2, (context, [target, start, end]) => {
       // 1. Let O be ? ToObject(this value).
-      let O = ToObject(realm, context.throwIfNotConcrete());
+      let O = To.ToObject(realm, context);
+
+      // If we have an object that is an array with widened numeric properties, then
+      // we can return a temporal here as we know nothing of the array's properties.
+      // This should be safe to do, as we never expose the internals of the array.
+      if (
+        ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+        realm.isInPureScope() &&
+        O.$GetOwnProperty("copyWithin") === undefined
+      ) {
+        let args = [O, new StringValue(realm, "copyWithin"), target];
+        if (start) {
+          args.push(start);
+        }
+        if (end) {
+          args.push(end);
+        }
+        AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          BooleanValue,
+          args,
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+        );
+        return O;
+      }
 
       // 2. Let len be ? ToLength(? Get(O, "length")).
-      let len = ToLength(realm, Get(realm, O, "length"));
+      let len = To.ToLength(realm, Get(realm, O, "length"));
 
       // 3. Let relativeTarget be ? ToInteger(target).
-      let relativeTarget = ToInteger(realm, target);
+      let relativeTarget = To.ToInteger(realm, target);
 
       // 4. If relativeTarget < 0, let to be max((len + relativeTarget), 0); else let to be min(relativeTarget, len).
       let to = relativeTarget < 0 ? Math.max(len + relativeTarget, 0) : Math.min(relativeTarget, len);
 
       // 5. Let relativeStart be ? ToInteger(start).
-      let relativeStart = ToInteger(realm, start);
+      let relativeStart = To.ToInteger(realm, start);
 
       // 6. If relativeStart < 0, let from be max((len + relativeStart), 0); else let from be min(relativeStart, len).
       let from = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
       // 7. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-      let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+      let relativeEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
       // 8. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
       let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -179,10 +219,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // 12. Repeat, while count > 0
       while (count > 0) {
         // a. Let fromKey be ! ToString(from).
-        let fromKey = ToString(realm, new NumberValue(realm, from));
+        let fromKey = To.ToString(realm, new NumberValue(realm, from));
 
         // b. Let toKey be ! ToString(to).
-        let toKey = ToString(realm, new NumberValue(realm, to));
+        let toKey = To.ToString(realm, new NumberValue(realm, to));
 
         // c. Let fromPresent be ? HasProperty(O, fromKey).
         let fromPresent = HasProperty(realm, O, fromKey);
@@ -192,11 +232,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           // i. Let fromVal be ? Get(O, fromKey).
           let fromVal = Get(realm, O, fromKey);
           // ii. Perform ? Set(O, toKey, fromVal, true).
-          Set(realm, O, toKey, fromVal, true);
+          Properties.Set(realm, O, toKey, fromVal, true);
         } else {
           // e. Else fromPresent is false,
           // i. Perform ? DeletePropertyOrThrow(O, toKey).
-          DeletePropertyOrThrow(realm, O, toKey);
+          Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), toKey);
         }
 
         // f. Let from be from + direction.
@@ -216,19 +256,55 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.4
   obj.defineNativeMethod("entries", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("entries") === undefined
+    ) {
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O, new StringValue(realm, "entries")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Return CreateArrayIterator(O, "key+value").
-    return CreateArrayIterator(realm, O, "key+value");
+    return Create.CreateArrayIterator(realm, O.throwIfNotConcreteObject(), "key+value");
   });
 
   // ECMA262 22.1.3.5
   obj.defineNativeMethod("every", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("every") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "every"), callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -255,7 +331,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let testResult be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
-        let testResult = ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
+        let testResult = To.ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
 
         // iii. If testResult is false, return false.
         if (!testResult) return realm.intrinsics.false;
@@ -272,19 +348,43 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.6
   obj.defineNativeMethod("fill", 1, (context, [value, start, end]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("fill") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "fill"), value];
+      if (start) {
+        args.push(start);
+      }
+      if (end) {
+        args.push(end);
+      }
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+      return O;
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. Let relativeStart be ? ToInteger(start).
-    let relativeStart = ToInteger(realm, start || realm.intrinsics.undefined);
+    let relativeStart = To.ToInteger(realm, start || realm.intrinsics.undefined);
 
     // 4. If relativeStart < 0, let k be max((len + relativeStart), 0); else let k be min(relativeStart, len).
     let k = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 5. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 6. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -295,7 +395,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let Pk = new StringValue(realm, k + "");
 
       // b. Perform ? Set(O, Pk, value, true).
-      Set(realm, O, Pk, value, true);
+      Properties.Set(realm, O, Pk, value, true);
 
       // c. Increase k by 1.
       k++;
@@ -308,10 +408,41 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.7
   obj.defineNativeMethod("filter", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("filter") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "filter"), callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      let possibleNestedOptimizedFunctions;
+
+      // If callbackfn is a native function, it cannot be optimized, and cannot alias locations
+      // other than ones accesible via global, which leaked value analysis disregards.
+      if (!(callbackfn instanceof NativeFunctionValue)) {
+        invariant(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue);
+        possibleNestedOptimizedFunctions = [
+          {
+            func: callbackfn,
+            thisValue: thisArg || realm.intrinsics.undefined,
+            kind: "filter",
+          },
+        ];
+      }
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"),
+        possibleNestedOptimizedFunctions
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -322,7 +453,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let T = thisArg || realm.intrinsics.undefined;
 
     // 5. Let A be ? ArraySpeciesCreate(O, 0).
-    let A = ArraySpeciesCreate(realm, O, 0);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
 
     // 6. Let k be 0.
     let k = 0;
@@ -344,12 +475,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let selected be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
-        let selected = ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
+        let selected = To.ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
 
         // iii. If selected is true, then
         if (selected) {
           // 1. Perform ? CreateDataPropertyOrThrow(A, ! ToString(to), kValue).
-          CreateDataPropertyOrThrow(realm, A, ToString(realm, new NumberValue(realm, to)), kValue);
+          Create.CreateDataPropertyOrThrow(realm, A, To.ToString(realm, new NumberValue(realm, to)), kValue);
 
           // 2. Increase to by 1.
           to++;
@@ -367,10 +498,30 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.8
   obj.defineNativeMethod("find", 1, (context, [predicate, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("find") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "find"), predicate];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If IsCallable(predicate) is false, throw a TypeError exception.
     if (!IsCallable(realm, predicate)) {
@@ -392,7 +543,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let kValue = Get(realm, O, Pk);
 
       // c. Let testResult be ToBoolean(? Call(predicate, T, « kValue, k, O »)).
-      let testResult = ToBooleanPartial(realm, Call(realm, predicate, T, [kValue, new NumberValue(realm, k), O]));
+      let testResult = To.ToBooleanPartial(realm, Call(realm, predicate, T, [kValue, new NumberValue(realm, k), O]));
 
       // d. If testResult is true, return kValue.
       if (testResult) return kValue;
@@ -408,10 +559,30 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.9
   obj.defineNativeMethod("findIndex", 1, (context, [predicate, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("findIndex") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "findIndex"), predicate];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If IsCallable(predicate) is false, throw a TypeError exception.
     if (IsCallable(realm, predicate) === false) {
@@ -427,13 +598,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 6. Repeat, while k < len
     while (k < len) {
       // a. Let Pk be ! ToString(k).
-      let Pk = ToString(realm, new NumberValue(realm, k));
+      let Pk = To.ToString(realm, new NumberValue(realm, k));
 
       // b. Let kValue be ? Get(O, Pk).
       let kValue = Get(realm, O, new StringValue(realm, Pk));
 
       // c. Let testResult be ToBoolean(? Call(predicate, T, « kValue, k, O »)).
-      let testResult = ToBooleanPartial(realm, Call(realm, predicate, T, [kValue, new NumberValue(realm, k), O]));
+      let testResult = To.ToBooleanPartial(realm, Call(realm, predicate, T, [kValue, new NumberValue(realm, k), O]));
 
       // d. If testResult is true, return k.
       if (testResult === true) return new NumberValue(realm, k);
@@ -449,10 +620,31 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.10
   obj.defineNativeMethod("forEach", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("forEach") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "forEach"), callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+      return realm.intrinsics.undefined;
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -467,7 +659,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 6. Repeat, while k < len
     while (k < len) {
-      // a. Let Pk be ! ToString(k).
+      // a. Let Pk be ! To.ToString(k).
       let Pk = new StringValue(realm, k + "");
 
       // b. Let kPresent be ? HasProperty(O, Pk).
@@ -491,19 +683,39 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.1.3.11
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     obj.defineNativeMethod("includes", 1, (context, [searchElement, fromIndex]) => {
       // 1. Let O be ? ToObject(this value).
-      let O = ToObject(realm, context.throwIfNotConcrete());
+      let O = To.ToObject(realm, context);
+
+      // If we have an object that is an array with widened numeric properties, then
+      // we can return a temporal here as we know nothing of the array's properties.
+      // This should be safe to do, as we never expose the internals of the array.
+      if (
+        ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+        realm.isInPureScope() &&
+        O.$GetOwnProperty("includes") === undefined
+      ) {
+        let args = [O, new StringValue(realm, "includes"), searchElement];
+        if (fromIndex) {
+          args.push(fromIndex);
+        }
+        return AbstractValue.createTemporalFromBuildFunction(
+          realm,
+          BooleanValue,
+          args,
+          createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+        );
+      }
 
       // 2. Let len be ? ToLength(? Get(O, "length")).
-      let len = ToLength(realm, Get(realm, O, "length"));
+      let len = To.ToLength(realm, Get(realm, O, "length"));
 
       // 3. If len is 0, return false.
       if (len === 0) return realm.intrinsics.false;
 
       // 4. Let n be ? ToInteger(fromIndex). (If fromIndex is undefined, this step produces the value 0.)
-      let n = ToInteger(realm, fromIndex || realm.intrinsics.undefined);
+      let n = To.ToInteger(realm, fromIndex || realm.intrinsics.undefined);
 
       let k;
       // 5. If n ≥ 0, then
@@ -521,7 +733,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // 7. Repeat, while k < len
       while (k < len) {
         // a. Let elementK be the result of ? Get(O, ! ToString(k)).
-        let elementK = Get(realm, O, ToString(realm, new NumberValue(realm, k)));
+        let elementK = Get(realm, O, To.ToString(realm, new NumberValue(realm, k)));
 
         // b. If SameValueZero(searchElement, elementK) is true, return true.
         if (SameValueZeroPartial(realm, searchElement, elementK) === true) return realm.intrinsics.true;
@@ -537,16 +749,36 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.12
   obj.defineNativeMethod("indexOf", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("indexOf") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "indexOf"), searchElement];
+      if (fromIndex) {
+        args.push(fromIndex);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If len is 0, return -1.
     if (len === 0) return new NumberValue(realm, -1);
 
     // 4. Let n be ? ToInteger(fromIndex). (If fromIndex is undefined, this step produces the value 0.)
-    let n = fromIndex ? ToInteger(realm, fromIndex) : 0;
+    let n = fromIndex ? To.ToInteger(realm, fromIndex) : 0;
 
     // 5. If n ≥ len, return -1.
     if (n >= len) return new NumberValue(realm, -1);
@@ -593,16 +825,36 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.13
   obj.defineNativeMethod("join", 1, (context, [separator]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("join") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "join")];
+      if (separator) {
+        args.push(separator);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        StringValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If separator is undefined, let separator be the single-element String ",".
     if (!separator || separator instanceof UndefinedValue) separator = new StringValue(realm, ",");
 
     // 4. Let sep be ? ToString(separator).
-    let sep = ToStringPartial(realm, separator);
+    let sep = To.ToStringPartial(realm, separator);
 
     // 5. If len is zero, return the empty String.
     if (len === 0) return realm.intrinsics.emptyString;
@@ -615,7 +867,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (HasSomeCompatibleType(element0, UndefinedValue, NullValue)) {
       R = "";
     } else {
-      R = ToStringPartial(realm, element0);
+      R = To.ToStringPartial(realm, element0);
     }
 
     // 8. Let k be 1.
@@ -626,7 +878,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // a. Let S be the String value produced by concatenating R and sep.
       let S: string = R + sep;
 
-      // b. Let element be ? Get(O, ! ToString(k)).
+      // b. Let element be ? Get(O, ! To.ToString(k)).
       let element = Get(realm, O, new StringValue(realm, k + ""));
 
       // c. If element is undefined or null, let next be the empty String; otherwise, let next be ? ToString(element).
@@ -634,7 +886,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (HasSomeCompatibleType(element, UndefinedValue, NullValue)) {
         next = "";
       } else {
-        next = ToStringPartial(realm, element);
+        next = To.ToStringPartial(realm, element);
       }
 
       // d. Let R be a String value produced by concatenating S and next.
@@ -651,25 +903,61 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.14
   obj.defineNativeMethod("keys", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("keys") === undefined
+    ) {
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O, new StringValue(realm, "keys")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Return CreateArrayIterator(O, "key").
-    return CreateArrayIterator(realm, O, "key");
+    return Create.CreateArrayIterator(realm, O.throwIfNotConcreteObject(), "key");
   });
 
   // ECMA262 22.1.3.15
   obj.defineNativeMethod("lastIndexOf", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("lastIndexOf") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "lastIndexOf"), searchElement];
+      if (fromIndex) {
+        args.push(fromIndex);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If len is 0, return -1.
     if (len === 0) return new NumberValue(realm, -1);
 
     // 4. If argument fromIndex was passed, let n be ? ToInteger(fromIndex); else let n be len-1.
-    let n = fromIndex ? ToInteger(realm, fromIndex) : len - 1;
+    let n = fromIndex ? To.ToInteger(realm, fromIndex) : len - 1;
 
     // 5. If n ≥ 0, then
     let k;
@@ -710,65 +998,125 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.16
   obj.defineNativeMethod("map", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("map") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "map"), callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      invariant(callbackfn instanceof ECMAScriptSourceFunctionValue || callbackfn instanceof BoundFunctionValue);
+      let possibleNestedOptimizedFunctions = [
+        { func: callbackfn, thisValue: thisArg || realm.intrinsics.undefined, kind: "map" },
+      ];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL"),
+        possibleNestedOptimizedFunctions
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
-
-    // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
-    if (!IsCallable(realm, callbackfn)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
+    let lenVal = Get(realm, O, "length");
+    if (lenVal instanceof AbstractValue && !lenVal.mightNotBeNumber() && !lenVal.values.isTop()) {
+      let values = lenVal.values.getElements();
+      let n = values.size;
+      if (n > 1 && n < 10) {
+        let a = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), 0);
+        return Join.mapAndJoin(
+          realm,
+          values,
+          v => AbstractValue.createFromBinaryOp(realm, "===", v, lenVal, lenVal.expressionLocation),
+          v => doMap(v, a)
+        );
+      }
     }
+    return doMap(lenVal.throwIfNotConcrete());
 
-    // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
-    let T = thisArg || realm.intrinsics.undefined;
+    function doMap(val: ConcreteValue, resultArray?: ObjectValue) {
+      let len = To.ToLength(realm, val);
 
-    // 5. Let A be ? ArraySpeciesCreate(O, len).
-    let A = ArraySpeciesCreate(realm, O, len);
-
-    // 6. Let k be 0.
-    let k = 0;
-
-    // 7. Repeat, while k < len
-    while (k < len) {
-      // a. Let Pk be ! ToString(k).
-      let Pk = new StringValue(realm, k + "");
-
-      // b. Let kPresent be ? HasProperty(O, Pk).
-      let kPresent = HasProperty(realm, O, Pk);
-
-      // c. If kPresent is true, then
-      if (kPresent) {
-        // i. Let kValue be ? Get(O, Pk).
-        let kValue = Get(realm, O, Pk);
-
-        // ii. Let mappedValue be ? Call(callbackfn, T, « kValue, k, O »).
-        let mappedValue = Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]);
-
-        // iii. Perform ? CreateDataPropertyOrThrow(A, Pk, mappedValue).
-        CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
+      // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
+      if (!IsCallable(realm, callbackfn)) {
+        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "not a function");
       }
 
-      // d. Increase k by 1.
-      k++;
-    }
+      // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
+      let T = thisArg || realm.intrinsics.undefined;
 
-    // 8. Return A.
-    return A;
+      // 5. Let A be ? ArraySpeciesCreate(O, len).
+      let A;
+      if (resultArray === undefined) A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), len);
+      else {
+        A = resultArray;
+        Properties.Set(realm, A, "length", val, true);
+      }
+
+      // 6. Let k be 0.
+      let k = 0;
+
+      // 7. Repeat, while k < len
+      while (k < len) {
+        // a. Let Pk be ! To.ToString(k).
+        let Pk = new StringValue(realm, k + "");
+
+        // b. Let kPresent be ? HasProperty(O, Pk).
+        let kPresent = HasProperty(realm, O, Pk);
+
+        // c. If kPresent is true, then
+        if (kPresent) {
+          // i. Let kValue be ? Get(O, Pk).
+          let kValue = Get(realm, O, Pk);
+
+          // ii. Let mappedValue be ? Call(callbackfn, T, « kValue, k, O »).
+          let mappedValue = Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]);
+
+          // iii. Perform ? CreateDataPropertyOrThrow(A, Pk, mappedValue).
+          Create.CreateDataPropertyOrThrow(realm, A, Pk, mappedValue);
+        }
+
+        // d. Increase k by 1.
+        k++;
+      }
+
+      // 8. Return A.
+      return A;
+    }
   });
 
   // ECMA262 22.1.3.17
   obj.defineNativeMethod("pop", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("pop") === undefined
+    ) {
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O, new StringValue(realm, "pop")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If len is zero, then
     if (len === 0) {
       // a. Perform ? Set(O, "length", 0, true).
-      Set(realm, O, "length", realm.intrinsics.zero, true);
+      Properties.Set(realm, O, "length", realm.intrinsics.zero, true);
 
       // b. Return undefined.
       return realm.intrinsics.undefined;
@@ -784,10 +1132,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let element = Get(realm, O, indx);
 
       // d. Perform ? DeletePropertyOrThrow(O, indx).
-      DeletePropertyOrThrow(realm, O, indx);
+      Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), indx);
 
       // e. Perform ? Set(O, "length", newLen, true).
-      Set(realm, O, "length", new NumberValue(realm, newLen), true);
+      Properties.Set(realm, O, "length", new NumberValue(realm, newLen), true);
 
       // f. Return element.
       return element;
@@ -797,10 +1145,26 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.18
   obj.defineNativeMethod("push", 1, (context, args, argCount) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("push") === undefined
+    ) {
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        [O, new StringValue(realm, "push"), ...args],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, new StringValue(realm, "length")));
+    let len = To.ToLength(realm, Get(realm, O, new StringValue(realm, "length")));
 
     // 3. Let items be a List whose elements are, in left to right order, the arguments that were passed to realm function invocation.
     let items = argCount > 0 ? args : [];
@@ -819,14 +1183,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let E = items.shift();
 
       // b. Perform ? Set(O, ! ToString(len), E, true).
-      Set(realm, O, new StringValue(realm, len + ""), E, true);
+      Properties.Set(realm, O, new StringValue(realm, len + ""), E, true);
 
       // c. Let len be len+1.
       len++;
     }
 
     // 7. Perform ? Set(O, "length", len, true).
-    Set(realm, O, new StringValue(realm, "length"), new NumberValue(realm, len), true);
+    Properties.Set(realm, O, new StringValue(realm, "length"), new NumberValue(realm, len), true);
 
     // 8. Return len.
     return new NumberValue(realm, len);
@@ -835,10 +1199,30 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.19
   obj.defineNativeMethod("reduce", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("reduce") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "reduce"), callbackfn];
+      if (initialValue) {
+        args.push(initialValue);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -922,10 +1306,30 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.20
   obj.defineNativeMethod("reduceRight", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("reduceRight") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "reduceRight"), callbackfn];
+      if (initialValue) {
+        args.push(initialValue);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -1007,10 +1411,27 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.21
   obj.defineNativeMethod("reverse", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("reverse") === undefined
+    ) {
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ArrayValue,
+        [O, new StringValue(realm, "reverse")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+      return O;
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. Let middle be floor(len/2).
     let middle = Math.floor(len / 2);
@@ -1055,28 +1476,28 @@ export default function(realm: Realm, obj: ObjectValue): void {
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
-        Set(realm, O, lowerP, upperValue, true);
+        Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
-        Set(realm, O, upperP, lowerValue, true);
+        Properties.Set(realm, O, upperP, lowerValue, true);
       } else if (!lowerExists && upperExists) {
         // i. Else if lowerExists is false and upperExists is true, then
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
-        Set(realm, O, lowerP, upperValue, true);
+        Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? DeletePropertyOrThrow(O, upperP).
-        DeletePropertyOrThrow(realm, O, upperP);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), upperP);
       } else if (lowerExists && !upperExists) {
         // j. Else if lowerExists is true and upperExists is false, then
         invariant(lowerValue, "expected lower value to exist");
 
         // i. Perform ? DeletePropertyOrThrow(O, lowerP).
-        DeletePropertyOrThrow(realm, O, lowerP);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), lowerP);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
-        Set(realm, O, upperP, lowerValue, true);
+        Properties.Set(realm, O, upperP, lowerValue, true);
       } else {
         // k. Else both lowerExists and upperExists are false,
         // i. No action is required.
@@ -1093,15 +1514,31 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.22
   obj.defineNativeMethod("shift", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("shift") === undefined
+    ) {
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        [O, new StringValue(realm, "shift")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If len is zero, then
     if (len === 0) {
       // a. Perform ? Set(O, "length", 0, true).
-      Set(realm, O, "length", realm.intrinsics.zero, true);
+      Properties.Set(realm, O, "length", realm.intrinsics.zero, true);
 
       // b. Return undefined.
       return realm.intrinsics.undefined;
@@ -1130,11 +1567,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let fromVal = Get(realm, O, frm);
 
         // ii. Perform ? Set(O, to, fromVal, true).
-        Set(realm, O, to, fromVal, true);
+        Properties.Set(realm, O, to, fromVal, true);
       } else {
         // d. Else fromPresent is false,
         // i. Perform ? DeletePropertyOrThrow(O, to).
-        DeletePropertyOrThrow(realm, O, to);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), to);
       }
 
       // e. Increase k by 1.
@@ -1142,10 +1579,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 7. Perform ? DeletePropertyOrThrow(O, ! ToString(len-1)).
-    DeletePropertyOrThrow(realm, O, new StringValue(realm, len - 1 + ""));
+    Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), new StringValue(realm, len - 1 + ""));
 
     // 8. Perform ? Set(O, "length", len-1, true).
-    Set(realm, O, "length", new NumberValue(realm, len - 1), true);
+    Properties.Set(realm, O, "length", new NumberValue(realm, len - 1), true);
 
     // 9. Return first.
     return first;
@@ -1154,19 +1591,32 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.23
   obj.defineNativeMethod("slice", 2, (context, [start, end]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("slice") === undefined
+    ) {
+      let newArgs = [O, new StringValue(realm, "slice"), start, end];
+      return ArrayValue.createTemporalWithWidenedNumericProperty(
+        realm,
+        newArgs,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. Let relativeStart be ? ToInteger(start).
-    let relativeStart = ToInteger(realm, start);
+    let relativeStart = To.ToInteger(realm, start);
 
     // 4. If relativeStart < 0, let k be max((len + relativeStart), 0); else let k be min(relativeStart, len).
     let k = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 5. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 6. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -1175,7 +1625,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let count = Math.max(final - k, 0);
 
     // 8. Let A be ? ArraySpeciesCreate(O, count).
-    let A = ArraySpeciesCreate(realm, O, count);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), count);
 
     // 9. Let n be 0.
     let n = 0;
@@ -1194,7 +1644,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(n), kValue).
-        CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), kValue);
+        Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, n + ""), kValue);
       }
 
       // d. Increase k by 1.
@@ -1205,7 +1655,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 11. Perform ? Set(A, "length", n, true).
-    Set(realm, A, "length", new NumberValue(realm, n), true);
+    Properties.Set(realm, A, "length", new NumberValue(realm, n), true);
 
     // 12. Return A.
     return A;
@@ -1214,10 +1664,30 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.24
   obj.defineNativeMethod("some", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("some") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "some"), callbackfn];
+      if (thisArg) {
+        args.push(thisArg);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        BooleanValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
     if (!IsCallable(realm, callbackfn)) {
@@ -1247,7 +1717,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let testResult be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
-        let testResult = ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
+        let testResult = To.ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
 
         // iii. If testResult is true, return true.
         if (testResult) return realm.intrinsics.true;
@@ -1264,10 +1734,30 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.25
   obj.defineNativeMethod("sort", 1, (context, [comparefn]) => {
     // 1. Let obj be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("sort") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "sort"), comparefn];
+      AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        Value,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+      // context is returned instead of O at the end of this method
+      // so we do the same here
+      return context;
+    }
 
     // 2. Let len be ? ToLength(? Get(obj, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // Within this specification of the sort method, an object, obj, is said to be sparse if the following algorithm returns true:
     let isSparse = () => {
@@ -1277,7 +1767,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let elem = O.$GetOwnProperty(i.toString());
         // b.If elem is undefined, return true.
         if (elem === undefined) return true;
-        ThrowIfMightHaveBeenDeleted(elem.value);
+        Properties.ThrowIfMightHaveBeenDeleted(elem);
       }
       // 2.Return false.
       return false;
@@ -1310,8 +1800,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
       for (let j = 0; j < len; j++) {
         // is a data property whose [[Configurable]] attribute is false.
         let prop = O.$GetOwnProperty(j.toString());
-        if (prop !== undefined && !prop.configurable) {
-          ThrowIfMightHaveBeenDeleted(prop.value);
+        if (prop !== undefined && !prop.throwIfNotConcrete(realm).configurable) {
+          Properties.ThrowIfMightHaveBeenDeleted(prop);
           throw Error(
             "Implementation defined behavior :  Array is sparse and it's prototype has some numbered properties"
           );
@@ -1319,22 +1809,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
       }
     }
 
-    // TODO exotic objects
-    // If obj is an exotic object (including Proxy exotic objects) whose behaviour for [[Get]], [[Set]], [[Delete]], and [[GetOwnProperty]]
-    // is not the ordinary object implementation of these internal methods.
-
     // Any integer index property of obj whose name is a nonnegative integer less than len
     for (let j = 0; j < len; j++) {
       //is a data property whose [[writable]] attribute is false.
       let prop = O.$GetOwnProperty(j.toString());
-      if (prop !== undefined && !prop.writable) {
-        ThrowIfMightHaveBeenDeleted(prop.value);
+      if (prop !== undefined && !prop.throwIfNotConcrete(realm).writable) {
+        Properties.ThrowIfMightHaveBeenDeleted(prop);
         throw Error("Implementation defined behavior : property " + j.toString() + "is non writable : ");
       }
     }
-
-    // TODO If comparefn is undefined and the application of ToString to any value passed as an argument to SortCompare modifies obj or any object on obj's prototype chain.
-    // TODO If comparefn is undefined and all applications of ToString, to any specific value passed as an argument to SortCompare, do not produce the same result.
 
     // The SortCompare abstract operation is called with two arguments x and y. It also has access to the comparefn
     // argument passed to the current invocation of the sort method. The following steps are taken:
@@ -1358,7 +1841,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // 4. If the argument comparefn is not undefined, then
       if (!comparefn.mightBeUndefined()) {
         // a. Let v be ? ToNumber(? Call(comparefn, undefined, « x, y »)).
-        let v = ToNumber(realm, Call(realm, comparefn, new UndefinedValue(realm), [x, y]));
+        let v = To.ToNumber(realm, Call(realm, comparefn, new UndefinedValue(realm), [x, y]));
         // b. If v is NaN, return +0.
         if (isNaN(v)) return new NumberValue(realm, +0);
         // c. Return v.
@@ -1367,15 +1850,15 @@ export default function(realm: Realm, obj: ObjectValue): void {
         comparefn.throwIfNotConcrete();
       }
       // 5. Let xString be ? ToString(x).
-      let xString = new StringValue(realm, ToString(realm, x));
+      let xString = new StringValue(realm, To.ToString(realm, x));
       // 6. Let yString be ? ToString(y).
-      let yString = new StringValue(realm, ToString(realm, y));
+      let yString = new StringValue(realm, To.ToString(realm, y));
       // 7. Let xSmaller be the result of performing Abstract Relational Comparison xString < yString.
-      let xSmaller = AbstractRelationalComparison(realm, xString, yString, true);
+      let xSmaller = AbstractRelationalComparison(realm, xString, yString, true, "<");
       // 8. If xSmaller is true, return -1.
       if (xSmaller.value) return new NumberValue(realm, -1);
       // 9. Let ySmaller be the result of performing Abstract Relational Comparison yString < xString.
-      let ySmaller = AbstractRelationalComparison(realm, yString, xString, true);
+      let ySmaller = AbstractRelationalComparison(realm, yString, xString, true, "<");
       // 10. If ySmaller is true, return 1.
       if (ySmaller.value) return new NumberValue(realm, 1);
       // 11. Return +0.
@@ -1396,7 +1879,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       invariant(y instanceof Value, "Unexpected type");
 
       let result_ = SortCompare(x, y);
-      let numb = ToNumber(realm, result_);
+      let numb = To.ToNumber(realm, result_);
       return numb;
     };
 
@@ -1425,7 +1908,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       } else {
         // If obj is not sparse then DeletePropertyOrThrow must not be called.
         invariant(sparse);
-        DeletePropertyOrThrow(realm, O, j.toString());
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), j.toString());
       }
     }
     // If an abrupt completion is returned from any of these operations, it is immediately returned as the value of this function.
@@ -1437,13 +1920,36 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.26
   obj.defineNativeMethod("splice", 2, (context, [start, deleteCount, ...items], argLength) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("splice") === undefined
+    ) {
+      let args = [O, new StringValue(realm, "splice"), start];
+      if (deleteCount) {
+        args.push(deleteCount);
+      }
+      if (items && items.length > 0) {
+        args.push(...items);
+      }
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        ArrayValue,
+        args,
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. Let relativeStart be ? ToInteger(start).
-    let relativeStart = ToInteger(realm, start);
+    let relativeStart = To.ToInteger(realm, start);
 
     // 4. If relativeStart < 0, let actualStart be max((len + relativeStart), 0); else let actualStart be min(relativeStart, len).
     let actualStart = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
@@ -1471,7 +1977,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       insertCount = argLength - 2;
 
       // b. Let dc be ? ToInteger(deleteCount).
-      let dc = ToInteger(realm, deleteCount);
+      let dc = To.ToInteger(realm, deleteCount);
 
       // c. Let actualDeleteCount be min(max(dc, 0), len - actualStart).
       actualDeleteCount = Math.min(Math.max(dc, 0), len - actualStart);
@@ -1483,7 +1989,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 9. Let A be ? ArraySpeciesCreate(O, actualDeleteCount).
-    let A = ArraySpeciesCreate(realm, O, actualDeleteCount);
+    let A = Create.ArraySpeciesCreate(realm, O.throwIfNotConcreteObject(), actualDeleteCount);
 
     // 10. Let k be 0.
     let k = 0;
@@ -1502,7 +2008,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let fromValue = Get(realm, O, frm);
 
         // ii. Perform ? CreateDataPropertyOrThrow(A, ! ToString(k), fromValue).
-        CreateDataPropertyOrThrow(realm, A, new StringValue(realm, k + ""), fromValue);
+        Create.CreateDataPropertyOrThrow(realm, A, new StringValue(realm, k + ""), fromValue);
       }
 
       // d. Increment k by 1.
@@ -1510,7 +2016,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 12. Perform ? Set(A, "length", actualDeleteCount, true).
-    Set(realm, A, "length", new NumberValue(realm, actualDeleteCount), true);
+    Properties.Set(realm, A, "length", new NumberValue(realm, actualDeleteCount), true);
 
     // 13. Let items be a List whose elements are, in left to right order, the portion of the actual argument
     //     list starting with the third argument. The list is empty if fewer than three arguments were passed.
@@ -1541,11 +2047,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let fromValue = Get(realm, O, frm);
 
           // 2. Perform ? Set(O, to, fromValue, true).
-          Set(realm, O, to, fromValue, true);
+          Properties.Set(realm, O, to, fromValue, true);
         } else {
           // v. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), to);
         }
 
         // vi. Increase k by 1.
@@ -1558,7 +2064,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // d. Repeat, while k > (len - actualDeleteCount + itemCount)
       while (k > len - actualDeleteCount + itemCount) {
         // i. Perform ? DeletePropertyOrThrow(O, ! ToString(k-1)).
-        DeletePropertyOrThrow(realm, O, new StringValue(realm, k - 1 + ""));
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), new StringValue(realm, k - 1 + ""));
 
         // ii. Decrease k by 1.
         k--;
@@ -1585,11 +2091,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let fromValue = Get(realm, O, frm);
 
           // 2. Perform ? Set(O, to, fromValue, true).
-          Set(realm, O, to, fromValue, true);
+          Properties.Set(realm, O, to, fromValue, true);
         } else {
           // v. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), to);
         }
 
         // vi. Decrease k by 1.
@@ -1606,14 +2112,14 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let E = items.shift();
 
       // b. Perform ? Set(O, ! ToString(k), E, true).
-      Set(realm, O, new StringValue(realm, k + ""), E, true);
+      Properties.Set(realm, O, new StringValue(realm, k + ""), E, true);
 
       // c. Increase k by 1.
       k++;
     }
 
     // 19. Perform ? Set(O, "length", len - actualDeleteCount + itemCount, true).
-    Set(realm, O, "length", new NumberValue(realm, len - actualDeleteCount + itemCount), true);
+    Properties.Set(realm, O, "length", new NumberValue(realm, len - actualDeleteCount + itemCount), true);
 
     // 20. Return A.
     return A;
@@ -1622,10 +2128,26 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.27
   obj.defineNativeMethod("toLocaleString", 0, context => {
     // 1. Let array be ? ToObject(this value).
-    let array = ToObject(realm, context.throwIfNotConcrete());
+    let array = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(array) &&
+      realm.isInPureScope() &&
+      array.$GetOwnProperty("toLocaleString") === undefined
+    ) {
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        StringValue,
+        [array, new StringValue(realm, "toLocaleString")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(array, "length")).
-    let len = ToLength(realm, Get(realm, array, "length"));
+    let len = To.ToLength(realm, Get(realm, array, "length"));
 
     // 3. Let separator be the String value for the list-separator String appropriate for the host environment's
     //    current locale (this is derived in an implementation-defined way).
@@ -1645,7 +2167,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 7. Else,
       // a. Let R be ? ToString(? Invoke(firstElement, "toLocaleString")).
-      R = ToStringPartial(realm, Invoke(realm, firstElement, "toLocaleString"));
+      R = To.ToStringPartial(realm, Invoke(realm, firstElement, "toLocaleString"));
     }
 
     // 8. Let k be 1.
@@ -1666,7 +2188,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       } else {
         // d. Else,
         // i. Let R be ? ToString(? Invoke(nextElement, "toLocaleString")).
-        R = ToStringPartial(realm, Invoke(realm, nextElement, "toLocaleString"));
+        R = To.ToStringPartial(realm, Invoke(realm, nextElement, "toLocaleString"));
       }
 
       // e. Let R be a String value produced by concatenating S and R.
@@ -1686,10 +2208,26 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.29
   obj.defineNativeMethod("unshift", 1, (context, items, argCount) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
+
+    // If we have an object that is an array with widened numeric properties, then
+    // we can return a temporal here as we know nothing of the array's properties.
+    // This should be safe to do, as we never expose the internals of the array.
+    if (
+      ArrayValue.isIntrinsicAndHasWidenedNumericProperty(O) &&
+      realm.isInPureScope() &&
+      O.$GetOwnProperty("unshift") === undefined
+    ) {
+      return AbstractValue.createTemporalFromBuildFunction(
+        realm,
+        NumberValue,
+        [O, new StringValue(realm, "unshift")],
+        createOperationDescriptor("UNKNOWN_ARRAY_METHOD_PROPERTY_CALL")
+      );
+    }
 
     // 2. Let len be ? ToLength(? Get(O, "length")).
-    let len = ToLength(realm, Get(realm, O, "length"));
+    let len = To.ToLength(realm, Get(realm, O, "length"));
 
     // 3. Let argCount be the number of actual arguments.
     argCount;
@@ -1721,11 +2259,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           let fromValue = Get(realm, O, frm);
 
           // 2. Perform ? Set(O, to, fromValue, true).
-          Set(realm, O, to, fromValue, true);
+          Properties.Set(realm, O, to, fromValue, true);
         } else {
           // vi. Else fromPresent is false,
           // 1. Perform ? DeletePropertyOrThrow(O, to).
-          DeletePropertyOrThrow(realm, O, to);
+          Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), to);
         }
 
         // vii. Decrease k by 1.
@@ -1745,7 +2283,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let E = items.shift();
 
         // ii. Perform ? Set(O, ! ToString(j), E, true).
-        Set(realm, O, new StringValue(realm, j + ""), E, true);
+        Properties.Set(realm, O, new StringValue(realm, j + ""), E, true);
 
         // iii. Increase j by 1.
         j++;
@@ -1753,7 +2291,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 5. Perform ? Set(O, "length", len+argCount, true).
-    Set(realm, O, "length", new NumberValue(realm, len + argCount), true);
+    Properties.Set(realm, O, "length", new NumberValue(realm, len + argCount), true);
 
     // 6. Return len+argCount.
     return new NumberValue(realm, len + argCount);
@@ -1765,31 +2303,31 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.1.3.32
   {
     // 1. Let unscopableList be ObjectCreate(null).
-    let unscopableList = ObjectCreate(realm, realm.intrinsics.null);
+    let unscopableList = Create.ObjectCreate(realm, realm.intrinsics.null);
 
     // 2. Perform CreateDataProperty(unscopableList, "copyWithin", true).
-    CreateDataProperty(realm, unscopableList, "copyWithin", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "copyWithin", realm.intrinsics.true);
 
     // 3. Perform CreateDataProperty(unscopableList, "entries", true).
-    CreateDataProperty(realm, unscopableList, "entries", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "entries", realm.intrinsics.true);
 
     // 4. Perform CreateDataProperty(unscopableList, "fill", true).
-    CreateDataProperty(realm, unscopableList, "fill", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "fill", realm.intrinsics.true);
 
     // 5. Perform CreateDataProperty(unscopableList, "find", true).
-    CreateDataProperty(realm, unscopableList, "find", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "find", realm.intrinsics.true);
 
     // 6. Perform CreateDataProperty(unscopableList, "findIndex", true).
-    CreateDataProperty(realm, unscopableList, "findIndex", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "findIndex", realm.intrinsics.true);
 
     // 7. Perform CreateDataProperty(unscopableList, "includes", true).
-    CreateDataProperty(realm, unscopableList, "includes", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "includes", realm.intrinsics.true);
 
     // 8. Perform CreateDataProperty(unscopableList, "keys", true).
-    CreateDataProperty(realm, unscopableList, "keys", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "keys", realm.intrinsics.true);
 
     // 9. Perform CreateDataProperty(unscopableList, "values", true).
-    CreateDataProperty(realm, unscopableList, "values", realm.intrinsics.true);
+    Create.CreateDataProperty(realm, unscopableList, "values", realm.intrinsics.true);
 
     // 10. Assert: Each of the above calls will return true.
 

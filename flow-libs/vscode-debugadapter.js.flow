@@ -1,0 +1,219 @@
+/**
+ * Copyright (c) 2017-present, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This source code is licensed under the BSD-style license found in the
+ * LICENSE file in the root directory of this source tree. An additional grant
+ * of patent rights can be found in the PATENTS file in the same directory.
+ */
+
+/* @flow */
+
+// Generated using flowgen from vscode-debugadapter npm package and modified
+
+import DebugProtocol from 'vscode-debugprotocol'
+import * as ee from 'events';
+declare module 'vscode-debugadapter' {
+
+  declare export class Message mixins DebugProtocol.ProtocolMessage {
+      seq: number;
+      type: string;
+      constructor(type: string): this
+  }
+  declare export class Response mixins Message, DebugProtocol.Response {
+      request_seq: number;
+      success: boolean;
+      command: string;
+      constructor(request: DebugProtocol.Request, message?: string): this
+  }
+  declare export class Event mixins Message, DebugProtocol.Event {
+      event: string;
+      constructor(event: string, body?: any): this
+  }
+  declare export class StoppedEvent mixins Event, DebugProtocol.StoppedEvent {
+      body: {
+          reason: string,
+          threadId: number
+      };
+      constructor(reason: string, threadId: number, exception_text?: string): this
+  }
+  declare export class InitializedEvent mixins Event, DebugProtocol.InitializedEvent {
+      constructor(): this
+  }
+  declare export class TerminatedEvent mixins Event, DebugProtocol.TerminatedEvent {
+    /** Protocol: A debug adapter may set 'restart' to true (or to an arbitrary object) to request that the front end restarts the session.
+      The value is not interpreted by the client and passed unmodified as an attribute '__restart' to the launchRequest.
+      */
+      constructor(restart?: any): this
+  }
+  declare export class OutputEvent mixins Event, DebugProtocol.OutputEvent {
+      body: {
+          category: string,
+          output: string,
+          // Protocol: this can be any optional data to report
+          data?: any
+      };
+      constructor(output: string, category?: string, data?: any): this
+  }
+  declare export class ProtocolServer mixins ee.EventEmitter {
+      constructor(): this;
+      start(inStream: ee.EventEmitter.ReadableStream, outStream: ee.EventEmitter.WritableStream): void;
+      stop(): void;
+      sendEvent(event: DebugProtocol.Event): void;
+      sendResponse(response: DebugProtocol.Response): void;
+      sendRequest(
+          command: string,
+          args: any,
+          timeout: number,
+          cb: (response: DebugProtocol.Response) => void): void;
+      dispatchRequest(request: DebugProtocol.Request): void
+  }
+  declare export type ErrorDestination = {
+    User: 1,
+    Telemetry: 2,
+  }
+  declare export class DebugSession mixins ProtocolServer {
+      _isServer: boolean;
+      constructor(obsolete_debuggerLinesAndColumnsStartAt1?: boolean, obsolete_isServer?: boolean): this;
+      setDebuggerPathFormat(format: string): void;
+      setDebuggerLinesStartAt1(enable: boolean): void;
+      setDebuggerColumnsStartAt1(enable: boolean): void;
+      setRunAsServer(enable: boolean): void;
+
+      /**
+       * A virtual constructor...
+       */
+      static run(debugSession: typeof DebugSession): void;
+      shutdown(): void;
+      sendErrorResponse(
+          response: DebugProtocol.Response,
+          codeOrMessage: number | DebugProtocol.Message,
+          format?: string,
+          variables?: any,
+          dest?: ErrorDestination): void;
+      runInTerminalRequest(
+          args: DebugProtocol.RunInTerminalRequestArguments,
+          timeout: number,
+          cb: (response: DebugProtocol.RunInTerminalResponse) => void): void;
+      dispatchRequest(request: DebugProtocol.Request): void;
+      initializeRequest(
+          response: DebugProtocol.InitializeResponse,
+          args: DebugProtocol.InitializeRequestArguments): void;
+      disconnectRequest(
+          response: DebugProtocol.DisconnectResponse,
+          args: DebugProtocol.DisconnectArguments): void;
+      launchRequest(
+          response: DebugProtocol.LaunchResponse,
+          args: DebugProtocol.LaunchRequestArguments): void;
+      attachRequest(
+          response: DebugProtocol.AttachResponse,
+          args: DebugProtocol.AttachRequestArguments): void;
+      restartRequest(
+          response: DebugProtocol.RestartResponse,
+          args: DebugProtocol.RestartArguments): void;
+      setBreakPointsRequest(
+          response: DebugProtocol.SetBreakpointsResponse,
+          args: DebugProtocol.SetBreakpointsArguments): void;
+      setFunctionBreakPointsRequest(
+          response: DebugProtocol.SetFunctionBreakpointsResponse,
+          args: DebugProtocol.SetFunctionBreakpointsArguments): void;
+      setExceptionBreakPointsRequest(
+          response: DebugProtocol.SetExceptionBreakpointsResponse,
+          args: DebugProtocol.SetExceptionBreakpointsArguments): void;
+      configurationDoneRequest(
+          response: DebugProtocol.ConfigurationDoneResponse,
+          args: DebugProtocol.ConfigurationDoneArguments): void;
+      continueRequest(
+          response: DebugProtocol.ContinueResponse,
+          args: DebugProtocol.ContinueArguments): void;
+      nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void;
+      stepInRequest(
+          response: DebugProtocol.StepInResponse,
+          args: DebugProtocol.StepInArguments): void;
+      stepOutRequest(
+          response: DebugProtocol.StepOutResponse,
+          args: DebugProtocol.StepOutArguments): void;
+      stepBackRequest(
+          response: DebugProtocol.StepBackResponse,
+          args: DebugProtocol.StepBackArguments): void;
+      reverseContinueRequest(
+          response: DebugProtocol.ReverseContinueResponse,
+          args: DebugProtocol.ReverseContinueArguments): void;
+      restartFrameRequest(
+          response: DebugProtocol.RestartFrameResponse,
+          args: DebugProtocol.RestartFrameArguments): void;
+      gotoRequest(response: DebugProtocol.GotoResponse, args: DebugProtocol.GotoArguments): void;
+      pauseRequest(
+          response: DebugProtocol.PauseResponse,
+          args: DebugProtocol.PauseArguments): void;
+      sourceRequest(
+          response: DebugProtocol.SourceResponse,
+          args: DebugProtocol.SourceArguments): void;
+      threadsRequest(response: DebugProtocol.ThreadsResponse): void;
+      stackTraceRequest(
+          response: DebugProtocol.StackTraceResponse,
+          args: DebugProtocol.StackTraceArguments): void;
+      scopesRequest(
+          response: DebugProtocol.ScopesResponse,
+          args: DebugProtocol.ScopesArguments): void;
+      variablesRequest(
+          response: DebugProtocol.VariablesResponse,
+          args: DebugProtocol.VariablesArguments): void;
+      setVariableRequest(
+          response: DebugProtocol.SetVariableResponse,
+          args: DebugProtocol.SetVariableArguments): void;
+      evaluateRequest(
+          response: DebugProtocol.EvaluateResponse,
+          args: DebugProtocol.EvaluateArguments): void;
+      stepInTargetsRequest(
+          response: DebugProtocol.StepInTargetsResponse,
+          args: DebugProtocol.StepInTargetsArguments): void;
+      gotoTargetsRequest(
+          response: DebugProtocol.GotoTargetsResponse,
+          args: DebugProtocol.GotoTargetsArguments): void;
+      completionsRequest(
+          response: DebugProtocol.CompletionsResponse,
+          args: DebugProtocol.CompletionsArguments): void;
+      exceptionInfoRequest(
+          response: DebugProtocol.ExceptionInfoResponse,
+          args: DebugProtocol.ExceptionInfoArguments): void;
+      loadedSourcesRequest(
+          response: DebugProtocol.LoadedSourcesResponse,
+          args: DebugProtocol.LoadedSourcesArguments): void;
+
+      /**
+       * Override this hook to implement custom requests.
+       */
+      customRequest(command: string, response: DebugProtocol.Response, args: any): void;
+      convertClientLineToDebugger(line: number): number;
+      convertDebuggerLineToClient(line: number): number;
+      convertClientColumnToDebugger(column: number): number;
+      convertDebuggerColumnToClient(column: number): number;
+      convertClientPathToDebugger(clientPath: string): string;
+      convertDebuggerPathToClient(debuggerPath: string): string
+  }
+  declare export class LoggingDebugSession mixins DebugSession {
+      constructor(_logFilePath: string, obsolete_debuggerLinesAndColumnsStartAt1?: boolean, obsolete_isServer?: boolean): this;
+      start(inStream: ee.EventEmitter.ReadableStream, outStream: ee.EventEmitter.WritableStream): void;
+
+      /**
+       * Overload sendEvent to log
+       */
+      sendEvent(event: DebugProtocol.Event): void;
+
+      /**
+       * Overload sendRequest to log
+       */
+      sendRequest(
+          command: string,
+          args: any,
+          timeout: number,
+          cb: (response: DebugProtocol.Response) => void): void;
+
+      /**
+       * Overload sendResponse to log
+       */
+      sendResponse(response: DebugProtocol.Response): void;
+      dispatchRequest(request: DebugProtocol.Request): void
+  }
+}

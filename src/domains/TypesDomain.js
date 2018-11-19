@@ -7,16 +7,18 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import invariant from "../invariant.js";
-import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelLogicalOperator, BabelUnaryOperator } from "@babel/types";
 import {
   AbstractValue,
   BooleanValue,
   ConcreteValue,
+  EmptyValue,
   FunctionValue,
   NumberValue,
+  IntegralValue,
   ObjectValue,
   PrimitiveValue,
   StringValue,
@@ -32,9 +34,18 @@ export default class TypesDomain {
     this._type = type === Value ? undefined : type;
   }
 
-  static topVal: TypesDomain = new TypesDomain(undefined);
+  static topVal: TypesDomain;
+  static bottomVal: TypesDomain;
 
   _type: void | typeof Value;
+
+  isBottom(): boolean {
+    return this._type instanceof EmptyValue;
+  }
+
+  isTop(): boolean {
+    return this._type === undefined;
+  }
 
   getType(): typeof Value {
     return this._type || Value;
@@ -42,14 +53,21 @@ export default class TypesDomain {
 
   // return the type of the result in the case where there is no exception
   static binaryOp(op: BabelBinaryOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
+    if (left.isBottom() || right.isBottom()) return TypesDomain.bottomVal;
     let lType = left._type;
     let rType = right._type;
-    if (lType === undefined || rType === undefined) return TypesDomain.topVal;
     let resultType = Value;
     switch (op) {
       case "+":
-        if (Value.isTypeCompatibleWith(lType, StringValue) || Value.isTypeCompatibleWith(rType, StringValue))
+        if (lType === undefined || rType === undefined) return TypesDomain.topVal;
+        if (Value.isTypeCompatibleWith(lType, StringValue) || Value.isTypeCompatibleWith(rType, StringValue)) {
           resultType = StringValue;
+          break;
+        }
+      // eslint-disable-line no-fallthrough
+      case "-":
+        if (lType === undefined || rType === undefined) return TypesDomain.topVal;
+        if (lType === IntegralValue && rType === IntegralValue) resultType = IntegralValue;
         else if (Value.isTypeCompatibleWith(lType, NumberValue) && Value.isTypeCompatibleWith(rType, NumberValue))
           resultType = NumberValue;
         break;
@@ -71,11 +89,12 @@ export default class TypesDomain {
       case "&":
       case "|":
       case "^":
+        resultType = IntegralValue;
+        break;
       case "**":
       case "%":
       case "/":
       case "*":
-      case "-":
         resultType = NumberValue;
         break;
       default:
@@ -93,8 +112,12 @@ export default class TypesDomain {
   }
 
   joinWith(t: typeof Value): TypesDomain {
+    if (this.isBottom()) return t === EmptyValue ? TypesDomain.bottomVal : new TypesDomain(t);
     let type = this.getType();
-    if (type === t) return this;
+    if (type === t || t instanceof EmptyValue) return this;
+    if (Value.isTypeCompatibleWith(type, NumberValue) && Value.isTypeCompatibleWith(t, NumberValue)) {
+      return new TypesDomain(NumberValue);
+    }
     if (Value.isTypeCompatibleWith(type, FunctionValue) && Value.isTypeCompatibleWith(t, FunctionValue)) {
       return new TypesDomain(FunctionValue);
     }
@@ -107,15 +130,23 @@ export default class TypesDomain {
     return TypesDomain.topVal;
   }
 
+  static logicalOp(op: BabelLogicalOperator, left: TypesDomain, right: TypesDomain): TypesDomain {
+    return left.joinWith(right.getType());
+  }
+
   // return the type of the result in the case where there is no exception
   // note that the type of the operand has no influence on the type of the non exceptional result
-  static unaryOp(op: BabelUnaryOperator): TypesDomain {
+  static unaryOp(op: BabelUnaryOperator, operand: TypesDomain): TypesDomain {
+    if (operand.isBottom()) return TypesDomain.bottomVal;
+    const type = operand._type;
     let resultType = Value;
     switch (op) {
       case "-":
       case "+":
+        resultType = type === IntegralValue ? IntegralValue : NumberValue;
+        break;
       case "~":
-        resultType = NumberValue;
+        resultType = IntegralValue;
         break;
       case "!":
       case "delete":

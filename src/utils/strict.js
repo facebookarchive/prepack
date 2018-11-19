@@ -9,10 +9,9 @@
 
 /* @flow */
 
-import type { BabelNode, BabelNodeBlockStatement, BabelNodeProgram } from "babel-types";
+import type { BabelNode, BabelNodeBlockStatement, BabelNodeProgram } from "@babel/types";
 
 export default function IsStrict(node: BabelNode): boolean {
-  if (node.strict) return true;
   if (node.type !== "BlockStatement" && node.type !== "Program") return false;
   let directives = ((node: any): BabelNodeBlockStatement | BabelNodeProgram).directives;
   if (!directives) return false;

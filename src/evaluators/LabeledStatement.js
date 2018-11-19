@@ -13,8 +13,13 @@ import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Value } from "../values/index.js";
 import type { Reference } from "../environment.js";
-import { BreakCompletion } from "../completions.js";
-import type { BabelNodeLabeledStatement, BabelNode } from "babel-types";
+import {
+  BreakCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
+} from "../completions.js";
+import type { BabelNode, BabelNodeLabeledStatement, BabelNodeVariableDeclaration } from "@babel/types";
 import invariant from "../invariant.js";
 
 // ECMA262 13.13.14
@@ -44,6 +49,15 @@ function LabelledEvaluation(
         if (stmtResult instanceof BreakCompletion && stmtResult.target === label) {
           // a. Let stmtResult be NormalCompletion(stmtResult.[[Value]]).
           normalCompletionStmtResult = stmtResult.value;
+        } else if (
+          stmtResult instanceof JoinedAbruptCompletions ||
+          stmtResult instanceof JoinedNormalAndAbruptCompletions
+        ) {
+          let nc = Completion.normalizeSelectedCompletions(
+            c => c instanceof BreakCompletion && c.target === label,
+            stmtResult
+          );
+          return realm.returnOrThrowCompletion(nc);
         } else {
           // 5. Return Completion(stmtResult).
           throw stmtResult;
@@ -53,7 +67,7 @@ function LabelledEvaluation(
       return normalCompletionStmtResult;
 
     case "VariableDeclaration":
-      if (ast.kind === "var") {
+      if (((ast: any): BabelNodeVariableDeclaration).kind === "var") {
         let r = env.evaluate(ast, strictCode);
         invariant(r instanceof Value);
         return r;

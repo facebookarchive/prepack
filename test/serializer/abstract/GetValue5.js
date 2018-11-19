@@ -7,6 +7,8 @@ Object.setPrototypeOf(o, proto);
 let ob = x ? o : { a: 3 };
 
 delete ob.a;
-z = o.a;
+var z = o.a;
 
-inspect = function() { return z; }
+inspect = function() {
+  return z;
+};

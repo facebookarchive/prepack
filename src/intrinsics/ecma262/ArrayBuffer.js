@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ToIndexPartial } from "../../methods/to.js";
+import { To } from "../../singletons.js";
 import { AllocateArrayBuffer } from "../../methods/arraybuffer.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -28,7 +28,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 2. Let byteLength be ToIndex(numberLength).
-      let byteLength = ToIndexPartial(realm, length);
+      let byteLength = To.ToIndexPartial(realm, length);
 
       // 3. Return ? AllocateArrayBuffer(NewTarget, byteLength).
       return AllocateArrayBuffer(realm, NewTarget, byteLength);
@@ -36,7 +36,8 @@ export default function(realm: Realm): NativeFunctionValue {
   );
 
   // ECMA262 24.1.3.1
-  func.defineNativeMethod("isView", 1, (context, [arg]) => {
+  func.defineNativeMethod("isView", 1, (context, [_arg]) => {
+    let arg = _arg;
     // 1. If Type(arg) is not Object, return false.
     if (!arg.mightBeObject()) return realm.intrinsics.false;
 

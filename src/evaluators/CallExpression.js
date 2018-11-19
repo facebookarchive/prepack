@@ -10,97 +10,284 @@
 /* @flow */
 
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { AbruptCompletion, Completion, NormalCompletion } from "../completions.js";
 import type { Realm } from "../realm.js";
-import type { LexicalEnvironment } from "../environment.js";
+import { type LexicalEnvironment, type BaseValue, isValidBaseValue } from "../environment.js";
 import { EnvironmentRecord } from "../environment.js";
-import { Value } from "../values/index.js";
-import { AbstractValue, BooleanValue, ConcreteValue, FunctionValue, ObjectValue } from "../values/index.js";
+import { TypesDomain, ValuesDomain } from "../domains/index.js";
+import {
+  AbstractValue,
+  AbstractObjectValue,
+  BooleanValue,
+  ConcreteValue,
+  FunctionValue,
+  IntegralValue,
+  NativeFunctionValue,
+  NumberValue,
+  ObjectValue,
+  StringValue,
+  SymbolValue,
+  Value,
+} from "../values/index.js";
 import { Reference } from "../environment.js";
-import { PerformEval } from "../methods/function.js";
+import { Environment, Functions, Leak } from "../singletons.js";
 import {
   ArgumentListEvaluation,
   EvaluateDirectCall,
-  GetBase,
-  GetReferencedName,
   GetThisValue,
-  GetValue,
   IsInTailPosition,
-  IsPropertyReference,
-  joinEffects,
   SameValue,
-  TestIntegrityLevel,
 } from "../methods/index.js";
-import type { BabelNode, BabelNodeCallExpression, BabelNodeExpression, BabelNodeSpreadElement } from "babel-types";
+import type { BabelNodeCallExpression } from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
-import SuperCall from "./SuperCall";
+import SuperCall from "./SuperCall.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeCallExpression,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
+): Value {
   if (ast.callee.type === "Super") {
     return SuperCall(ast.arguments, strictCode, env, realm);
   }
 
   // ECMA262 12.3.4.1
-  realm.setNextExecutionContextLocation(ast.loc);
 
   // 1. Let ref be the result of evaluating MemberExpression.
   let ref = env.evaluate(ast.callee, strictCode);
 
-  // 2. Let func be ? GetValue(ref).
-  let func = GetValue(realm, ref);
-
-  return EvaluateCall(ref, func, ast, strictCode, env, realm);
+  let previousLoc = realm.setNextExecutionContextLocation(ast.loc);
+  try {
+    return evaluateReference(ref, ast, strictCode, env, realm);
+  } finally {
+    realm.setNextExecutionContextLocation(previousLoc);
+  }
 }
 
-function callBothFunctionsAndJoinTheirEffects(
-  args: Array<Value>,
+function getPrimitivePrototypeFromType(realm: Realm, value: AbstractValue): void | ObjectValue {
+  switch (value.getType()) {
+    case IntegralValue:
+    case NumberValue:
+      return realm.intrinsics.NumberPrototype;
+    case StringValue:
+      return realm.intrinsics.StringPrototype;
+    case BooleanValue:
+      return realm.intrinsics.BooleanPrototype;
+    case SymbolValue:
+      return realm.intrinsics.SymbolPrototype;
+    default:
+      return undefined;
+  }
+}
+
+function evaluateReference(
+  ref: Reference | Value,
   ast: BabelNodeCallExpression,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
-  let [cond, func1, func2] = args;
-  invariant(cond instanceof AbstractValue && cond.getType() === BooleanValue);
-  invariant(Value.isTypeCompatibleWith(func1.getType(), FunctionValue));
-  invariant(Value.isTypeCompatibleWith(func2.getType(), FunctionValue));
+): Value {
+  if (
+    ref instanceof Reference &&
+    ref.base instanceof AbstractValue &&
+    // TODO: what about ref.base conditionals that mightBeObjects?
+    ref.base.mightNotBeObject() &&
+    realm.isInPureScope()
+  ) {
+    let base = ref.base;
+    if (base.kind === "conditional") {
+      let [condValue, consequentVal, alternateVal] = base.args;
+      invariant(condValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, condValue, consequentVal, alternateVal, ast, strictCode, env, realm);
+    } else if (base.kind === "||") {
+      let [leftValue, rightValue] = base.args;
+      invariant(leftValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, leftValue, leftValue, rightValue, ast, strictCode, env, realm);
+    } else if (base.kind === "&&") {
+      let [leftValue, rightValue] = base.args;
+      invariant(leftValue instanceof AbstractValue);
+      return evaluateConditionalReferenceBase(ref, leftValue, rightValue, leftValue, ast, strictCode, env, realm);
+    }
+    let referencedName = ref.referencedName;
 
-  let [compl1, gen1, bindings1, properties1, createdObj1] = realm.evaluateForEffects(() =>
-    EvaluateCall(func1, func1, ast, strictCode, env, realm)
-  );
+    // When dealing with a PrimitiveValue, like StringValue, NumberValue, IntegralValue etc
+    // if we are referencing a prototype method, then it's safe to access, even
+    // on an abstract value as the value is immutable and can't have a property
+    // that matches the prototype method (unless the prototype was modified).
+    // We assume the global prototype of built-ins has not been altered since
+    // global code has finished. See #1233 for more context in regards to unmodified
+    // global prototypes.
+    let prototypeIfPrimitive = getPrimitivePrototypeFromType(realm, base);
+    if (prototypeIfPrimitive !== undefined && typeof referencedName === "string") {
+      let possibleMethodValue = prototypeIfPrimitive._SafeGetDataPropertyValue(referencedName);
 
-  let [compl2, gen2, bindings2, properties2, createdObj2] = realm.evaluateForEffects(() =>
-    EvaluateCall(func2, func2, ast, strictCode, env, realm)
-  );
-
-  let joinedEffects = joinEffects(
-    realm,
-    cond,
-    [compl1, gen1, bindings1, properties1, createdObj1],
-    [compl2, gen2, bindings2, properties2, createdObj2]
-  );
-  let completion = joinedEffects[0];
-  if (completion instanceof NormalCompletion) {
-    // in this case one of the branches may complete abruptly, which means that
-    // not all control flow branches join into one flow at this point.
-    // Consequently we have to continue tracking changes until the point where
-    // all the branches come together into one.
-    realm.captureEffects();
+      if (possibleMethodValue instanceof FunctionValue) {
+        return EvaluateCall(ref, possibleMethodValue, ast, strictCode, env, realm);
+      }
+    }
+    // avoid explicitly converting ref.base to an object because that will create a generator entry
+    // leading to two object allocations rather than one.
+    return realm.evaluateWithPossibleThrowCompletion(
+      () => generateRuntimeCall(ref, base, ast, strictCode, env, realm),
+      TypesDomain.topVal,
+      ValuesDomain.topVal
+    );
   }
+  // 2. Let func be ? GetValue(ref).
+  let func = Environment.GetValue(realm, ref);
 
-  // Note that the effects of (non joining) abrupt branches are not included
-  // in joinedEffects, but are tracked separately inside completion.
-  realm.applyEffects(joinedEffects);
+  return EvaluateCall(ref, func, ast, strictCode, env, realm);
+}
 
-  // return or throw completion
-  if (completion instanceof AbruptCompletion) throw completion;
-  invariant(completion instanceof NormalCompletion || completion instanceof Value);
-  return completion;
+function evaluateConditionalReferenceBase(
+  ref: Reference,
+  condValue: AbstractValue,
+  consequentVal: Value,
+  alternateVal: Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => {
+          if (isValidBaseValue(consequentVal)) {
+            let consequentRef = new Reference(
+              ((consequentVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return evaluateReference(consequentRef, ast, strictCode, env, realm);
+          }
+          return consequentVal;
+        },
+        null,
+        "evaluateConditionalReferenceBase consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => {
+          if (isValidBaseValue(alternateVal)) {
+            let alternateRef = new Reference(
+              ((alternateVal: any): BaseValue),
+              ref.referencedName,
+              ref.strict,
+              ref.thisValue
+            );
+            return evaluateReference(alternateRef, ast, strictCode, env, realm);
+          }
+          return alternateVal;
+        },
+        null,
+        "evaluateConditionalReferenceBase alternate"
+      );
+    }
+  );
+}
+
+function callBothFunctionsAndJoinTheirEffects(
+  condValue: AbstractValue,
+  consequentVal: Value,
+  alternateVal: Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  return realm.evaluateWithAbstractConditional(
+    condValue,
+    () => {
+      return realm.evaluateForEffects(
+        () => EvaluateCall(consequentVal, consequentVal, ast, strictCode, env, realm),
+        null,
+        "callBothFunctionsAndJoinTheirEffects consequent"
+      );
+    },
+    () => {
+      return realm.evaluateForEffects(
+        () => EvaluateCall(alternateVal, alternateVal, ast, strictCode, env, realm),
+        null,
+        "callBothFunctionsAndJoinTheirEffects alternate"
+      );
+    }
+  );
+}
+
+function generateRuntimeCall(
+  ref: Value | Reference,
+  func: Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+) {
+  let args = [func];
+  let [thisArg, propName] = ref instanceof Reference ? [ref.base, ref.referencedName] : [];
+  if (thisArg instanceof Value) args = [thisArg];
+  if (propName !== undefined && typeof propName !== "string") args.push(propName);
+  args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ast.arguments));
+  for (let arg of args) {
+    if (arg !== func) {
+      // Since we don't know which function we are calling, we assume that any unfrozen object
+      // passed as an argument has leaked to the environment as is any other object that is known to be reachable from this object.
+      // NB: Note that this is still optimistic, particularly if the environment exposes the same object
+      // to Prepack via alternative means, thus creating aliasing that is not tracked by Prepack.
+      Leak.value(realm, arg, ast.loc);
+    }
+  }
+  let resultType = (func instanceof AbstractObjectValue ? func.functionResultType : undefined) || Value;
+  return AbstractValue.createTemporalFromBuildFunction(
+    realm,
+    resultType,
+    args,
+    createOperationDescriptor("CALL_BAILOUT", { propRef: propName, thisArg })
+  );
+}
+
+function tryToEvaluateCallOrLeaveAsAbstract(
+  ref: Value | Reference,
+  func: Value,
+  ast: BabelNodeCallExpression,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  thisValue: Value,
+  tailCall: boolean
+): Value {
+  invariant(!realm.instantRender.enabled);
+  let effects;
+  let savedSuppressDiagnostics = realm.suppressDiagnostics;
+  try {
+    realm.suppressDiagnostics = !(func instanceof NativeFunctionValue) || func.name !== "__optimize";
+    effects = realm.evaluateForEffects(
+      () => EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall),
+      undefined,
+      "tryToEvaluateCallOrLeaveAsAbstract"
+    );
+  } catch (error) {
+    if (error instanceof FatalError) {
+      if (func instanceof NativeFunctionValue && func.name === "__fatal") throw error;
+      realm.suppressDiagnostics = savedSuppressDiagnostics;
+      Leak.value(realm, func, ast.loc);
+      return realm.evaluateWithPossibleThrowCompletion(
+        () => generateRuntimeCall(ref, func, ast, strictCode, env, realm),
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
+    } else {
+      throw error;
+    }
+  } finally {
+    realm.suppressDiagnostics = savedSuppressDiagnostics;
+  }
+  realm.applyEffects(effects);
+  return realm.returnOrThrowCompletion(effects.result);
 }
 
 function EvaluateCall(
@@ -110,62 +297,80 @@ function EvaluateCall(
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
-  function generateRuntimeCall() {
-    let args = [func];
-    let [thisArg, propName] = ref instanceof Reference ? [ref.base, ref.referencedName] : [];
-    if (thisArg instanceof Value) args = [thisArg];
-    if (propName !== undefined && typeof propName !== "string") args.push(propName);
-    args = args.concat(ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>)));
-    for (let arg of args) {
-      if (arg !== func && arg instanceof ObjectValue && !TestIntegrityLevel(realm, arg, "frozen")) {
-        let diag = new CompilerDiagnostic(
-          "Unfrozen object leaked before end of global code",
-          ast.loc,
-          "PP0017",
-          "RecoverableError"
-        );
-        if (realm.handleError(diag) !== "Recover") throw new FatalError();
-      }
-    }
-    return AbstractValue.createTemporalFromBuildFunction(realm, Value, args, nodes => {
-      let callFunc;
-      let argStart = 1;
-      if (thisArg instanceof Value) {
-        if (typeof propName === "string") {
-          callFunc = t.memberExpression(nodes[0], t.identifier(propName), !t.isValidIdentifier(propName));
-        } else {
-          callFunc = t.memberExpression(nodes[0], nodes[1], true);
-          argStart = 2;
-        }
-      } else {
-        callFunc = nodes[0];
-      }
-      let fun_args = ((nodes.slice(argStart): any): Array<BabelNodeExpression | BabelNodeSpreadElement>);
-      return t.callExpression(callFunc, fun_args);
-    });
-  }
-
+): Value {
   if (func instanceof AbstractValue) {
-    if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
-      let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
-      let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
-      if (realm.handleError(error) === "Fail") throw new FatalError();
-    } else if (func.kind === "conditional") {
-      return callBothFunctionsAndJoinTheirEffects(func.args, ast, strictCode, env, realm);
-    } else {
-      // Assume that it is a safe function. TODO: really?
+    let loc = ast.callee.type === "MemberExpression" ? ast.callee.property.loc : ast.callee.loc;
+    if (func.kind === "conditional") {
+      let [condValue, consequentVal, alternateVal] = func.args;
+      invariant(condValue instanceof AbstractValue);
+      // If neither values are functions than do not try and call both functions with a conditional
+      if (
+        Value.isTypeCompatibleWith(consequentVal.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(alternateVal.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(
+          condValue,
+          consequentVal,
+          alternateVal,
+          ast,
+          strictCode,
+          env,
+          realm
+        );
+      }
+    } else if (func.kind === "||") {
+      let [leftValue, rightValue] = func.args;
+      invariant(leftValue instanceof AbstractValue);
+      // If neither values are functions than do not try and call both functions with a conditional
+      if (
+        Value.isTypeCompatibleWith(leftValue.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(rightValue.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(leftValue, leftValue, rightValue, ast, strictCode, env, realm);
+      }
+    } else if (func.kind === "&&") {
+      let [leftValue, rightValue] = func.args;
+      invariant(leftValue instanceof AbstractValue);
+      // If neither values are functions than do not try and call both functions with a conditional
+      if (
+        Value.isTypeCompatibleWith(leftValue.getType(), FunctionValue) ||
+        Value.isTypeCompatibleWith(rightValue.getType(), FunctionValue)
+      ) {
+        return callBothFunctionsAndJoinTheirEffects(leftValue, rightValue, leftValue, ast, strictCode, env, realm);
+      }
     }
-    return generateRuntimeCall();
+    if (!Value.isTypeCompatibleWith(func.getType(), FunctionValue)) {
+      if (!realm.isInPureScope()) {
+        // If this is not a function, this call might throw which can change the state of the program.
+        // If this is called from a pure function we handle it using evaluateWithPossiblyAbruptCompletion.
+        let error = new CompilerDiagnostic("might not be a function", loc, "PP0005", "RecoverableError");
+        if (realm.handleError(error) === "Fail") throw new FatalError();
+      }
+    } else {
+      // Assume that it is a safe function. TODO #705: really?
+    }
+    if (realm.isInPureScope()) {
+      // In pure functions we allow abstract functions to throw, which this might.
+      return realm.evaluateWithPossibleThrowCompletion(
+        () => generateRuntimeCall(ref, func, ast, strictCode, env, realm),
+        TypesDomain.topVal,
+        ValuesDomain.topVal
+      );
+    }
+    return generateRuntimeCall(ref, func, ast, strictCode, env, realm);
   }
   invariant(func instanceof ConcreteValue);
 
   // 3. If Type(ref) is Reference and IsPropertyReference(ref) is false and GetReferencedName(ref) is "eval", then
-  if (ref instanceof Reference && !IsPropertyReference(realm, ref) && GetReferencedName(realm, ref) === "eval") {
+  if (
+    ref instanceof Reference &&
+    !Environment.IsPropertyReference(realm, ref) &&
+    Environment.GetReferencedName(realm, ref) === "eval"
+  ) {
     // a. If SameValue(func, %eval%) is true, then
     if (SameValue(realm, func, realm.intrinsics.eval)) {
       // i. Let argList be ? ArgumentListEvaluation(Arguments).
-      let argList = ArgumentListEvaluation(realm, strictCode, env, ((ast.arguments: any): Array<BabelNode>));
+      let argList = ArgumentListEvaluation(realm, strictCode, env, ast.arguments);
       // ii. If argList has no elements, return undefined.
       if (argList.length === 0) return realm.intrinsics.undefined;
       // iii. Let evalText be the first element of argList.
@@ -180,9 +385,9 @@ function EvaluateCall(
         let error = new CompilerDiagnostic("eval argument must be a known value", loc, "PP0006", "RecoverableError");
         if (realm.handleError(error) === "Fail") throw new FatalError();
         // Assume that it is a safe eval with no visible heap changes or abrupt control flow.
-        return generateRuntimeCall();
+        return generateRuntimeCall(ref, func, ast, strictCode, env, realm);
       }
-      return PerformEval(realm, evalText, evalRealm, strictCaller, true);
+      return Functions.PerformEval(realm, evalText, evalRealm, strictCaller, true);
     }
   }
 
@@ -191,13 +396,13 @@ function EvaluateCall(
   // 4. If Type(ref) is Reference, then
   if (ref instanceof Reference) {
     // a. If IsPropertyReference(ref) is true, then
-    if (IsPropertyReference(realm, ref)) {
+    if (Environment.IsPropertyReference(realm, ref)) {
       // i. Let thisValue be GetThisValue(ref).
       thisValue = GetThisValue(realm, ref);
     } else {
       // b. Else, the base of ref is an Environment Record
       // i. Let refEnv be GetBase(ref).
-      let refEnv = GetBase(realm, ref);
+      let refEnv = Environment.GetBase(realm, ref);
       invariant(refEnv instanceof EnvironmentRecord);
 
       // ii. Let thisValue be refEnv.WithBaseObject().
@@ -216,14 +421,9 @@ function EvaluateCall(
   let tailCall = IsInTailPosition(realm, thisCall);
 
   // 8. Return ? EvaluateDirectCall(func, thisValue, Arguments, tailCall).
-  return EvaluateDirectCall(
-    realm,
-    strictCode,
-    env,
-    ref,
-    func,
-    thisValue,
-    ((ast.arguments: any): Array<BabelNode>),
-    tailCall
-  );
+  if (realm.isInPureScope() && !realm.instantRender.enabled) {
+    return tryToEvaluateCallOrLeaveAsAbstract(ref, func, ast, strictCode, env, realm, thisValue, tailCall);
+  } else {
+    return EvaluateDirectCall(realm, strictCode, env, ref, func, thisValue, ast.arguments, tailCall);
+  }
 }

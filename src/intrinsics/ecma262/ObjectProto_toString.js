@@ -7,13 +7,13 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, UndefinedValue, StringValue, NullValue } from "../../values/index.js";
-import { ToObjectPartial } from "../../methods/to.js";
 import { IsArray } from "../../methods/is.js";
 import { Get } from "../../methods/get.js";
+import { To } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 22.1.3.30
@@ -30,7 +30,7 @@ export default function(realm: Realm): NativeFunctionValue {
       if (context instanceof NullValue) return new StringValue(realm, "[object Null]");
 
       // 3. Let O be ToObject(this value).
-      let O = ToObjectPartial(realm, context);
+      let O = To.ToObject(realm, context);
 
       let builtinTag;
 
@@ -39,34 +39,34 @@ export default function(realm: Realm): NativeFunctionValue {
 
       // 5. If isArray is true, let builtinTag be "Array".
       if (isArray) builtinTag = "Array";
-      else if (O.$StringData)
+      else if (O.$StringData !== undefined)
         // 6. Else, if O is an exotic String object, let builtinTag be "String".
         builtinTag = "String";
-      else if (O.$ParameterMap)
+      else if (O.$ParameterMap !== undefined)
         // 7. Else, if O has an [[ParameterMap]] internal slot, let builtinTag be "Arguments".
         builtinTag = "Arguments";
-      else if (O.$Call)
+      else if (O.$Call !== undefined)
         // 8. Else, if O has a [[Call]] internal method, let builtinTag be "Function".
         builtinTag = "Function";
-      else if (O.$ErrorData)
+      else if (O.$ErrorData !== undefined)
         // 9. Else, if O has an [[ErrorData]] internal slot, let builtinTag be "Error".
         builtinTag = "Error";
-      else if (O.$BooleanData)
+      else if (O.$BooleanData !== undefined)
         // 10. Else, if O has a [[BooleanData]] internal slot, let builtinTag be "Boolean".
         builtinTag = "Boolean";
-      else if (O.$NumberData)
+      else if (O.$NumberData !== undefined)
         // 11. Else, if O has a [[NumberData]] internal slot, let builtinTag be "Number".
         builtinTag = "Number";
-      else if (O.$DateValue)
+      else if (O.$DateValue !== undefined)
         // 12. Else, if O has a [[DateValue]] internal slot, let builtinTag be "Date".
         builtinTag = "Date";
-      else if (O.$RegExpMatcher)
+      else if (O.$RegExpMatcher !== undefined)
         // 13. Else, if O has a [[RegExpMatcher]] internal slot, let builtinTag be "RegExp".
         builtinTag = "RegExp";
-      else
+      else {
         // 14. Else, let builtinTag be "Object".
         builtinTag = "Object";
-
+      }
       // 15. Let tag be ? Get(O, @@toStringTag).
       let tag = Get(realm, O, realm.intrinsics.SymbolToStringTag);
 

@@ -16,6 +16,7 @@ import {
   BoundFunctionValue,
   EmptyValue,
   NumberValue,
+  IntegralValue,
   SymbolValue,
   StringValue,
   NullValue,
@@ -26,13 +27,13 @@ import {
   ConcreteValue,
   AbstractValue,
 } from "../values/index.js";
-import { ToPrimitive, ToNumber, ToBooleanPartial } from "./to.js";
 import { Call } from "./call.js";
 import { IsCallable } from "./is.js";
 import { Completion, ReturnCompletion, ThrowCompletion } from "../completions.js";
 import { GetMethod, Get } from "./get.js";
 import { HasCompatibleType } from "./has.js";
-import type { BabelNodeSourceLocation } from "babel-types";
+import { To } from "../singletons.js";
+import type { BabelNodeSourceLocation, BabelBinaryOperator } from "@babel/types";
 import invariant from "../invariant.js";
 
 export const URIReserved = ";/?:@&=+$,";
@@ -73,19 +74,36 @@ export function RequireObjectCoercible(
   arg: Value,
   argLoc?: ?BabelNodeSourceLocation
 ): AbstractValue | ObjectValue | BooleanValue | StringValue | SymbolValue | NumberValue {
+  if (!arg.mightNotBeNull() || !arg.mightNotBeUndefined()) {
+    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "null or undefined");
+  }
   if (arg instanceof AbstractValue && (arg.mightBeNull() || arg.mightBeUndefined())) {
+    if (realm.isInPureScope()) {
+      // In a pure function it is ok to throw if this happens to be null or undefined.
+      return arg;
+    }
     if (argLoc) {
-      let error = new CompilerDiagnostic("member expression object is unknown", argLoc, "PP0012", "FatalError");
+      let error = new CompilerDiagnostic(
+        `member expression object ${AbstractValue.describe(arg)} is unknown`,
+        argLoc,
+        "PP0012",
+        "FatalError"
+      );
       realm.handleError(error);
       throw new FatalError();
     }
     arg.throwIfNotConcrete();
   }
-  if (arg instanceof NullValue || arg instanceof UndefinedValue) {
-    throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "null or undefined");
-  } else {
-    return (arg: any);
-  }
+  return (arg: any);
+}
+
+export function HasSameType(x: ConcreteValue, y: ConcreteValue): boolean {
+  const xType = x.getType();
+  const yType = y.getType();
+  return (
+    xType === yType ||
+    ((xType === IntegralValue || xType === NumberValue) && (yType === IntegralValue || yType === NumberValue))
+  );
 }
 
 // ECMA262 7.2.12 Abstract Relational Comparison
@@ -93,24 +111,36 @@ export function AbstractRelationalComparison(
   realm: Realm,
   x: ConcreteValue,
   y: ConcreteValue,
-  LeftFirst: boolean
-): BooleanValue | UndefinedValue {
+  LeftFirst: boolean,
+  op: BabelBinaryOperator
+): BooleanValue | UndefinedValue | AbstractValue {
   let px, py;
 
   // 1. If the LeftFirst flag is true, then
   if (LeftFirst) {
     // a. Let px be ? ToPrimitive(x, hint Number).
-    px = ToPrimitive(realm, x, "number");
+    px = To.ToPrimitiveOrAbstract(realm, x, "number");
 
     // b. Let py be ? ToPrimitive(y, hint Number).
-    py = ToPrimitive(realm, y, "number");
+    py = To.ToPrimitiveOrAbstract(realm, y, "number");
   } else {
     // 2. Else the order of evaluation needs to be reversed to preserve left to right evaluation
     // a. Let py be ? ToPrimitive(y, hint Number).
-    py = ToPrimitive(realm, y, "number");
+    py = To.ToPrimitiveOrAbstract(realm, y, "number");
 
     // b. Let px be ? ToPrimitive(x, hint Number).
-    px = ToPrimitive(realm, x, "number");
+    px = To.ToPrimitiveOrAbstract(realm, x, "number");
+  }
+
+  if (px instanceof AbstractValue || py instanceof AbstractValue) {
+    let res;
+    if (LeftFirst) {
+      res = AbstractValue.createFromBinaryOp(realm, op, px, py);
+    } else {
+      res = AbstractValue.createFromBinaryOp(realm, op, py, px);
+    }
+    invariant(res instanceof BooleanValue || res instanceof UndefinedValue || res instanceof AbstractValue);
+    return res;
   }
 
   // 3. If both px and py are Strings, then
@@ -138,10 +168,10 @@ export function AbstractRelationalComparison(
   } else {
     // 4. Else,
     // a. Let nx be ? ToNumber(px). Because px and py are primitive values evaluation order is not important.
-    let nx = ToNumber(realm, px);
+    let nx = To.ToNumber(realm, px);
 
     // b. Let ny be ? ToNumber(py).
-    let ny = ToNumber(realm, py);
+    let ny = To.ToNumber(realm, py);
 
     // c. If nx is NaN, return undefined.
     if (isNaN(nx)) return realm.intrinsics.undefined;
@@ -180,61 +210,79 @@ export function AbstractRelationalComparison(
 }
 
 // ECMA262 7.2.13
-export function AbstractEqualityComparison(realm: Realm, x: ConcreteValue, y: ConcreteValue): boolean {
+export function AbstractEqualityComparison(
+  realm: Realm,
+  x: ConcreteValue,
+  y: ConcreteValue,
+  op: BabelBinaryOperator
+): BooleanValue | AbstractValue {
   // 1. If Type(x) is the same as Type(y), then
-  if (x.getType() === y.getType()) {
+  if (HasSameType(x, y)) {
     // a. Return the result of performing Strict Equality Comparison x === y.
-    return StrictEqualityComparison(realm, x, y);
+    const strictResult = StrictEqualityComparison(realm, x, y);
+    return new BooleanValue(realm, op === "==" ? strictResult : !strictResult);
   }
 
   // 2. If x is null and y is undefined, return true.
   if (x instanceof NullValue && y instanceof UndefinedValue) {
-    return true;
+    return new BooleanValue(realm, op === "==");
   }
 
   // 3. If x is undefined and y is null, return true.
   if (x instanceof UndefinedValue && y instanceof NullValue) {
-    return true;
+    return new BooleanValue(realm, op === "==");
   }
 
   // 4. If Type(x) is Number and Type(y) is String, return the result of the comparison x == ToNumber(y).
   if (x instanceof NumberValue && y instanceof StringValue) {
-    return AbstractEqualityComparison(realm, x, new NumberValue(realm, ToNumber(realm, y)));
+    return AbstractEqualityComparison(realm, x, new NumberValue(realm, To.ToNumber(realm, y)), op);
   }
 
   // 5. If Type(x) is String and Type(y) is Number, return the result of the comparison ToNumber(x) == y.
   if (x instanceof StringValue && y instanceof NumberValue) {
-    return AbstractEqualityComparison(realm, new NumberValue(realm, ToNumber(realm, x)), y);
+    return AbstractEqualityComparison(realm, new NumberValue(realm, To.ToNumber(realm, x)), y, op);
   }
 
   // 6. If Type(x) is Boolean, return the result of the comparison ToNumber(x) == y.
   if (x instanceof BooleanValue) {
-    return AbstractEqualityComparison(realm, new NumberValue(realm, ToNumber(realm, x)), y);
+    return AbstractEqualityComparison(realm, new NumberValue(realm, To.ToNumber(realm, x)), y, op);
   }
 
   // 7. If Type(y) is Boolean, return the result of the comparison x == ToNumber(y).
   if (y instanceof BooleanValue) {
-    return AbstractEqualityComparison(realm, x, new NumberValue(realm, ToNumber(realm, y)));
+    return AbstractEqualityComparison(realm, x, new NumberValue(realm, To.ToNumber(realm, y)), op);
   }
 
   // 8. If Type(x) is either String, Number, or Symbol and Type(y) is Object, return the result of the comparison x == ToPrimitive(y).
   if ((x instanceof StringValue || x instanceof NumberValue || x instanceof SymbolValue) && y instanceof ObjectValue) {
-    return AbstractEqualityComparison(realm, x, ToPrimitive(realm, y));
+    const py = To.ToPrimitiveOrAbstract(realm, y);
+    if (py instanceof AbstractValue) {
+      let res = AbstractValue.createFromBinaryOp(realm, "==", x, py);
+      invariant(res instanceof BooleanValue || res instanceof AbstractValue);
+      return res;
+    }
+    return AbstractEqualityComparison(realm, x, py, op);
   }
 
   // 9. If Type(x) is Object and Type(y) is either String, Number, or Symbol, return the result of the comparison ToPrimitive(x) == y.
   if (x instanceof ObjectValue && (y instanceof StringValue || y instanceof NumberValue || y instanceof SymbolValue)) {
-    return AbstractEqualityComparison(realm, ToPrimitive(realm, x), y);
+    const px = To.ToPrimitiveOrAbstract(realm, x);
+    if (px instanceof AbstractValue) {
+      let res = AbstractValue.createFromBinaryOp(realm, "==", px, y);
+      invariant(res instanceof BooleanValue || res instanceof AbstractValue);
+      return res;
+    }
+    return AbstractEqualityComparison(realm, px, y, op);
   }
 
   // 10. Return false.
-  return false;
+  return new BooleanValue(realm, op !== "==");
 }
 
 // ECMA262 7.2.14 Strict Equality Comparison
 export function StrictEqualityComparison(realm: Realm, x: ConcreteValue, y: ConcreteValue): boolean {
   // 1. If Type(x) is different from Type(y), return false.
-  if (x.getType() !== y.getType()) {
+  if (!HasSameType(x, y)) {
     return false;
   }
 
@@ -266,7 +314,7 @@ export function StrictEqualityComparisonPartial(realm: Realm, x: Value, y: Value
 // ECMA262 7.2.10
 export function SameValueZero(realm: Realm, x: ConcreteValue, y: ConcreteValue): boolean {
   // 1. If Type(x) is different from Type(y), return false.
-  if (x.getType() !== y.getType()) {
+  if (!HasSameType(x, y)) {
     return false;
   }
 
@@ -301,7 +349,9 @@ export function SameValueZeroPartial(realm: Realm, x: Value, y: Value): boolean 
 // ECMA262 7.2.9
 export function SameValue(realm: Realm, x: ConcreteValue, y: ConcreteValue): boolean {
   // 1. If Type(x) is different from Type(y), return false.
-  if (x.getType() !== y.getType()) return false;
+  if (!HasSameType(x, y)) {
+    return false;
+  }
 
   // 2. If Type(x) is Number, then
   if (x instanceof NumberValue && y instanceof NumberValue) {
@@ -366,7 +416,7 @@ export function SameValueNonNumber(realm: Realm, x: ConcreteValue, y: ConcreteVa
 }
 
 // Checks if two property keys are identical.
-export function SamePropertyKey(realm: Realm, x: PropertyKeyValue, y: PropertyKeyValue) {
+export function SamePropertyKey(realm: Realm, x: PropertyKeyValue, y: PropertyKeyValue): boolean {
   if (typeof x === "string" && typeof y === "string") {
     return x === y;
   }
@@ -404,7 +454,7 @@ export function Add(realm: Realm, a: number, b: number, subtract?: boolean = fal
     bnum = -bnum;
   }
 
-  return new NumberValue(realm, anum + bnum);
+  return IntegralValue.createFromNumberValue(realm, anum + bnum);
 }
 
 // ECMA262 12.10.4
@@ -420,7 +470,7 @@ export function InstanceofOperator(realm: Realm, O: Value, C: Value): boolean {
   // 3. If instOfHandler is not undefined, then
   if (!(instOfHandler instanceof UndefinedValue)) {
     // a. Return ToBoolean(? Call(instOfHandler, C, « O »)).
-    return ToBooleanPartial(realm, Call(realm, instOfHandler, C, [O]));
+    return To.ToBooleanPartial(realm, Call(realm, instOfHandler, C, [O]));
   }
 
   // 4. If IsCallable(C) is false, throw a TypeError exception.
@@ -468,7 +518,7 @@ export function OrdinaryHasInstance(realm: Realm, C: Value, O: Value): boolean {
     if (O instanceof NullValue) return false;
 
     // c. If SameValue(P, O) is true, return true.
-    if (SameValue(realm, P, O) === true) return true;
+    if (SameValuePartial(realm, P, O) === true) return true;
   }
 
   return false;
@@ -486,6 +536,8 @@ export function Type(realm: Realm, val: Value): string {
     return "String";
   } else if (HasCompatibleType(val, SymbolValue)) {
     return "Symbol";
+  } else if (HasCompatibleType(val, IntegralValue)) {
+    return "Number";
   } else if (HasCompatibleType(val, NumberValue)) {
     return "Number";
   } else if (!val.mightNotBeObject()) {
@@ -517,7 +569,7 @@ export function SymbolDescriptiveString(realm: Realm, sym: SymbolValue): string 
 }
 
 // ECMA262 6.2.2.5
-export function UpdateEmpty(realm: Realm, completionRecord: Value | Completion, value: Value): Value | Completion {
+export function UpdateEmpty(realm: Realm, completionRecord: Completion | Value, value: Value): Completion | Value {
   // 1. Assert: If completionRecord.[[Type]] is either return or throw, then completionRecord.[[Value]] is not empty.
   if (completionRecord instanceof ReturnCompletion || completionRecord instanceof ThrowCompletion) {
     invariant(completionRecord.value, "expected completion record to have a value");

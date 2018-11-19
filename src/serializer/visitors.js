@@ -7,102 +7,33 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { Realm } from "../realm.js";
-import { FunctionValue } from "../values/index.js";
-import * as t from "babel-types";
-import type { BabelNodeExpression, BabelNodeCallExpression } from "babel-types";
-import { BabelTraversePath } from "babel-traverse";
-import type { TryQuery, FunctionInfo, Names } from "./types.js";
+import * as t from "@babel/types";
+import type { BabelNodeCallExpression } from "@babel/types";
+import type { BabelTraversePath, BabelTraverseScope } from "@babel/traverse";
+import type { FunctionInfo } from "./types.js";
+
+type GetModuleIdIfNodeIsRequireFunction =
+  | void
+  | ((scope: BabelTraverseScope, node: BabelNodeCallExpression) => void | number | string);
 
 export type ClosureRefVisitorState = {
-  tryQuery: TryQuery<*>,
-  val: FunctionValue,
   functionInfo: FunctionInfo,
   realm: Realm,
+  getModuleIdIfNodeIsRequireFunction: GetModuleIdIfNodeIsRequireFunction,
 };
 
-export type ClosureRefReplacerState = {
-  serializedBindings: any,
-  modified: Names,
-  requireReturns: Map<number | string, BabelNodeExpression>,
-  requireStatistics: { replaced: 0, count: 0 },
-  isRequire: void | ((scope: any, node: BabelNodeCallExpression) => boolean),
-};
-
-function markVisited(node, data) {
-  (node: any)._renamedOnce = data;
-}
-
-function shouldVisit(node, data) {
-  return (node: any)._renamedOnce !== data;
-}
-
-// replaceWith causes the node to be re-analysed, so to prevent double replacement
-// we add this property on the node to mark it such that it does not get replaced
-// again on this pass
-// TODO: Make this work when replacing with arbitrary BabelNodeExpressions. Currently
-//       if the node that we're substituting contains identifiers as children,
-//       they will be visited again and possibly transformed.
-//       If necessary we could implement this by following node.parentPath and checking
-//       if any parent nodes are marked visited, but that seem unnecessary right now.let closureRefReplacer = {
-function replaceName(path, serializedBinding, name, data) {
-  if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
-
-  if (serializedBinding && shouldVisit(path.node, data)) {
-    markVisited(serializedBinding.serializedValue, data);
-    path.replaceWith(serializedBinding.serializedValue);
-  }
-}
-
-export let ClosureRefReplacer = {
-  ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefReplacerState) {
-    if (ignorePath(path)) return;
-
-    let serializedBindings = state.serializedBindings;
-    let name = path.node.name;
-    let serializedBinding = serializedBindings[name];
-    if (serializedBinding) replaceName(path, serializedBinding, name, serializedBindings);
-  },
-
-  CallExpression(path: BabelTraversePath, state: ClosureRefReplacerState) {
-    // Here we apply the require optimization by replacing require calls with their
-    // corresponding initialized modules.
-    let requireReturns = state.requireReturns;
-    if (!state.isRequire || !state.isRequire(path.scope, path.node)) return;
-    state.requireStatistics.count++;
-    if (state.modified[path.node.callee.name]) return;
-
-    let moduleId = "" + path.node.arguments[0].value;
-    let new_node = requireReturns.get(moduleId);
-    if (new_node !== undefined) {
-      markVisited(new_node, state.serializedBindings);
-      path.replaceWith(new_node);
-      state.requireStatistics.replaced++;
-    }
-  },
-
-  "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: ClosureRefReplacerState) {
-    let serializedBindings = state.serializedBindings;
-    let ids = path.getBindingIdentifierPaths();
-    for (let name in ids) {
-      let serializedBinding = serializedBindings[name];
-      if (serializedBinding) {
-        let nestedPath = ids[name];
-        replaceName(nestedPath, serializedBinding, name, serializedBindings);
-      }
-    }
-  },
-};
-
-function visitName(path, state, name, modified) {
+function visitName(path, state, node, modified) {
   // Is the name bound to some local identifier? If so, we don't need to do anything
-  if (path.scope.hasBinding(name, /*noGlobals*/ true)) return;
+  if (path.scope.hasBinding(node.name, /*noGlobals*/ true)) return;
 
   // Otherwise, let's record that there's an unbound identifier
-  state.functionInfo.unbound[name] = true;
-  if (modified) state.functionInfo.modified[name] = true;
+  let nodes = state.functionInfo.unbound.get(node.name);
+  if (nodes === undefined) state.functionInfo.unbound.set(node.name, (nodes = []));
+  nodes.push(node);
+  if (modified) state.functionInfo.modified.add(node.name);
 }
 
 function ignorePath(path: BabelTraversePath) {
@@ -110,26 +41,71 @@ function ignorePath(path: BabelTraversePath) {
   return t.isLabeledStatement(parent) || t.isBreakStatement(parent) || t.isContinueStatement(parent);
 }
 
-// TODO #886: doesn't check that `arguments` and `this` is in top function
 export let ClosureRefVisitor = {
+  "FunctionDeclaration|ArrowFunctionExpression|FunctionExpression": {
+    enter(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth++;
+    },
+    exit(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth--;
+    },
+  },
+
+  ArrowFunctionExpression: {
+    enter(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth++;
+      state.functionInfo.lexicalDepth++;
+    },
+    exit(path: BabelTraversePath, state: ClosureRefVisitorState) {
+      state.functionInfo.depth--;
+      state.functionInfo.lexicalDepth--;
+    },
+  },
+
+  CallExpression(path: BabelTraversePath, state: ClosureRefVisitorState) {
+    // Here we apply the require optimization by replacing require calls with their
+    // corresponding initialized modules.
+    if (state.getModuleIdIfNodeIsRequireFunction === undefined) return;
+    let moduleId = state.getModuleIdIfNodeIsRequireFunction(path.scope, path.node);
+    if (moduleId === undefined) return;
+    state.functionInfo.requireCalls.set(path.node, moduleId);
+  },
+
   ReferencedIdentifier(path: BabelTraversePath, state: ClosureRefVisitorState) {
     if (ignorePath(path)) return;
 
     let innerName = path.node.name;
     if (innerName === "arguments") {
-      state.functionInfo.usesArguments = true;
+      if (state.functionInfo.depth === 1) {
+        state.functionInfo.usesArguments = true;
+      }
+      // "arguments" bound to local scope. therefore, there's no need to visit this identifier.
       return;
     }
-    visitName(path, state, innerName, false);
+    visitName(path, state, path.node, false);
   },
 
   ThisExpression(path: BabelTraversePath, state: ClosureRefVisitorState) {
-    state.functionInfo.usesThis = true;
+    if (state.functionInfo.depth - state.functionInfo.lexicalDepth === 1) {
+      state.functionInfo.usesThis = true;
+    }
   },
 
   "AssignmentExpression|UpdateExpression"(path: BabelTraversePath, state: ClosureRefVisitorState) {
-    for (let name in path.getBindingIdentifiers()) {
-      visitName(path, state, name, true);
+    let ids = path.getBindingIdentifiers();
+    for (let name in ids) {
+      visitName(path, state, ids[name], true);
+    }
+  },
+
+  "ForInStatement|ForOfStatement"(path: BabelTraversePath, state: ClosureRefVisitorState) {
+    if (path.node.left !== "VariableDeclaration") {
+      // `LeftHandSideExpression`s in a for-in/for-of statement perform `DestructuringAssignment` on the current loop
+      // value so we need to make sure we visit these bindings and mark them as modified.
+      const ids = path.get("left").getBindingIdentifiers();
+      for (const name in ids) {
+        visitName(path, state, ids[name], true);
+      }
     }
   },
 };

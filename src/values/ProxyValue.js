@@ -10,20 +10,21 @@
 /* @flow */
 
 import { Realm } from "../realm.js";
-import { Value, SymbolValue, NullValue, ObjectValue, UndefinedValue, StringValue } from "./index.js";
+import {
+  Value,
+  AbstractObjectValue,
+  SymbolValue,
+  NullValue,
+  ObjectValue,
+  UndefinedValue,
+  StringValue,
+} from "./index.js";
 import type { Descriptor, PropertyKeyValue } from "../types.js";
 import invariant from "../invariant.js";
-import { ToBooleanPartial, ToPropertyDescriptor } from "../methods/to.js";
-import { SameValue, SameValuePartial, SamePropertyKey } from "../methods/abstract.js";
+import { SameValuePartial, SamePropertyKey } from "../methods/abstract.js";
 import { GetMethod } from "../methods/get.js";
-import { CreateListFromArrayLike } from "../methods/create.js";
 import { IsExtensible, IsPropertyKey, IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
-import {
-  FromPropertyDescriptor,
-  CompletePropertyDescriptor,
-  IsCompatiblePropertyDescriptor,
-  ThrowIfMightHaveBeenDeleted,
-} from "../methods/properties.js";
+import { Create, Properties, To } from "../singletons.js";
 import { Call } from "../methods/call.js";
 
 function FindPropertyKey(realm: Realm, keys: Array<PropertyKeyValue>, key: PropertyKeyValue): number {
@@ -39,23 +40,27 @@ export default class ProxyValue extends ObjectValue {
   $ProxyTarget: NullValue | ObjectValue;
   $ProxyHandler: NullValue | ObjectValue;
 
-  realm: Realm;
-
   constructor(realm: Realm) {
     super(realm);
+  }
 
-    // $FlowFixMe TODO: exotics should not have $Realm
-    this.$Realm = undefined;
-    this.realm = realm;
+  static trackedPropertyNames = ObjectValue.trackedPropertyNames.concat(["$ProxyTarget", "$ProxyHandler"]);
+
+  getTrackedPropertyNames(): Array<string> {
+    return ProxyValue.trackedPropertyNames;
   }
 
   isSimpleObject(): boolean {
     return false;
   }
 
+  usesOrdinaryObjectInternalPrototypeMethods(): boolean {
+    return false;
+  }
+
   // ECMA262 9.5.1
-  $GetPrototypeOf(): NullValue | ObjectValue {
-    let realm = this.realm;
+  $GetPrototypeOf(): NullValue | AbstractObjectValue | ObjectValue {
+    let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
     let handler = this.$ProxyHandler;
@@ -99,7 +104,7 @@ export default class ProxyValue extends ObjectValue {
     let targetProto = target.$GetPrototypeOf();
 
     // 12. If SameValue(handlerProto, targetProto) is false, throw a TypeError exception.
-    if (!SameValue(realm, handlerProto, targetProto)) {
+    if (!SameValuePartial(realm, handlerProto, targetProto)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 
@@ -109,7 +114,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.2
   $SetPrototypeOf(V: ObjectValue | NullValue): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: Either Type(V) is Object or Type(V) is Null.
     invariant(V instanceof ObjectValue || V instanceof NullValue, "expected object or null");
@@ -139,7 +144,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, V »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target, V]));
+    let booleanTrapResult = To.ToBooleanPartial(realm, Call(realm, trap, handler, [target, V]));
 
     // 9. If booleanTrapResult is false, return false.
     if (!booleanTrapResult) return false;
@@ -154,7 +159,7 @@ export default class ProxyValue extends ObjectValue {
     let targetProto = target.$GetPrototypeOf();
 
     // 13. If SameValue(V, targetProto) is false, throw a TypeError exception.
-    if (!SameValue(realm, V, targetProto)) {
+    if (!SameValuePartial(realm, V, targetProto)) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 
@@ -164,7 +169,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.3
   $IsExtensible(): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
     let handler = this.$ProxyHandler;
@@ -191,7 +196,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 7. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target]));
+    let booleanTrapResult = To.ToBooleanPartial(realm, Call(realm, trap, handler, [target]));
 
     // 8. Let targetResult be ? target.[[IsExtensible]]().
     invariant(target instanceof ObjectValue);
@@ -208,7 +213,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.4
   $PreventExtensions(): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
     let handler = this.$ProxyHandler;
@@ -235,7 +240,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 7. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target »)).
-    let booleanTrapResult = ToBooleanPartial(realm, Call(realm, trap, handler, [target]));
+    let booleanTrapResult = To.ToBooleanPartial(realm, Call(realm, trap, handler, [target]));
 
     // 8. If booleanTrapResult is true, then
     if (booleanTrapResult) {
@@ -255,7 +260,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.5
   $GetOwnProperty(P: PropertyKeyValue): Descriptor | void {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -299,7 +304,8 @@ export default class ProxyValue extends ObjectValue {
     if (trapResultObj instanceof UndefinedValue) {
       // a. If targetDesc is undefined, return undefined.
       if (!targetDesc) return undefined;
-      ThrowIfMightHaveBeenDeleted(targetDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
+      targetDesc = targetDesc.throwIfNotConcrete(realm);
 
       // b. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
       if (!targetDesc.configurable) {
@@ -325,13 +331,13 @@ export default class ProxyValue extends ObjectValue {
     let extensibleTarget = IsExtensible(realm, target);
 
     // 13. Let resultDesc be ? ToPropertyDescriptor(trapResultObj).
-    let resultDesc = ToPropertyDescriptor(realm, trapResultObj);
+    let resultDesc = To.ToPropertyDescriptor(realm, trapResultObj);
 
     // 14. Call CompletePropertyDescriptor(resultDesc).
-    CompletePropertyDescriptor(realm, resultDesc);
+    Properties.CompletePropertyDescriptor(realm, resultDesc);
 
     // 15. Let valid be IsCompatiblePropertyDescriptor(extensibleTarget, resultDesc, targetDesc).
-    let valid = IsCompatiblePropertyDescriptor(realm, extensibleTarget, resultDesc, targetDesc);
+    let valid = Properties.IsCompatiblePropertyDescriptor(realm, extensibleTarget, resultDesc, targetDesc);
 
     // 16. If valid is false, throw a TypeError exception.
     if (!valid) {
@@ -339,9 +345,10 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 17. If resultDesc.[[Configurable]] is false, then
+    resultDesc = resultDesc.throwIfNotConcrete(realm);
     if (!resultDesc.configurable) {
       // a. If targetDesc is undefined or targetDesc.[[Configurable]] is true, then
-      if (!targetDesc || targetDesc.configurable) {
+      if (!targetDesc || targetDesc.throwIfNotConcrete(realm).configurable) {
         // i. Throw a TypeError exception.
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
@@ -353,7 +360,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.6
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -383,10 +390,10 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let descObj be FromPropertyDescriptor(Desc).
-    let descObj = FromPropertyDescriptor(realm, Desc);
+    let descObj = Properties.FromPropertyDescriptor(realm, Desc);
 
     // 9. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P, descObj »)).
-    let booleanTrapResult = ToBooleanPartial(
+    let booleanTrapResult = To.ToBooleanPartial(
       realm,
       Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, descObj])
     );
@@ -402,7 +409,7 @@ export default class ProxyValue extends ObjectValue {
 
     // 13. If Desc has a [[Configurable]] field and if Desc.[[Configurable]] is false, then
     let settingConfigFalse;
-    if ("configurable" in Desc && !Desc.configurable) {
+    if (Desc.throwIfNotConcrete(realm).configurable === false) {
       // a. Let settingConfigFalse be true.
       settingConfigFalse = true;
     } else {
@@ -423,15 +430,15 @@ export default class ProxyValue extends ObjectValue {
       }
     } else {
       // 16. Else targetDesc is not undefined,
-      ThrowIfMightHaveBeenDeleted(targetDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
 
       // a. If IsCompatiblePropertyDescriptor(extensibleTarget, Desc, targetDesc) is false, throw a TypeError exception.
-      if (!IsCompatiblePropertyDescriptor(realm, extensibleTarget, Desc, targetDesc)) {
+      if (!Properties.IsCompatiblePropertyDescriptor(realm, extensibleTarget, Desc, targetDesc)) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
 
       // b. If settingConfigFalse is true and targetDesc.[[Configurable]] is true, throw a TypeError exception.
-      if (settingConfigFalse && targetDesc.configurable) {
+      if (settingConfigFalse && targetDesc.throwIfNotConcrete(realm).configurable) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
       }
     }
@@ -442,7 +449,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.7
   $HasProperty(P: PropertyKeyValue): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -472,7 +479,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P »)).
-    let booleanTrapResult = ToBooleanPartial(
+    let booleanTrapResult = To.ToBooleanPartial(
       realm,
       Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P])
     );
@@ -484,7 +491,8 @@ export default class ProxyValue extends ObjectValue {
 
       // b. If targetDesc is not undefined, then
       if (targetDesc) {
-        ThrowIfMightHaveBeenDeleted(targetDesc.value);
+        Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
+        targetDesc = targetDesc.throwIfNotConcrete(realm);
 
         // i. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
         if (!targetDesc.configurable) {
@@ -507,7 +515,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -548,12 +556,14 @@ export default class ProxyValue extends ObjectValue {
 
     // 10. If targetDesc is not undefined, then
     if (targetDesc) {
-      ThrowIfMightHaveBeenDeleted(targetDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
 
       // a. If IsDataDescriptor(targetDesc) is true and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is false, then
       if (IsDataDescriptor(realm, targetDesc) && targetDesc.configurable === false && targetDesc.writable === false) {
         // i. If SameValue(trapResult, targetDesc.[[Value]]) is false, throw a TypeError exception.
-        if (!SameValuePartial(realm, trapResult, targetDesc.value || realm.intrinsics.undefined)) {
+        let targetValue = targetDesc.value || realm.intrinsics.undefined;
+        invariant(targetValue instanceof Value);
+        if (!SameValuePartial(realm, trapResult, targetValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
         }
       }
@@ -577,7 +587,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.9
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -607,7 +617,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P, V, Receiver »)).
-    let booleanTrapResult = ToBooleanPartial(
+    let booleanTrapResult = To.ToBooleanPartial(
       realm,
       Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P, V, Receiver])
     );
@@ -621,12 +631,14 @@ export default class ProxyValue extends ObjectValue {
 
     // 11. If targetDesc is not undefined, then
     if (targetDesc) {
-      ThrowIfMightHaveBeenDeleted(targetDesc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
 
       // a. If IsDataDescriptor(targetDesc) is true and targetDesc.[[Configurable]] is false and targetDesc.[[Writable]] is false, then
       if (IsDataDescriptor(realm, targetDesc) && !targetDesc.configurable && !targetDesc.writable) {
         // i. If SameValue(V, targetDesc.[[Value]]) is false, throw a TypeError exception.
-        if (!SameValuePartial(realm, V, targetDesc.value || realm.intrinsics.undefined)) {
+        let targetValue = targetDesc.value || realm.intrinsics.undefined;
+        invariant(targetValue instanceof Value);
+        if (!SameValuePartial(realm, V, targetValue)) {
           throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
         }
       }
@@ -646,7 +658,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.10
   $Delete(P: PropertyKeyValue): boolean {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected property key");
@@ -676,7 +688,7 @@ export default class ProxyValue extends ObjectValue {
     }
 
     // 8. Let booleanTrapResult be ToBoolean(? Call(trap, handler, « target, P »)).
-    let booleanTrapResult = ToBooleanPartial(
+    let booleanTrapResult = To.ToBooleanPartial(
       realm,
       Call(realm, trap, handler, [target, typeof P === "string" ? new StringValue(realm, P) : P])
     );
@@ -690,7 +702,8 @@ export default class ProxyValue extends ObjectValue {
 
     // 11. If targetDesc is undefined, return true.
     if (!targetDesc) return true;
-    ThrowIfMightHaveBeenDeleted(targetDesc.value);
+    Properties.ThrowIfMightHaveBeenDeleted(targetDesc);
+    targetDesc = targetDesc.throwIfNotConcrete(realm);
 
     // 12. If targetDesc.[[Configurable]] is false, throw a TypeError exception.
     if (!targetDesc.configurable) {
@@ -703,7 +716,7 @@ export default class ProxyValue extends ObjectValue {
 
   // ECMA262 9.5.11
   $OwnPropertyKeys(): Array<PropertyKeyValue> {
-    let realm = this.realm;
+    let realm = this.$Realm;
 
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
     let handler = this.$ProxyHandler;
@@ -733,7 +746,7 @@ export default class ProxyValue extends ObjectValue {
     let trapResultArray = Call(realm, trap, handler, [target]);
 
     // 8. Let trapResult be ? CreateListFromArrayLike(trapResultArray, « String, Symbol »).
-    let trapResult: Array<PropertyKeyValue> = ((CreateListFromArrayLike(realm, trapResultArray, [
+    let trapResult: Array<PropertyKeyValue> = ((Create.CreateListFromArrayLike(realm, trapResultArray, [
       "String",
       "Symbol",
     ]): any): Array<PropertyKeyValue>);
@@ -759,10 +772,10 @@ export default class ProxyValue extends ObjectValue {
     for (let key of targetKeys) {
       // a. Let desc be ? target.[[GetOwnProperty]](key).
       let desc = target.$GetOwnProperty(key);
-      if (desc) ThrowIfMightHaveBeenDeleted(desc.value);
+      if (desc) Properties.ThrowIfMightHaveBeenDeleted(desc);
 
       // b. If desc is not undefined and desc.[[Configurable]] is false, then
-      if (desc && desc.configurable === false) {
+      if (desc && desc.throwIfNotConcrete(realm).configurable === false) {
         // i. Append key as an element of targetNonconfigurableKeys.
         targetNonconfigurableKeys.push(key);
       } else {

@@ -12,13 +12,12 @@
 import type { Realm } from "../realm.js";
 import invariant from "../invariant.js";
 import { NullValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
-import { ArrayCreate, OrdinaryCreateFromConstructor, CreateDataProperty } from "./create.js";
-import { DefinePropertyOrThrow, Set } from "./properties.js";
-import { ToString, ToStringPartial, ToLength } from "./to.js";
 import { Get } from "./get.js";
 import { IsCallable } from "./is.js";
 import { Call } from "./call.js";
 import { HasCompatibleType, HasSomeCompatibleType } from "./has.js";
+import { Create, Properties, To } from "../singletons.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 // ECMA262 21.2.3.2.3
 export function RegExpCreate(realm: Realm, P: ?Value, F: ?Value): ObjectValue {
@@ -33,7 +32,7 @@ export function RegExpCreate(realm: Realm, P: ?Value, F: ?Value): ObjectValue {
 export function RegExpAlloc(realm: Realm, newTarget: ObjectValue): ObjectValue {
   // 1. Let obj be ? OrdinaryCreateFromConstructor(newTarget, "%RegExpPrototype%", « [[RegExpMatcher]],
   //    [[OriginalSource]], [[OriginalFlags]] »).
-  let obj = OrdinaryCreateFromConstructor(realm, newTarget, "RegExpPrototype", {
+  let obj = Create.OrdinaryCreateFromConstructor(realm, newTarget, "RegExpPrototype", {
     $RegExpMatcher: undefined, // always initialized to not undefined before use
     $OriginalSource: undefined, // ditto
     $OriginalFlags: undefined, // ditto
@@ -41,11 +40,16 @@ export function RegExpAlloc(realm: Realm, newTarget: ObjectValue): ObjectValue {
 
   // 2. Perform ! DefinePropertyOrThrow(obj, "lastIndex", PropertyDescriptor {[[Writable]]: true,
   //    [[Enumerable]]: false, [[Configurable]]: false}).
-  DefinePropertyOrThrow(realm, obj, "lastIndex", {
-    writable: true,
-    enumerable: false,
-    configurable: false,
-  });
+  Properties.DefinePropertyOrThrow(
+    realm,
+    obj,
+    "lastIndex",
+    new PropertyDescriptor({
+      writable: true,
+      enumerable: false,
+      configurable: false,
+    })
+  );
 
   // 3. Return obj.
   return obj;
@@ -62,7 +66,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
     P = "";
   } else {
     // 2. Else, let P be ? ToString(pattern).
-    P = ToStringPartial(realm, pattern);
+    P = To.ToStringPartial(realm, pattern);
   }
 
   // 3. If flags is undefined, let F be the empty String.
@@ -71,7 +75,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
     F = "";
   } else {
     // 4. Else, let F be ? ToString(flags).
-    F = ToStringPartial(realm, flags);
+    F = To.ToStringPartial(realm, flags);
   }
 
   // 5. If F contains any code unit other than "g", "i", "m", "u", or "y" or if it contains the same code unit more than once, throw a SyntaxError exception.
@@ -140,7 +144,7 @@ export function RegExpInitialize(realm: Realm, obj: ObjectValue, pattern: ?Value
   }
 
   // 12. Perform ? Set(obj, "lastIndex", 0, true).
-  Set(realm, obj, "lastIndex", realm.intrinsics.zero, true);
+  Properties.Set(realm, obj, "lastIndex", realm.intrinsics.zero, true);
 
   // 13. Return obj.
   return obj;
@@ -198,7 +202,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
   let length = S.length;
 
   // 4. Let lastIndex be ? ToLength(? Get(R, "lastIndex")).
-  let lastIndex = ToLength(realm, Get(realm, R, "lastIndex"));
+  let lastIndex = To.ToLength(realm, Get(realm, R, "lastIndex"));
 
   // 5. Let flags be R.[[OriginalFlags]].
   let flags = R.$OriginalFlags;
@@ -229,7 +233,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
     // a. If lastIndex > length, then
     if (lastIndex > length) {
       // i. Perform ? Set(R, "lastIndex", 0, true).
-      Set(realm, R, "lastIndex", realm.intrinsics.zero, true);
+      Properties.Set(realm, R, "lastIndex", realm.intrinsics.zero, true);
       // ii. Return null.
       return realm.intrinsics.null;
     }
@@ -242,7 +246,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
       // i. If sticky is true, then
       if (sticky) {
         // 1. Perform ? Set(R, "lastIndex", 0, true).
-        Set(realm, R, "lastIndex", realm.intrinsics.zero, true);
+        Properties.Set(realm, R, "lastIndex", realm.intrinsics.zero, true);
 
         // 2. Return null.
         return realm.intrinsics.null;
@@ -268,21 +272,21 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
 
   // 14. If fullUnicode is true, then
   if (fullUnicode) {
-    // TODO a. e is an index into the Input character list, derived from S, matched by matcher. Let eUTF be the smallest index into S that corresponds to the character at element e of Input. If e is greater than or equal to the length of Input, then eUTF is the number of code units in S.
-    // TODO b. Let e be eUTF.
+    // TODO #1018 a. e is an index into the Input character list, derived from S, matched by matcher. Let eUTF be the smallest index into S that corresponds to the character at element e of Input. If e is greater than or equal to the length of Input, then eUTF is the number of code units in S.
+    // b. Let e be eUTF.
   }
 
   // 15. If global is true or sticky is true, then
   if (global === true || sticky === true) {
     // a. Perform ? Set(R, "lastIndex", e, true).
-    Set(realm, R, "lastIndex", new NumberValue(realm, e), true);
+    Properties.Set(realm, R, "lastIndex", new NumberValue(realm, e), true);
   }
 
   // 16. Let n be the length of r's captures List. (This is the same value as 21.2.2.1's NcapturingParens.)
   let n = r.captures.length - 1;
 
   // 17. Let A be ArrayCreate(n + 1).
-  let A = ArrayCreate(realm, n + 1);
+  let A = Create.ArrayCreate(realm, n + 1);
 
   // 18. Assert: The value of A's "length" property is n + 1.
   let lengthOfA = Get(realm, A, "length").throwIfNotConcrete();
@@ -293,16 +297,16 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
   let matchIndex = lastIndex;
 
   // 20. Perform ! CreateDataProperty(A, "index", matchIndex).
-  CreateDataProperty(realm, A, "index", new NumberValue(realm, matchIndex));
+  Create.CreateDataProperty(realm, A, "index", new NumberValue(realm, matchIndex));
 
   // 21. Perform ! CreateDataProperty(A, "input", S).
-  CreateDataProperty(realm, A, "input", new StringValue(realm, S));
+  Create.CreateDataProperty(realm, A, "input", new StringValue(realm, S));
 
   // 22. Let matchedSubstr be the matched substring (i.e. the portion of S between offset lastIndex inclusive and offset e exclusive).
   let matchedSubstr = S.substr(lastIndex, e - lastIndex);
 
   // 23. Perform ! CreateDataProperty(A, "0", matchedSubstr).
-  CreateDataProperty(realm, A, "0", new StringValue(realm, matchedSubstr));
+  Create.CreateDataProperty(realm, A, "0", new StringValue(realm, matchedSubstr));
 
   // 24. For each integer i such that i > 0 and i ≤ n
   for (let i = 1; i <= n; ++i) {
@@ -315,8 +319,8 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
       capturedValue = realm.intrinsics.undefined;
     } else if (fullUnicode) {
       // c. Else if fullUnicode is true, then
-      // TODO: i. Assert: captureI is a List of code points.
-      // TODO: ii. Let capturedValue be a string whose code units are the UTF16Encoding of the code points of captureI.
+      // TODO #1018: i. Assert: captureI is a List of code points.
+      // ii. Let capturedValue be a string whose code units are the UTF16Encoding of the code points of captureI.
       capturedValue = realm.intrinsics.undefined;
     } else {
       // d. Else, fullUnicode is false,
@@ -328,7 +332,7 @@ export function RegExpBuiltinExec(realm: Realm, R: ObjectValue, S: string): Obje
     }
 
     // e. Perform ! CreateDataProperty(A, ! ToString(i), capturedValue).
-    CreateDataProperty(realm, A, ToString(realm, new NumberValue(realm, i)), capturedValue);
+    Create.CreateDataProperty(realm, A, To.ToString(realm, new NumberValue(realm, i)), capturedValue);
   }
 
   // 25. Return A.

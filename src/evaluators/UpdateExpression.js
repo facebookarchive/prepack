@@ -7,16 +7,19 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
-import { Add, GetValue, ToNumber, PutValue, IsToNumberPure } from "../methods/index.js";
-import { AbstractValue, NumberValue } from "../values/index.js";
-import type { BabelNodeUpdateExpression } from "babel-types";
+import { Add } from "../methods/index.js";
+import { AbstractValue, NumberValue, IntegralValue } from "../values/index.js";
+import type { BabelNodeUpdateExpression } from "@babel/types";
+import { Environment, Leak, Properties, To } from "../singletons.js";
 import invariant from "../invariant.js";
+import { ValuesDomain, TypesDomain } from "../domains/index.js";
+import { createOperationDescriptor } from "../utils/generator.js";
 
 export default function(
   ast: BabelNodeUpdateExpression,
@@ -30,30 +33,48 @@ export default function(
   let expr = env.evaluate(ast.argument, strictCode);
 
   // Let oldValue be ? ToNumber(? GetValue(expr)).
-  let oldExpr = GetValue(realm, expr);
+  let oldExpr = Environment.GetValue(realm, expr);
   if (oldExpr instanceof AbstractValue) {
-    if (!IsToNumberPure(realm, oldExpr)) {
-      let error = new CompilerDiagnostic(
-        "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
-        ast.argument.loc,
-        "PP0008",
-        "RecoverableError"
-      );
-      if (realm.handleError(error) === "Fail") throw new FatalError();
-    }
     invariant(ast.operator === "++" || ast.operator === "--"); // As per BabelNodeUpdateExpression
     let op = ast.operator === "++" ? "+" : "-";
     let newAbstractValue = AbstractValue.createFromBinaryOp(realm, op, oldExpr, new NumberValue(realm, 1), ast.loc);
-    PutValue(realm, expr, newAbstractValue);
-    if (ast.prefix) {
+    if (!To.IsToNumberPure(realm, oldExpr)) {
+      if (realm.isInPureScope()) {
+        // In pure scope we have to treat the ToNumber operation as temporal since it
+        // might throw or mutate something. We also need to leak the argument due to the
+        // possible mutations.
+        Leak.value(realm, oldExpr);
+        newAbstractValue = realm.evaluateWithPossibleThrowCompletion(
+          () =>
+            AbstractValue.createTemporalFromBuildFunction(
+              realm,
+              NumberValue,
+              [oldExpr],
+              createOperationDescriptor("UPDATE_INCREMENTOR", { incrementor: op })
+            ),
+          TypesDomain.topVal,
+          ValuesDomain.topVal
+        );
+      } else {
+        let error = new CompilerDiagnostic(
+          "might be a symbol or an object with an unknown valueOf or toString or Symbol.toPrimitive method",
+          ast.argument.loc,
+          "PP0008",
+          "RecoverableError"
+        );
+        if (realm.handleError(error) === "Fail") throw new FatalError();
+      }
+    }
+    Properties.PutValue(realm, expr, newAbstractValue);
+    if (ast.prefix === true) {
       return newAbstractValue;
     } else {
       return oldExpr;
     }
   }
-  let oldValue = ToNumber(realm, oldExpr);
+  let oldValue = To.ToNumber(realm, oldExpr);
 
-  if (ast.prefix) {
+  if (ast.prefix === true) {
     if (ast.operator === "++") {
       // ECMA262 12.4.6.1
 
@@ -61,7 +82,7 @@ export default function(
       let newValue = Add(realm, oldValue, 1);
 
       // 4. Perform ? PutValue(expr, newValue).
-      PutValue(realm, expr, newValue);
+      Properties.PutValue(realm, expr, newValue);
 
       // 5. Return newValue.
       return newValue;
@@ -72,7 +93,7 @@ export default function(
       let newValue = Add(realm, oldValue, -1);
 
       // 4. Perform ? PutValue(expr, newValue).
-      PutValue(realm, expr, newValue);
+      Properties.PutValue(realm, expr, newValue);
 
       // 5. Return newValue.
       return newValue;
@@ -86,10 +107,10 @@ export default function(
       let newValue = Add(realm, oldValue, 1);
 
       // 4. Perform ? PutValue(lhs, newValue).
-      PutValue(realm, expr, newValue);
+      Properties.PutValue(realm, expr, newValue);
 
       // 5. Return oldValue.
-      return new NumberValue(realm, oldValue);
+      return IntegralValue.createFromNumberValue(realm, oldValue);
     } else if (ast.operator === "--") {
       // ECMA262 12.4.5.1
 
@@ -97,10 +118,10 @@ export default function(
       let newValue = Add(realm, oldValue, -1);
 
       // 4. Perform ? PutValue(lhs, newValue).
-      PutValue(realm, expr, newValue);
+      Properties.PutValue(realm, expr, newValue);
 
       // 5. Return oldValue.
-      return new NumberValue(realm, oldValue);
+      return IntegralValue.createFromNumberValue(realm, oldValue);
     }
     invariant(false);
   }

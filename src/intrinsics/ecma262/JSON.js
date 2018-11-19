@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import {
@@ -23,28 +23,13 @@ import {
   UndefinedValue,
   Value,
 } from "../../values/index.js";
-import {
-  Call,
-  CreateDataProperty,
-  EnumerableOwnProperties,
-  Get,
-  HasSomeCompatibleType,
-  IsArray,
-  IsCallable,
-  ObjectCreate,
-  ThrowIfMightHaveBeenDeleted,
-  ToInteger,
-  ToLength,
-  ToNumber,
-  ToString,
-  ToStringPartial,
-} from "../../methods/index.js";
+import { Call, EnumerableOwnProperties, Get, HasSomeCompatibleType, IsArray, IsCallable } from "../../methods/index.js";
 import { InternalizeJSONProperty } from "../../methods/json.js";
 import { ValuesDomain } from "../../domains/index.js";
 import { FatalError } from "../../errors.js";
+import { Create, Properties, To } from "../../singletons.js";
 import nativeToInterp from "../../utils/native-to-interp.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 
 type Context = {
   PropertyList?: Array<StringValue>,
@@ -73,7 +58,7 @@ function SerializeJSONArray(realm: Realm, value: ObjectValue, context: Context):
   let partial = [];
 
   // 6. Let len be ? ToLength(? Get(value, "length")).
-  let len = ToLength(realm, Get(realm, value, "length"));
+  let len = To.ToLength(realm, Get(realm, value, "length"));
 
   // 7. Let index be 0.
   let index = 0;
@@ -250,11 +235,11 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
     // a. If value has a [[NumberData]] internal slot, then
     if (value.$NumberData) {
       // b. Let value be ? ToNumber(value).
-      value = new NumberValue(realm, ToNumber(realm, value));
+      value = new NumberValue(realm, To.ToNumber(realm, value));
     } else if (value.$StringData) {
       // c. Else if value has a [[StringData]] internal slot, then
       // d. Let value be ? ToString(value).
-      value = new StringValue(realm, ToString(realm, value));
+      value = new StringValue(realm, To.ToString(realm, value));
     } else if (value.$BooleanData) {
       // e. Else if value has a [[BooleanData]] internal slot, then
       // f. Let value be the value of the [[BooleanData]] internal slot of value.
@@ -278,7 +263,7 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
   if (value instanceof NumberValue) {
     // a. If value is finite, return ! ToString(value).
     if (isFinite(value.value)) {
-      return ToString(realm, value);
+      return To.ToString(realm, value);
     } else {
       // b. Else, return "null".
       return "null";
@@ -303,46 +288,42 @@ function SerializeJSONProperty(realm: Realm, key: StringValue, holder: ObjectVal
   return undefined;
 }
 
-function InternalGetTemplate(realm: Realm, val: AbstractObjectValue): ObjectValue {
-  let template = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-  let valTemplate = val.getTemplate();
-  for (let [key, binding] of valTemplate.properties) {
+function InternalCloneObject(realm: Realm, val: ObjectValue): ObjectValue {
+  let clone = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+  for (let [key, binding] of val.properties) {
     if (binding === undefined || binding.descriptor === undefined) continue; // deleted
-    invariant(binding.descriptor !== undefined);
-    let value = binding.descriptor.value;
-    ThrowIfMightHaveBeenDeleted(value);
+    let desc = binding.descriptor;
+    invariant(desc !== undefined);
+    Properties.ThrowIfMightHaveBeenDeleted(desc);
+    let value = desc.throwIfNotConcrete(realm).value;
     if (value === undefined) {
       AbstractValue.reportIntrospectionError(val, key); // cannot handle accessors
       throw new FatalError();
     }
-    CreateDataProperty(realm, template, key, InternalJSONClone(realm, value));
+    invariant(value instanceof Value);
+    Create.CreateDataProperty(realm, clone, key, InternalJSONClone(realm, value));
   }
-  if (valTemplate.isPartialObject()) template.makePartial();
-  if (valTemplate.isSimpleObject()) template.makeSimple();
-  return template;
+  if (val.isPartialObject()) clone.makePartial();
+  if (val.isSimpleObject()) clone.makeSimple();
+  clone.isScopedTemplate = true; // because this object doesn't exist ahead of time, and the visitor would otherwise declare it in the common scope
+  return clone;
 }
 
 const JSONStringifyStr = "global.JSON.stringify(A)";
-const JSONStringify = buildExpressionTemplate(JSONStringifyStr);
 const JSONParseStr = "global.JSON.parse(A)";
-const JSONParse = buildExpressionTemplate(JSONParseStr);
 
 function InternalJSONClone(realm: Realm, val: Value): Value {
   if (val instanceof AbstractValue) {
     if (val instanceof AbstractObjectValue) {
-      let strVal = AbstractValue.createFromTemplate(realm, JSONStringify, StringValue, [val], JSONStringifyStr);
-      let obVal = AbstractValue.createFromTemplate(realm, JSONParse, ObjectValue, [strVal], JSONParseStr);
-      obVal.values = new ValuesDomain(new Set([InternalGetTemplate(realm, val)]));
+      let strVal = AbstractValue.createFromTemplate(realm, JSONStringifyStr, StringValue, [val]);
+      let obVal = AbstractValue.createFromTemplate(realm, JSONParseStr, ObjectValue, [strVal]);
+      obVal.values = new ValuesDomain(new Set([InternalCloneObject(realm, val.getTemplate())]));
       return obVal;
     }
-    // TODO: NaN and Infinity must be mapped to null.
+    // TODO #1010: NaN and Infinity must be mapped to null.
     return val;
   }
-  if (
-    (val instanceof NumberValue && !isFinite(val.value)) ||
-    val instanceof UndefinedValue ||
-    val instanceof NullValue
-  ) {
+  if (val instanceof NumberValue && !isFinite(val.value)) {
     return realm.intrinsics.null;
   }
   if (val instanceof PrimitiveValue) {
@@ -352,30 +333,32 @@ function InternalJSONClone(realm: Realm, val: Value): Value {
     let clonedObj;
     let isArray = IsArray(realm, val);
     if (isArray === true) {
-      clonedObj = ObjectCreate(realm, realm.intrinsics.ArrayPrototype);
+      clonedObj = Create.ObjectCreate(realm, realm.intrinsics.ArrayPrototype);
       let I = 0;
-      let len = ToLength(realm, Get(realm, val, "length"));
+      let len = To.ToLength(realm, Get(realm, val, "length"));
       while (I < len) {
-        let P = ToString(realm, new NumberValue(realm, I));
+        let P = To.ToString(realm, new NumberValue(realm, I));
         let newElement = Get(realm, val, P);
         if (!(newElement instanceof UndefinedValue)) {
-          // TODO: An abstract value that ultimately yields undefined should still be skipped
-          CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
+          // TODO #1011: An abstract value that ultimately yields undefined should still be skipped
+          Create.CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
         }
         I += 1;
       }
     } else {
-      clonedObj = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
-      let keys = EnumerableOwnProperties(realm, val, "key");
+      clonedObj = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      let keys = EnumerableOwnProperties(realm, val, "key", true);
       for (let P of keys) {
         invariant(P instanceof StringValue);
         let newElement = Get(realm, val, P);
         if (!(newElement instanceof UndefinedValue)) {
-          // TODO: An abstract value that ultimately yields undefined should still be skipped
-          CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
+          // TODO #1011: An abstract value that ultimately yields undefined should still be skipped
+          Create.CreateDataProperty(realm, clonedObj, P, InternalJSONClone(realm, newElement));
         }
       }
     }
+    if (val.isPartialObject()) clonedObj.makePartial();
+    clonedObj.makeSimple(); // The result of a JSON clone is always simple
     return clonedObj;
   }
   invariant(false);
@@ -388,9 +371,9 @@ export default function(realm: Realm): ObjectValue {
   obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "JSON"), { writable: false });
 
   // ECMA262 24.3.2
-  obj.defineNativeMethod("stringify", 3, (context, [value, replacer, space]) => {
-    replacer = replacer.throwIfNotConcrete();
-    space = space.throwIfNotConcrete();
+  obj.defineNativeMethod("stringify", 3, (context, [value, _replacer, _space]) => {
+    let replacer = _replacer.throwIfNotConcrete();
+    let space = _space.throwIfNotConcrete();
 
     // 1. Let stack be a new empty List.
     let stack = [];
@@ -418,7 +401,7 @@ export default function(realm: Realm): ObjectValue {
           PropertyList = [];
 
           // ii. Let len be ? ToLength(? Get(replacer, "length")).
-          let len = ToLength(realm, Get(realm, replacer, "length"));
+          let len = To.ToLength(realm, Get(realm, replacer, "length"));
 
           // iii. Let k be 0.
           let k = 0;
@@ -437,12 +420,12 @@ export default function(realm: Realm): ObjectValue {
               item = v;
             } else if (v instanceof NumberValue) {
               // 4. Else if Type(v) is Number, let item be ! ToString(v).
-              item = new StringValue(realm, ToString(realm, v));
+              item = new StringValue(realm, To.ToString(realm, v));
             } else if (v instanceof ObjectValue) {
               // 5. Else if Type(v) is Object, then
               // a. If v has a [[StringData]] or [[NumberData]] internal slot, let item be ? ToString(v).
               if (v.$StringData || v.$NumberData) {
-                item = new StringValue(realm, ToString(realm, v));
+                item = new StringValue(realm, To.ToString(realm, v));
               }
             }
 
@@ -464,11 +447,11 @@ export default function(realm: Realm): ObjectValue {
       // a. If space has a [[NumberData]] internal slot, then
       if (space.$NumberData) {
         // i. Let space be ? ToNumber(space).
-        space = new NumberValue(realm, ToNumber(realm, space));
+        space = new NumberValue(realm, To.ToNumber(realm, space));
       } else if (space.$StringData) {
         // b. Else if space has a [[StringData]] internal slot, then
         // i. Let space be ? ToString(space).
-        space = new StringValue(realm, ToString(realm, space));
+        space = new StringValue(realm, To.ToString(realm, space));
       }
     }
 
@@ -476,7 +459,7 @@ export default function(realm: Realm): ObjectValue {
     // 6. If Type(space) is Number, then
     if (space instanceof NumberValue) {
       // a. Let space be min(10, ToInteger(space)).
-      space = new NumberValue(realm, Math.min(10, ToInteger(realm, space)));
+      space = new NumberValue(realm, Math.min(10, To.ToInteger(realm, space)));
 
       // b. Set gap to a String containing space occurrences of code unit 0x0020 (SPACE). This will be the empty String if space is less than 1.
       gap = Array(Math.max(0, space.value)).join(" ");
@@ -491,26 +474,28 @@ export default function(realm: Realm): ObjectValue {
     }
 
     // 9. Let wrapper be ObjectCreate(%ObjectPrototype%).
-    let wrapper = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    let wrapper = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
-    // TODO: Make result abstract if any nested element is an abstract value.
-    if (value instanceof AbstractValue) {
+    let isAbstract = value instanceof AbstractValue;
+
+    // #2411
+    if (isAbstract && value.values.isTop()) {
+      AbstractValue.reportIntrospectionError(value);
+      throw new FatalError();
+    }
+
+    // TODO #1012: Make result abstract if any nested element is an abstract value.
+    if (isAbstract || (value instanceof ObjectValue && value.isPartialObject())) {
       // Return abstract result. This enables cloning via JSON.parse(JSON.stringify(...)).
       let clonedValue = InternalJSONClone(realm, value);
-      let result = AbstractValue.createTemporalFromTemplate(realm, JSONStringify, StringValue, [value, clonedValue], {
+      let result = AbstractValue.createTemporalFromTemplate(realm, JSONStringifyStr, StringValue, [clonedValue], {
         kind: "JSON.stringify(...)",
       });
-      if (clonedValue instanceof ObjectValue) {
-        let iName = result.intrinsicName;
-        invariant(iName);
-        invariant(realm.generator);
-        realm.rebuildNestedProperties(result, iName);
-      }
       return result;
     }
 
     // 10. Let status be CreateDataProperty(wrapper, the empty String, value).
-    let status = CreateDataProperty(realm, wrapper, "", value);
+    let status = Create.CreateDataProperty(realm, wrapper, "", value);
 
     // 11. Assert: status is true.
     invariant(status, "expected to create data property");
@@ -535,31 +520,33 @@ export default function(realm: Realm): ObjectValue {
     let unfiltered;
     if (text instanceof AbstractValue && text.kind === "JSON.stringify(...)") {
       // Enable cloning via JSON.parse(JSON.stringify(...)).
-      let gen = realm.preludeGenerator;
-      invariant(gen); // text is abstract, so we are doing abstract interpretation
-      let args = gen.derivedIds.get(text.intrinsicName);
-      invariant(args); // since text.kind === "JSON.stringify(...)" we know this must be true
-      let value = args[0];
-      invariant(value instanceof AbstractValue); // put there by stringify above
-      let clonedValue = args[1];
-      let type = value.getType();
-      let template;
-      if (clonedValue instanceof AbstractObjectValue) {
-        template = InternalGetTemplate(realm, clonedValue);
-        template._isSimple = realm.intrinsics.true;
+      // text is abstract, so we are doing abstract interpretation
+      let temporalOperationEntryArgs = realm.derivedIds.get(text.intrinsicName);
+      invariant(temporalOperationEntryArgs !== undefined);
+      let args = temporalOperationEntryArgs.args;
+      invariant(args[0] instanceof Value); // since text.kind === "JSON.stringify(...)"
+      let inputClone = args[0]; // A temporal copy of the object that was the argument to stringify
+      // Clone it so that every call to parse produces a different instance from stringify's clone
+      let parseResult; // A clone of inputClone, because every call to parse produces a new object
+      if (inputClone instanceof ObjectValue) {
+        parseResult = InternalCloneObject(realm, inputClone);
+      } else {
+        invariant(inputClone instanceof AbstractObjectValue);
+        parseResult = InternalCloneObject(realm, inputClone.getTemplate());
       }
-      unfiltered = AbstractValue.createTemporalFromTemplate(realm, JSONParse, type, [text], {
+      invariant(parseResult.isPartialObject()); // Because stringify ensures it
+      parseResult.makeSimple(); // because the result of JSON.parse is always simple
+      // Force evaluation of the parse call
+      unfiltered = AbstractValue.createTemporalFromTemplate(realm, JSONParseStr, ObjectValue, [text], {
         kind: "JSON.parse(...)",
       });
-      if (template !== undefined) unfiltered.values = new ValuesDomain(new Set([template]));
-      if (template) {
-        invariant(unfiltered.intrinsicName);
-        invariant(realm.generator);
-        realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
-      }
+      unfiltered.values = new ValuesDomain(new Set([parseResult]));
+      invariant(unfiltered.intrinsicName !== undefined);
+      invariant(realm.generator);
+      realm.rebuildNestedProperties(unfiltered, unfiltered.intrinsicName);
     } else {
       // 1. Let JText be ? ToString(text).
-      let JText = ToStringPartial(realm, text);
+      let JText = To.ToStringPartial(realm, text);
 
       // 2. Parse JText interpreted as UTF-16 encoded Unicode points (6.1.4) as a JSON text as specified in ECMA-404. Throw a SyntaxError exception if JText is not a valid JSON text as defined in that specification.
       // 3. Let scriptText be the result of concatenating "(", JText, and ");".
@@ -585,13 +572,13 @@ export default function(realm: Realm): ObjectValue {
     // 7. If IsCallable(reviver) is true, then
     if (IsCallable(realm, reviver)) {
       // a. Let root be ObjectCreate(%ObjectPrototype%).
-      let root = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+      let root = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
 
       // b. Let rootName be the empty String.
       let rootName = "";
 
       // c. Let status be CreateDataProperty(root, rootName, unfiltered).
-      let status = CreateDataProperty(realm, root, rootName, unfiltered);
+      let status = Create.CreateDataProperty(realm, root, rootName, unfiltered);
 
       // d. Assert: status is true.
       invariant(status, "expected to create data property");

@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import {
@@ -15,6 +15,7 @@ import {
   NullValue,
   NumberValue,
   ObjectValue,
+  PrimitiveValue,
   StringValue,
   BooleanValue,
   SymbolValue,
@@ -29,12 +30,19 @@ export default class ConcreteValue extends Value {
     super(realm, intrinsicName);
   }
 
+  isTemporal(): boolean {
+    return false;
+  }
   mightNotBeFalse(): boolean {
     return !this.mightBeFalse();
   }
 
   mightBeNull(): boolean {
     return this instanceof NullValue;
+  }
+
+  mightNotBeNull(): boolean {
+    return !(this instanceof NullValue);
   }
 
   mightBeNumber(): boolean {
@@ -63,6 +71,10 @@ export default class ConcreteValue extends Value {
 
   mightBeUndefined(): boolean {
     return this instanceof UndefinedValue;
+  }
+
+  mightNotBeUndefined(): boolean {
+    return !(this instanceof UndefinedValue);
   }
 
   mightHaveBeenDeleted(): boolean {
@@ -96,6 +108,10 @@ export default class ConcreteValue extends Value {
 
   throwIfNotConcreteObject(): ObjectValue {
     return this.throwIfNotObject();
+  }
+
+  throwIfNotConcretePrimitive(): PrimitiveValue {
+    invariant(false, "expected this to be a primitive value if concrete");
   }
 
   throwIfNotObject(): ObjectValue {

@@ -7,11 +7,12 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { ToIndexPartial, OrdinaryCreateFromConstructor, IsDetachedBuffer } from "../../methods/index.js";
+import { IsDetachedBuffer } from "../../methods/index.js";
 import { NativeFunctionValue, ObjectValue, UndefinedValue } from "../../values/index.js";
+import { Create, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -21,7 +22,8 @@ export default function(realm: Realm): NativeFunctionValue {
     "DataView",
     "DataView",
     3,
-    (context, [buffer, byteOffset, byteLength], argCount, NewTarget) => {
+    (context, [_buffer, byteOffset, byteLength], argCount, NewTarget) => {
+      let buffer = _buffer;
       // 1. If NewTarget is undefined, throw a TypeError exception.
       if (!NewTarget) {
         throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
@@ -39,7 +41,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 4. Let offset be ? ToIndex(byteOffset).
-      let offset = ToIndexPartial(realm, byteOffset);
+      let offset = To.ToIndexPartial(realm, byteOffset);
 
       // 5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
       if (IsDetachedBuffer(realm, buffer)) {
@@ -63,7 +65,7 @@ export default function(realm: Realm): NativeFunctionValue {
       } else {
         // 9. Else,
         // a. Let viewByteLength be ? ToIndex(byteLength).
-        viewByteLength = ToIndexPartial(realm, byteLength);
+        viewByteLength = To.ToIndexPartial(realm, byteLength);
 
         // b. If offset+viewByteLength > bufferByteLength, throw a RangeError exception.
         if (offset + viewByteLength > bufferByteLength) {
@@ -72,7 +74,7 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // 10. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%DataViewPrototype%", « [[DataView]], [[ViewedArrayBuffer]], [[ByteLength]], [[ByteOffset]] »).
-      let O = OrdinaryCreateFromConstructor(realm, NewTarget, "DataViewPrototype", {
+      let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "DataViewPrototype", {
         $DataView: undefined,
         $ViewedArrayBuffer: undefined,
         $ByteLength: undefined,

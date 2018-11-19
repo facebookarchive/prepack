@@ -7,12 +7,12 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
-import { PrimitiveValue } from "./index.js";
+import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
 
-export default class NumberValue extends PrimitiveValue {
+export class NumberValue extends PrimitiveValue {
   constructor(realm: Realm, value: number, intrinsicName?: string) {
     super(realm, intrinsicName);
 
@@ -20,6 +20,10 @@ export default class NumberValue extends PrimitiveValue {
   }
 
   value: number;
+
+  equals(x: Value): boolean {
+    return x instanceof NumberValue && Object.is(this.value, x.value);
+  }
 
   getHash(): number {
     let num = Math.abs(this.value);
@@ -37,5 +41,21 @@ export default class NumberValue extends PrimitiveValue {
 
   _serialize(): number {
     return this.value;
+  }
+
+  toDisplayString(): string {
+    return this.value.toString();
+  }
+}
+
+export class IntegralValue extends NumberValue {
+  constructor(realm: Realm, value: number, intrinsicName?: string) {
+    super(realm, value, intrinsicName);
+  }
+
+  static createFromNumberValue(realm: Realm, value: number, intrinsicName?: string): IntegralValue | NumberValue {
+    return Number.isInteger(value)
+      ? new IntegralValue(realm, value, intrinsicName)
+      : new NumberValue(realm, value, intrinsicName);
   }
 }

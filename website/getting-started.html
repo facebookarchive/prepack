@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Prepack &middot; Partial evaluator for JavaScript</title>
+    <script src="js/prism.js"></script>
+    <link rel="stylesheet" href="css/prism.css"/>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-44373548-29', 'auto');
+      ga('send', 'pageview');
+    </script>
+  </head>
+  <body>
+
+    <nav class="nav">
+      <div class="content-container">
+
+        <div class="nav-left">
+          <a class="nav-item is-brand" href="./">
+            <img class="nav-logo" src="static/images/prepack_logo.png" alt="prepack logo"/>
+            Prepack
+          </a>
+        </div>
+
+        <span id="nav-toggle" class="nav-toggle">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+
+        <div id="nav-menu" class="nav-right nav-menu">
+          <a href="./" class="nav-item">About</a>
+          <a href="getting-started.html" class="nav-item is-active">Getting Started</a>
+          <a href="frequently-asked-questions.html" class="nav-item">FAQs</a>
+          <a href="repl.html" class="nav-item">Try It Out</a>
+          <a href="https://github.com/facebook/prepack" class="nav-item">GitHub</a>
+        </div>
+
+      </div>
+    </nav>
+
+    <div class="content">
+      <div class="section">
+        <div class="content-container">
+          <h2>What Does Prepack Do?</h2>
+
+          <p class="align-left">You can learn the basics of what Prepack does and how it works from <a href="https://gist.github.com/gaearon/d85dccba72b809f56a9553972e5c33c4">this overview</a>.</p>
+
+          <p class="align-left">It's not complete, but it can serve as a high-level overview while avoiding the computer science jargon.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <div class="content-container">
+          <h2>Prepack CLI</h2>
+
+          <h3>Installation</h3>
+          <div class="code-block language-sh">
+            <pre><code>npm install -g prepack</code></pre>
+          </div>
+
+          <h3>Compiling a File</h3>
+
+          <p class="align-left">Compile a file and print it to the console:</p>
+          <div class="code-block language-sh">
+            <pre><code>prepack script.js</code></pre>
+          </div>
+
+          <p class="align-left">Compile a file and output <strong>to another file</strong>:</p>
+          <div class="code-block language-sh">
+            <pre><code>prepack script.js --out script-processed.js</code></pre>
+          </div>
+
+          <p class="align-left">If you want to output <strong>a source map file</strong> add the <code>--srcmapOut</code>. If your bundle was generated from some other compiler, Prepack will automatically look for a <code>.map</code> file but you can also specify it using the <code>--srcmapIn</code> option:</p>
+          <div class="code-block language-sh">
+            <pre><code>prepack script.js --out script-processed.js --srcmapIn script.map --srcmapOut script-processed.map</code></pre>
+          </div>
+
+          <p class="align-left">
+            For advanced uses <a href="#options">see the API options</a> or <code>prepack --help</code>.
+          </p>
+          <div class="code-block language-sh">
+            <pre><code>prepack [ --out output.js ] [ --compatibility jsc ] [ --mathRandomSeed seedvalue ] [ --srcmapIn inputMap ] [ --srcmapOut outputMap ] [ -- | input.js ]</code></pre>
+          </div>
+
+          <h3>REPL</h3>
+          <p class="align-left">
+            You can also run Prepack in REPL mode. This probably isn't very useful but it lets you test bugs in Prepack's interpreter.
+          </p>
+          <div class="code-block language-sh">
+            <pre><code>prepack-repl</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="content-container">
+          <h2>Prepack API</h2>
+
+          <p class="align-left">
+            You can also use the programmatic API as a Node.js module.
+          </p>
+
+          <h3>Installation</h3>
+          <div class="code-block language-sh">
+            <pre><code>npm install --save-dev prepack</code></pre>
+          </div>
+
+          <div class="code-block language-js">
+            <pre><code>var Prepack = require("prepack");
+import { prepack, prepackFileSync } from 'prepack';
+import * as Prepack from 'prepack';</code></pre>
+          </div>
+
+          <h3>String</h3>
+          <div class="code-block language-js">
+            <pre><code>Prepack.prepackSources([{filePath, fileContents, sourceMapContents}], options) // returns { code: string, map: SourceMap }</code></pre>
+          </div>
+
+          <h3>File Async</h3>
+          <div class="code-block language-js">
+            <pre><code>Prepack.prepackFile(filename, options, callback) // callback(error, { code: string, map: SourceMap })</code></pre>
+          </div>
+
+          <h3>File Sync</h3>
+          <div class="code-block language-js">
+            <pre><code>Prepack.prepackFileSync(filenames, options) // returns { code: string, map: SourceMap }</code></pre>
+          </div>
+
+          <h3 id="options">Options</h3>
+          <table class="options-table">
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>filename</code></td>
+                <td><code>string</code></td>
+                <td>inferred</td>
+                <td>Filename to use in error stacks.</td>
+              </tr>
+              <tr>
+                <td><code>inputSourceMapFilename</code></td>
+                <td><code>string</code></td>
+                <td><code>null</code></td>
+                <td>If provided, this input source map file is used as the input before generating a new source map.</td>
+              </tr>
+              <tr>
+                <td><code>sourceMaps</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td>Determines whether a source map file should be generated.</td>
+              </tr>
+              <tr>
+                <td><code>compatibility</code></td>
+                <td><code>"browser" | "jsc-600-1-4-17"</code></td>
+                <td><code>"browser"</code></td>
+                <td>Select a built-in environment compatibility. More built-in environments will be added in the future.</td>
+              </tr>
+              <tr>
+                <td><code>mathRandomSeed</code></td>
+                <td><code>string</code></td>
+                <td><code>null<code></td>
+                <td>If a seed string is provided, <code>Math.random()</code> can be relied on and used in concrete code paths.</td>
+              </tr>
+              <tr>
+                <td><code>trace</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td>Logs evaluated function calls.</td>
+              </tr>
+              <tr>
+                <td><code>debugNames</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td>If true, try to retain original variable and function names as part of the generated code.</td>
+              </tr>
+              <tr>
+                <td><code>inlineExpressions</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td>Enables two passes in the serializer to improve code quality by avoiding intermediate variables.</td>
+              </tr>
+              <tr>
+                <td><code>logStatistics</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td>If true, logs statistics about the number of objects, functions and ids generated.</td>
+              </tr>
+              <tr>
+                <td><code>internalDebug</code></td>
+                <td><code>boolean</code></td>
+                <td><code>false</code></td>
+                <td>If true, prints the JS stack inside of Prepack along with the stack in the Prepacked program. Useful for debugging Prepack itself.</td>
+              </tr>
+              <tr>
+                <td><code>timeout</code></td>
+                <td><code>number</code></td>
+                <td><code>Infinity</code></td>
+                <td>Number of milliseconds to run a program before it times out. Useful to avoid infinite loops in the Prepacked program.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-background">
+      <div class="content-container">
+        <div class="footer">
+          <div>
+            Copyright &copy; 2018 Facebook Inc.
+          </div>
+          <div>
+            <a href="https://code.facebook.com/projects/" target="_blank">
+              <img
+                class="oss-logo"
+                src="./static/images/oss_logo.png"
+                alt="Facebook Open Source"
+                title="Facebook Open Source" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/toggle_menu.js"></script>
+  </body>
+</html>

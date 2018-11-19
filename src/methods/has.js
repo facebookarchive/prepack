@@ -7,15 +7,16 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { FatalError } from "../errors.js";
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue } from "../types.js";
-import { ThrowIfMightHaveBeenDeleted, IsPropertyKey } from "./index.js";
+import { IsPropertyKey } from "./index.js";
 import { Value, AbstractValue, ObjectValue, NullValue, AbstractObjectValue } from "../values/index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeExpression } from "babel-types";
+import type { BabelNodeExpression } from "@babel/types";
 
 // 12.2.1.2 Static Semantics: HasName
 // 14.1.9 Static Semantics: HasName
@@ -81,7 +82,7 @@ export function HasOwnProperty(realm: Realm, O: ObjectValue | AbstractObjectValu
 
   // 4. If desc is undefined, return false.
   if (desc === undefined) return false;
-  ThrowIfMightHaveBeenDeleted(desc.value);
+  Properties.ThrowIfMightHaveBeenDeleted(desc);
 
   // 5. Return true.
   return true;
@@ -97,7 +98,7 @@ export function OrdinaryHasProperty(realm: Realm, O: ObjectValue, P: PropertyKey
 
   // 3. If hasOwn is not undefined, return true.
   if (hasOwn !== undefined) {
-    ThrowIfMightHaveBeenDeleted(hasOwn.value);
+    Properties.ThrowIfMightHaveBeenDeleted(hasOwn);
     return true;
   }
 

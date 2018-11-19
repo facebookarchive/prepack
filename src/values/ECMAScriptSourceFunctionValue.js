@@ -10,9 +10,11 @@
 /* @flow */
 
 import type { Realm } from "../realm.js";
-import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } from "babel-types";
+import type { BabelNodeBlockStatement, BabelNodeSourceLocation, BabelNodeLVal } from "@babel/types";
+import type { FunctionBodyAstNode } from "../types.js";
 import { ECMAScriptFunctionValue } from "./index.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
+import invariant from "../invariant.js";
 
 /* Non built-in ECMAScript function objects with source code */
 export default class ECMAScriptSourceFunctionValue extends ECMAScriptFunctionValue {
@@ -23,7 +25,26 @@ export default class ECMAScriptSourceFunctionValue extends ECMAScriptFunctionVal
   $Strict: boolean;
   $FormalParameters: Array<BabelNodeLVal>;
   $ECMAScriptCode: BabelNodeBlockStatement;
+  $HasComputedName: ?boolean;
+  $HasEmptyConstructor: ?boolean;
   loc: ?BabelNodeSourceLocation;
+
+  initialize(params: Array<BabelNodeLVal>, body: BabelNodeBlockStatement) {
+    let node = ((body: any): FunctionBodyAstNode);
+    this.getHash();
+    // Record the sequence number, reflecting when this function was initialized for the first time
+    if (node.uniqueOrderedTag === undefined) node.uniqueOrderedTag = this.$Realm.functionBodyUniqueTagSeed++;
+    this.$ECMAScriptCode = body;
+    this.$FormalParameters = params;
+  }
+
+  // Override.
+  getName(): string {
+    const uniqueTag = ((this.$ECMAScriptCode: any): FunctionBodyAstNode).uniqueOrderedTag;
+    // Should only be called after the function is initialized.
+    invariant(uniqueTag);
+    return this.__originalName ? this.__originalName : `function#${uniqueTag}`;
+  }
 
   hasDefaultLength(): boolean {
     let params = this.$FormalParameters;

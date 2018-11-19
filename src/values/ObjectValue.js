@@ -10,19 +10,19 @@
 /* @flow */
 
 import type { Realm, ExecutionContext } from "../realm.js";
+import { ValuesDomain } from "../domains/index.js";
 import { FatalError } from "../errors.js";
 import type {
   DataBlock,
-  Descriptor,
   IterationKind,
   ObjectKind,
-  PromiseCapability,
   PromiseReaction,
   PropertyBinding,
   PropertyKeyValue,
   TypedArrayKind,
 } from "../types.js";
 import {
+  AbstractObjectValue,
   AbstractValue,
   BooleanValue,
   ConcreteValue,
@@ -34,71 +34,131 @@ import {
   UndefinedValue,
   Value,
 } from "./index.js";
-import type { ECMAScriptSourceFunctionValue, NativeFunctionCallback } from "./index.js";
+import { isReactElement } from "../react/utils.js";
+import { ECMAScriptSourceFunctionValue, type NativeFunctionCallback } from "./index.js";
 import {
-  joinValuesAsConditional,
+  Get,
   IsDataDescriptor,
-  OrdinarySetPrototypeOf,
-  OrdinaryDefineOwnProperty,
-  OrdinaryDelete,
   OrdinaryOwnPropertyKeys,
-  OrdinaryGetOwnProperty,
   OrdinaryGet,
+  OrdinaryGetPartial,
   OrdinaryHasProperty,
-  OrdinarySet,
   OrdinaryIsExtensible,
   OrdinaryPreventExtensions,
-  ThrowIfMightHaveBeenDeleted,
 } from "../methods/index.js";
+import { Properties } from "../singletons.js";
 import invariant from "../invariant.js";
+import type { typeAnnotation } from "@babel/types";
+import { createOperationDescriptor } from "../utils/generator.js";
+import { Descriptor, PropertyDescriptor, type DescriptorInitializer, InternalSlotDescriptor } from "../descriptors.js";
 
 export default class ObjectValue extends ConcreteValue {
-  constructor(realm: Realm, proto?: ObjectValue | NullValue, intrinsicName?: string) {
+  constructor(
+    realm: Realm,
+    proto?: ObjectValue | NullValue,
+    intrinsicName?: string,
+    refuseSerialization: boolean = false
+  ) {
     super(realm, intrinsicName);
     realm.recordNewObject(this);
-    if (realm.useAbstractInterpretation) this.setupBindings();
+    if (realm.useAbstractInterpretation) this.setupBindings(this.getTrackedPropertyNames());
     this.$Prototype = proto || realm.intrinsics.null;
     this.$Extensible = realm.intrinsics.true;
     this._isPartial = realm.intrinsics.false;
+    this._isLeaked = realm.intrinsics.false;
     this._isSimple = realm.intrinsics.false;
+    this._simplicityIsTransitive = realm.intrinsics.false;
+    this._isFinal = realm.intrinsics.false;
     this.properties = new Map();
     this.symbols = new Map();
+    this.refuseSerialization = refuseSerialization;
+
+    // this.$IsClassPrototype should be the last thing that gets initialized,
+    // as other code checks whether this.$IsClassPrototype === undefined
+    // as a proxy for whether initialization is still ongoing.
+    this.$IsClassPrototype = false;
   }
 
-  static trackedProperties = [
-    "$Prototype",
-    "$Extensible",
-    "$SetNextIndex",
-    "$IteratedSet",
-    "$MapNextIndex",
-    "$MapData",
-    "$Map",
-    "$DateValue",
-    "$ArrayIteratorNextIndex",
-    "$IteratedObject",
-    "$StringIteratorNextIndex",
-    "$IteratedString",
+  static trackedPropertyNames = [
     "_isPartial",
+    "_isLeaked",
     "_isSimple",
+    "_isFinal",
+    "_simplicityIsTransitive",
+    "_temporalAlias",
+    "$ArrayIteratorNextIndex",
+    "$DateValue",
+    "$Extensible",
+    "$IteratedList",
+    "$IteratedObject",
+    "$IteratedSet",
+    "$IteratedString",
+    "$Map",
+    "$MapData",
+    "$MapNextIndex",
+    "$Prototype",
+    "$SetData",
+    "$SetNextIndex",
+    "$StringIteratorNextIndex",
+    "$WeakMapData",
+    "$WeakSetData",
   ];
+  static trackedPropertyBindingNames = new Map();
 
-  setupBindings() {
-    for (let propName of ObjectValue.trackedProperties) {
-      let desc = { writeable: true, value: undefined };
-      (this: any)[propName + "_binding"] = { descriptor: desc, object: this, key: propName };
+  getTrackedPropertyNames(): Array<string> {
+    return ObjectValue.trackedPropertyNames;
+  }
+
+  setupBindings(propertyNames: Array<string>): void {
+    for (let propName of propertyNames) {
+      let propBindingName = ObjectValue.trackedPropertyBindingNames.get(propName);
+      invariant(propBindingName !== undefined);
+      (this: any)[propBindingName] = undefined;
     }
   }
 
-  static setupTrackedPropertyAccessors() {
-    for (let propName of ObjectValue.trackedProperties) {
+  static setupTrackedPropertyAccessors(propertyNames: Array<string>): void {
+    for (let propName of propertyNames) {
+      let propBindingName = ObjectValue.trackedPropertyBindingNames.get(propName);
+      if (propBindingName === undefined)
+        ObjectValue.trackedPropertyBindingNames.set(propName, (propBindingName = propName + "_binding"));
       Object.defineProperty(ObjectValue.prototype, propName, {
         configurable: true,
         get: function() {
-          let binding = this[propName + "_binding"];
-          return binding.descriptor.value;
+          let binding = this[propBindingName];
+          invariant(binding === undefined || binding.descriptor instanceof InternalSlotDescriptor);
+          return binding === undefined ? undefined : binding.descriptor.value;
         },
         set: function(v) {
-          let binding = this[propName + "_binding"];
+          // Let's make sure that the object is not leaked.
+          // To that end, we'd like to call this.isLeakedObject().
+          // However, while the object is still being initialized,
+          // properties may be set, but this.isLeakedObject() may not be called yet.
+          // To check if we are still initializing, guard the call by looking at
+          // whether this.$IsClassPrototype has been initialized as a proxy for
+          // object initialization in general.
+          invariant(
+            // We're still initializing so we can set a property.
+            this.$IsClassPrototype === undefined ||
+              // It's not leaked so we can set a property.
+              this.mightNotBeLeakedObject() ||
+              // Object.assign() implementation needs to temporarily
+              // make potentially leaked objects non-partial and back.
+              // We don't gain anything from checking whether it's leaked
+              // before calling makePartial() so we'll whitelist this property.
+              propBindingName === "_isPartial_binding",
+            "cannot mutate a leaked object"
+          );
+          let binding = this[propBindingName];
+          if (binding === undefined) {
+            let desc = new InternalSlotDescriptor(undefined);
+            this[propBindingName] = binding = {
+              descriptor: desc,
+              object: this,
+              key: propName,
+              internalSlot: true,
+            };
+          }
           this.$Realm.recordModifiedProperty(binding);
           binding.descriptor.value = v;
         },
@@ -106,8 +166,8 @@ export default class ObjectValue extends ConcreteValue {
     }
   }
 
-  $Prototype: ObjectValue | NullValue;
-  $Extensible: BooleanValue;
+  $Prototype: ObjectValue | AbstractObjectValue | NullValue;
+  $Extensible: BooleanValue | AbstractValue;
 
   $ParameterMap: void | ObjectValue; // undefined when the property is "missing"
   $SymbolData: void | SymbolValue | AbstractValue;
@@ -129,22 +189,14 @@ export default class ObjectValue extends ConcreteValue {
 
   // function
   $Call: void | ((thisArgument: Value, argumentsList: Array<Value>) => Value);
-  $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue);
+  $Construct: void | ((argumentsList: Array<Value>, newTarget: ObjectValue) => ObjectValue | AbstractObjectValue);
 
   // promise
-  $Promise: ?ObjectValue;
-  $AlreadyResolved: void | { value: boolean };
   $PromiseState: void | "pending" | "fulfilled" | "rejected";
   $PromiseResult: void | Value;
   $PromiseFulfillReactions: void | Array<PromiseReaction>;
   $PromiseRejectReactions: void | Array<PromiseReaction>;
   $PromiseIsHandled: void | boolean;
-  $Capability: void | PromiseCapability;
-  $AlreadyCalled: void | { value: boolean };
-  $Index: void | number;
-  $Values: void | Array<Value>;
-  $Capabilities: void | PromiseCapability;
-  $RemainingElements: void | { value: number };
 
   // iterator
   $IteratedList: void | Array<Value>;
@@ -156,6 +208,9 @@ export default class ObjectValue extends ConcreteValue {
   $SetNextIndex: void | number;
   $IteratedSet: void | ObjectValue | UndefinedValue;
   $SetData: void | Array<void | Value>;
+
+  // react
+  $SuperTypeParameters: void | typeAnnotation;
 
   // map
   $MapIterationKind: void | IterationKind;
@@ -209,15 +264,34 @@ export default class ObjectValue extends ConcreteValue {
   originalConstructor: void | ECMAScriptSourceFunctionValue;
 
   // partial objects
-  _isPartial: BooleanValue;
+  _isPartial: AbstractValue | BooleanValue;
+
+  // tainted objects
+  _isLeaked: AbstractValue | BooleanValue;
 
   // If true, the object has no property getters or setters and it is safe
   // to return AbstractValue for unknown properties.
-  _isSimple: BooleanValue;
+  _isSimple: AbstractValue | BooleanValue;
+
+  // If true, it is not safe to perform any more mutations that would change
+  // the object's serialized form.
+  _isFinal: AbstractValue | BooleanValue;
+
+  // Specifies whether the object is a template that needs to be created in a scope
+  // If set, this happened during object initialization and the value is never changed again, so not tracked.
+  isScopedTemplate: void | true;
+
+  // If true, then unknown properties should return transitively simple abstract object values
+  _simplicityIsTransitive: AbstractValue | BooleanValue;
+
+  // The abstract object for which this object is the template.
+  // Use this instead of the object itself when deriving temporal values for object properties.
+  _templateFor: void | AbstractObjectValue;
 
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
   unknownProperty: void | PropertyBinding;
+  _temporalAlias: void | AbstractObjectValue;
 
   // An object value with an intrinsic name can either exist from the beginning of time,
   // or it can be associated with a particular point in time by being used as a template
@@ -225,11 +299,50 @@ export default class ObjectValue extends ConcreteValue {
   intrinsicNameGenerated: void | true;
   hashValue: void | number;
 
+  // ReactElement
+  $BailOutReason: void | string;
+
+  // ES2015 classes
+  $IsClassPrototype: boolean;
+
+  // We track some internal state as properties on the global object, these should
+  // never be serialized.
+  refuseSerialization: boolean;
+
+  // Checks whether effects are properly applied.
+  isValid(): boolean {
+    return this._isPartial !== undefined;
+  }
+
+  equals(x: Value): boolean {
+    return this === x;
+  }
+
   getHash(): number {
     if (!this.hashValue) {
       this.hashValue = ++this.$Realm.objectCount;
     }
     return this.hashValue;
+  }
+
+  get temporalAlias(): void | AbstractObjectValue {
+    return this._temporalAlias;
+  }
+
+  set temporalAlias(value: AbstractObjectValue) {
+    this._temporalAlias = value;
+  }
+
+  hasStringOrSymbolProperties(): boolean {
+    for (let prop of this.properties.values()) {
+      if (prop.descriptor === undefined) continue;
+      return true;
+    }
+    for (let prop of this.symbols.values()) {
+      if (prop.descriptor === undefined) continue;
+      return true;
+    }
+    return false;
   }
 
   mightBeFalse(): boolean {
@@ -244,24 +357,60 @@ export default class ObjectValue extends ConcreteValue {
     return this;
   }
 
-  makeNotPartial(): void {
-    this._isPartial = this.$Realm.intrinsics.false;
-  }
-
   makePartial(): void {
     this._isPartial = this.$Realm.intrinsics.true;
   }
 
-  makeSimple(): void {
+  makeSimple(option?: string | Value): void {
     this._isSimple = this.$Realm.intrinsics.true;
+    this._simplicityIsTransitive = new BooleanValue(
+      this.$Realm,
+      option === "transitive" || (option instanceof StringValue && option.value === "transitive")
+    );
+  }
+
+  makeFinal(): void {
+    this._isFinal = this.$Realm.intrinsics.true;
+  }
+
+  makeNotFinal(): void {
+    this._isFinal = this.$Realm.intrinsics.false;
   }
 
   isPartialObject(): boolean {
-    return this._isPartial.value;
+    return this._isPartial.mightBeTrue();
+  }
+
+  // When this object was created in an evaluateForEffects context and the effects have not been applied, the
+  // value is not valid (and we shouldn't try to access any properties on it). isPartial should always be set
+  // except when reverted by effects.
+  isValid(): boolean {
+    return this._isPartial !== undefined;
+  }
+
+  mightBeFinalObject(): boolean {
+    return this._isFinal.mightBeTrue();
+  }
+
+  mightNotBeFinalObject(): boolean {
+    return this._isFinal.mightNotBeTrue();
+  }
+
+  leak(): void {
+    this._isLeaked = this.$Realm.intrinsics.true;
+  }
+
+  mightBeLeakedObject(): boolean {
+    return this._isLeaked.mightBeTrue();
+  }
+
+  mightNotBeLeakedObject(): boolean {
+    return this._isLeaked.mightNotBeTrue();
   }
 
   isSimpleObject(): boolean {
-    if (this._isSimple.value) return true;
+    if (this === this.$Realm.intrinsics.ObjectPrototype) return true;
+    if (!this._isSimple.mightNotBeTrue()) return true;
     if (this.isPartialObject()) return false;
     if (this.symbols.size > 0) return false;
     for (let propertyBinding of this.properties.values()) {
@@ -271,12 +420,16 @@ export default class ObjectValue extends ConcreteValue {
       if (!desc.writable) return false;
     }
     if (this.$Prototype instanceof NullValue) return true;
-    if (this.$Prototype === this.$Realm.intrinsics.ObjectPrototype) return true;
+    invariant(this.$Prototype);
     return this.$Prototype.isSimpleObject();
   }
 
+  isTransitivelySimple(): boolean {
+    return !this._simplicityIsTransitive.mightNotBeTrue();
+  }
+
   getExtensible(): boolean {
-    return this.$Extensible.value;
+    return this.$Extensible.throwIfNotConcreteBoolean().value;
   }
 
   setExtensible(v: boolean) {
@@ -297,8 +450,9 @@ export default class ObjectValue extends ConcreteValue {
     if (this.$ArrayBufferData !== undefined) return "ArrayBuffer";
     if (this.$WeakMapData !== undefined) return "WeakMap";
     if (this.$WeakSetData !== undefined) return "WeakSet";
+    if (isReactElement(this) && this.$Realm.react.enabled) return "ReactElement";
     if (this.$TypedArrayName !== undefined) return this.$TypedArrayName;
-    // TODO #26: Promises. All kinds of iterators. Generators.
+    // TODO #26 #712: Promises. All kinds of iterators. Generators.
     return "Object";
   }
 
@@ -306,8 +460,8 @@ export default class ObjectValue extends ConcreteValue {
     name: SymbolValue | string,
     length: number,
     callback: NativeFunctionCallback,
-    desc?: Descriptor = {}
-  ) {
+    desc?: DescriptorInitializer
+  ): Value {
     let intrinsicName;
     if (typeof name === "string") {
       if (this.intrinsicName) intrinsicName = `${this.intrinsicName}.${name}`;
@@ -316,24 +470,26 @@ export default class ObjectValue extends ConcreteValue {
     } else {
       invariant(false);
     }
-    this.defineNativeProperty(
+    let fnValue = new NativeFunctionValue(this.$Realm, intrinsicName, name, length, callback, false);
+    this.defineNativeProperty(name, fnValue, desc);
+    return fnValue;
+  }
+
+  defineNativeProperty(name: SymbolValue | string, value?: Value | Array<Value>, desc?: DescriptorInitializer): void {
+    invariant(!value || value instanceof Value);
+    this.$DefineOwnProperty(
       name,
-      new NativeFunctionValue(this.$Realm, intrinsicName, name, length, callback, false),
-      desc
+      new PropertyDescriptor({
+        value,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+        ...desc,
+      })
     );
   }
 
-  defineNativeProperty(name: SymbolValue | string, value?: Value, desc?: Descriptor = {}) {
-    this.$DefineOwnProperty(name, {
-      value,
-      writable: true,
-      enumerable: false,
-      configurable: true,
-      ...desc,
-    });
-  }
-
-  defineNativeGetter(name: SymbolValue | string, callback: NativeFunctionCallback, desc?: Descriptor = {}) {
+  defineNativeGetter(name: SymbolValue | string, callback: NativeFunctionCallback, desc?: DescriptorInitializer): void {
     let intrinsicName, funcName;
     if (typeof name === "string") {
       funcName = `get ${name}`;
@@ -349,47 +505,84 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     let func = new NativeFunctionValue(this.$Realm, intrinsicName, funcName, 0, callback);
-    this.$DefineOwnProperty(name, {
-      get: func,
-      set: this.$Realm.intrinsics.undefined,
-      enumerable: false,
-      configurable: true,
-      ...desc,
-    });
+    this.$DefineOwnProperty(
+      name,
+      new PropertyDescriptor({
+        get: func,
+        set: this.$Realm.intrinsics.undefined,
+        enumerable: false,
+        configurable: true,
+        ...desc,
+      })
+    );
   }
 
-  defineNativeConstant(name: SymbolValue | string, value?: Value, desc?: Descriptor = {}) {
-    this.$DefineOwnProperty(name, {
-      value,
-      writable: false,
-      enumerable: false,
-      configurable: false,
-      ...desc,
-    });
+  defineNativeConstant(name: SymbolValue | string, value?: Value | Array<Value>, desc?: DescriptorInitializer): void {
+    invariant(!value || value instanceof Value);
+    this.$DefineOwnProperty(
+      name,
+      new PropertyDescriptor({
+        value,
+        writable: false,
+        enumerable: false,
+        configurable: false,
+        ...desc,
+      })
+    );
   }
 
-  getOwnPropertyKeysArray(): Array<string> {
-    if (this.isPartialObject() || this.unknownProperty !== undefined) {
-      AbstractValue.reportIntrospectionError(this);
-      throw new FatalError();
+  // Note that internal properties will not be copied to the snapshot, nor will they be removed.
+  getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
+    try {
+      if (this.temporalAlias !== undefined) return this.temporalAlias;
+      let realm = this.$Realm;
+      let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
+      let keys = Properties.GetOwnPropertyKeysArray(realm, this, false, true);
+      this.copyKeys(((keys: any): Array<PropertyKeyValue>), this, template);
+      // The snapshot is an immutable object snapshot
+      template.makeFinal();
+      // The original object might be a React props object, thus
+      // if it is, we need to ensure we mark it with the same rules
+      if (realm.react.enabled && realm.react.reactProps.has(this)) {
+        realm.react.reactProps.add(template);
+      }
+      let operationDescriptor = createOperationDescriptor("SINGLE_ARG");
+      let result = AbstractValue.createTemporalFromBuildFunction(
+        this.$Realm,
+        ObjectValue,
+        [template],
+        operationDescriptor,
+        { skipInvariant: true, isPure: true }
+      );
+      invariant(result instanceof AbstractObjectValue);
+      result.values = new ValuesDomain(template);
+      return result;
+    } finally {
+      if (options && options.removeProperties) {
+        this.properties = new Map();
+        this.symbols = new Map();
+        this.unknownProperty = undefined;
+      }
     }
+  }
 
-    let keyArray = Array.from(this.properties.keys());
-    keyArray = keyArray.filter(x => {
-      let pb = this.properties.get(x);
-      if (!pb || pb.descriptor === undefined) return false;
-      let pv = pb.descriptor.value;
-      if (pv === undefined) return true;
-      if (!pv.mightHaveBeenDeleted()) return true;
-      // The property may or may not be there at runtime.
-      // We can at best return an abstract keys array.
-      // For now just terminate.
-      invariant(pv instanceof AbstractValue);
-      AbstractValue.reportIntrospectionError(pv);
-      throw new FatalError();
-    });
-    this.$Realm.callReportObjectGetOwnProperties(this);
-    return keyArray;
+  copyKeys(keys: Array<PropertyKeyValue>, from: ObjectValue, to: ObjectValue): void {
+    // c. Repeat for each element nextKey of keys in List order,
+    for (let nextKey of keys) {
+      // i. Let desc be ? from.[[GetOwnProperty]](nextKey).
+      let desc = from.$GetOwnProperty(nextKey);
+
+      // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
+      if (desc && desc.throwIfNotConcrete(this.$Realm).enumerable) {
+        Properties.ThrowIfMightHaveBeenDeleted(desc);
+
+        // 1. Let propValue be ? Get(from, nextKey).
+        let propValue = Get(this.$Realm, from, nextKey);
+
+        // 2. Perform ? Set(to, nextKey, propValue, true).
+        Properties.Set(this.$Realm, to, nextKey, propValue, true);
+      }
+    }
   }
 
   _serialize(set: Function, stack: Map<Value, any>): any {
@@ -398,10 +591,12 @@ export default class ObjectValue extends ConcreteValue {
     for (let [key, propertyBinding] of this.properties) {
       let desc = propertyBinding.descriptor;
       if (desc === undefined) continue; // deleted
-      ThrowIfMightHaveBeenDeleted(desc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(desc);
+      desc = desc.throwIfNotConcrete(this.$Realm);
       let serializedDesc: any = { enumerable: desc.enumerable, configurable: desc.configurable };
       if (desc.value) {
         serializedDesc.writable = desc.writable;
+        invariant(desc.value instanceof Value);
         serializedDesc.value = desc.value.serialize(stack);
       } else {
         invariant(desc.get !== undefined);
@@ -414,15 +609,22 @@ export default class ObjectValue extends ConcreteValue {
     return obj;
   }
 
+  // Whether [[{Get,Set}PrototypeOf]] delegate to Ordinary{Get,Set}PrototypeOf.
+  // E.g. ProxyValue overrides this to return false.
+  // See ECMA262 9.1.2.1 for an algorithm where this is relevant
+  usesOrdinaryObjectInternalPrototypeMethods(): boolean {
+    return true;
+  }
+
   // ECMA262 9.1.1
-  $GetPrototypeOf(): ObjectValue | NullValue {
+  $GetPrototypeOf(): ObjectValue | AbstractObjectValue | NullValue {
     return this.$Prototype;
   }
 
   // ECMA262 9.1.2
   $SetPrototypeOf(V: ObjectValue | NullValue): boolean {
     // 1. Return ! OrdinarySetPrototypeOf(O, V).
-    return OrdinarySetPrototypeOf(this.$Realm, this, V);
+    return Properties.OrdinarySetPrototypeOf(this.$Realm, this, V);
   }
 
   // ECMA262 9.1.3
@@ -440,13 +642,13 @@ export default class ObjectValue extends ConcreteValue {
   // ECMA262 9.1.5
   $GetOwnProperty(P: PropertyKeyValue): Descriptor | void {
     // 1. Return ! OrdinaryGetOwnProperty(O, P).
-    return OrdinaryGetOwnProperty(this.$Realm, this, P);
+    return Properties.OrdinaryGetOwnProperty(this.$Realm, this, P);
   }
 
   // ECMA262 9.1.6
   $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
     // 1. Return ? OrdinaryDefineOwnProperty(O, P, Desc).
-    return OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc);
   }
 
   // ECMA262 9.1.7
@@ -461,187 +663,63 @@ export default class ObjectValue extends ConcreteValue {
 
   // ECMA262 9.1.8
   $Get(P: PropertyKeyValue, Receiver: Value): Value {
-    let prop = this.unknownProperty;
-    if (prop !== undefined && prop.descriptor !== undefined && this.$GetOwnProperty(P) === undefined) {
-      let desc = prop.descriptor;
-      invariant(desc !== undefined);
-      let val = desc.value;
-      invariant(val instanceof AbstractValue);
-      let propName;
-      if (P instanceof StringValue) {
-        propName = P;
-      } else if (typeof P === "string") {
-        propName = new StringValue(this.$Realm, P);
-      } else {
-        AbstractValue.reportIntrospectionError(val, "abstract computed property name");
-        throw new FatalError();
-      }
-      return this.specializeJoin(val, propName);
-    }
-
     // 1. Return ? OrdinaryGet(O, P, Receiver).
     return OrdinaryGet(this.$Realm, this, P, Receiver);
   }
 
-  $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
-    if (!(P instanceof AbstractValue)) return this.$Get(P, Receiver);
-    // We assume that simple objects have no getter/setter properties.
-    if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
-      AbstractValue.reportIntrospectionError(P, "TODO");
-      throw new FatalError();
-    }
-    // If all else fails, use this expression
-    let result;
-    if (this.isPartialObject()) {
-      result = AbstractValue.createFromType(this.$Realm, Value, "sentinel member expression");
-      result.args = [this, P];
-    } else {
-      result = this.$Realm.intrinsics.undefined;
-    }
-    // Get a specialization of the join of all values written to the object
-    // with abstract property names.
-    let prop = this.unknownProperty;
-    if (prop !== undefined) {
-      let desc = prop.descriptor;
-      if (desc !== undefined) {
-        let val = desc.value;
-        invariant(val instanceof AbstractValue);
-        result = this.specializeJoin(val, P);
+  _SafeGetDataPropertyValue(P: PropertyKeyValue): Value {
+    let savedInvariantLevel = this.$Realm.invariantLevel;
+    try {
+      this.$Realm.invariantLevel = 0;
+      let desc = this.$GetOwnProperty(P);
+      if (desc === undefined) {
+        return this.$Realm.intrinsics.undefined;
       }
+      desc = desc.throwIfNotConcrete(this.$Realm);
+      return desc.value ? desc.value : this.$Realm.intrinsics.undefined;
+    } finally {
+      this.$Realm.invariantLevel = savedInvariantLevel;
     }
-    // Join in all of the other values that were written to the object with
-    // concrete property names.
-    for (let [key, propertyBinding] of this.properties) {
-      let desc = propertyBinding.descriptor;
-      if (desc === undefined) continue; // deleted
-      invariant(desc.value !== undefined); // otherwise this is not simple
-      let val = desc.value;
-      let cond = AbstractValue.createFromBinaryOp(
-        this.$Realm,
-        "===",
-        P,
-        new StringValue(this.$Realm, key),
-        undefined,
-        "check for known property"
-      );
-      result = joinValuesAsConditional(this.$Realm, cond, val, result);
-    }
-    return result;
   }
 
-  specializeJoin(absVal: AbstractValue, propName: Value): AbstractValue {
-    invariant(absVal.args.length === 3 && absVal.kind === "conditional");
-    let generic_cond = absVal.args[0];
-    invariant(generic_cond instanceof AbstractValue);
-    let cond = this.specializeCond(generic_cond, propName);
-    let arg1 = absVal.args[1];
-    if (arg1 instanceof AbstractValue && arg1.args.length === 3) arg1 = this.specializeJoin(arg1, propName);
-    let arg2 = absVal.args[2];
-    if (arg2 instanceof AbstractValue && arg2.args.length === 3) arg2 = this.specializeJoin(arg2, propName);
-    return AbstractValue.createFromConditionalOp(this.$Realm, cond, arg1, arg2, absVal.expressionLocation);
-  }
-
-  specializeCond(absVal: AbstractValue, propName: Value): AbstractValue {
-    if (absVal.kind === "template for property name condition")
-      return AbstractValue.createFromBinaryOp(this.$Realm, "===", absVal.args[0], propName);
-    return absVal;
+  $GetPartial(P: AbstractValue | PropertyKeyValue, Receiver: Value): Value {
+    return OrdinaryGetPartial(this.$Realm, this, P, Receiver);
   }
 
   // ECMA262 9.1.9
   $Set(P: PropertyKeyValue, V: Value, Receiver: Value): boolean {
     // 1. Return ? OrdinarySet(O, P, V, Receiver).
-    return OrdinarySet(this.$Realm, this, P, V, Receiver);
+    return Properties.OrdinarySet(this.$Realm, this, P, V, Receiver);
   }
 
   $SetPartial(P: AbstractValue | PropertyKeyValue, V: Value, Receiver: Value): boolean {
-    if (!(P instanceof AbstractValue)) return this.$Set(P, V, Receiver);
-
-    function createTemplate(realm: Realm, propName: AbstractValue) {
-      return AbstractValue.createFromBinaryOp(
-        realm,
-        "===",
-        propName,
-        new StringValue(realm, ""),
-        undefined,
-        "template for property name condition"
-      );
-    }
-
-    // We assume that simple objects have no getter/setter properties and
-    // that all properties are writable.
-    if (this !== Receiver || !this.isSimpleObject() || P.mightNotBeString()) {
-      AbstractValue.reportIntrospectionError(P, "TODO");
-      throw new FatalError();
-    }
-
-    let prop;
-    if (this.unknownProperty === undefined) {
-      prop = {
-        descriptor: undefined,
-        object: this,
-        key: "",
-      };
-      this.unknownProperty = prop;
-    } else {
-      prop = this.unknownProperty;
-    }
-    this.$Realm.recordModifiedProperty(prop);
-    let desc = prop.descriptor;
-    if (desc === undefined) {
-      let newVal = V;
-      if (!(V instanceof UndefinedValue)) {
-        // join V with undefined, using a property name test as the condition
-        let cond = createTemplate(this.$Realm, P);
-        newVal = joinValuesAsConditional(this.$Realm, cond, V, this.$Realm.intrinsics.undefined);
-      }
-      prop.descriptor = {
-        writable: true,
-        enumerable: true,
-        configurable: true,
-        value: newVal,
-      };
-    } else {
-      // join V with current value of this.unknownProperty. I.e. weak update.
-      let oldVal = desc.value;
-      invariant(oldVal !== undefined);
-      let newVal = oldVal;
-      if (!(V instanceof UndefinedValue)) {
-        let cond = createTemplate(this.$Realm, P);
-        newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
-      }
-      desc.value = newVal;
-    }
-
-    // Since we don't know the name of the property we are writing to, we also need
-    // to perform weak updates of all of the known properties.
-    for (let [key, propertyBinding] of this.properties) {
-      let oldVal = this.$Realm.intrinsics.empty;
-      if (propertyBinding.descriptor && propertyBinding.descriptor.value) {
-        oldVal = propertyBinding.descriptor.value;
-        invariant(oldVal !== undefined); // otherwise this is not simple
-      }
-      let cond = AbstractValue.createFromBinaryOp(this.$Realm, "===", P, new StringValue(this.$Realm, key));
-      let newVal = joinValuesAsConditional(this.$Realm, cond, V, oldVal);
-      OrdinarySet(this.$Realm, this, key, newVal, Receiver);
-    }
-
-    return true;
+    return Properties.OrdinarySetPartial(this.$Realm, this, P, V, Receiver);
   }
 
   // ECMA262 9.1.10
   $Delete(P: PropertyKeyValue): boolean {
     if (this.unknownProperty !== undefined) {
-      // TODO: generate a delete from the object
+      // TODO #946: generate a delete from the object
       AbstractValue.reportIntrospectionError(this, P);
       throw new FatalError();
     }
 
     // 1. Return ? OrdinaryDelete(O, P).
-    return OrdinaryDelete(this.$Realm, this, P);
+    return Properties.OrdinaryDelete(this.$Realm, this, P);
   }
 
   // ECMA262 9.1.11
-  $OwnPropertyKeys(): Array<PropertyKeyValue> {
-    return OrdinaryOwnPropertyKeys(this.$Realm, this);
+  $OwnPropertyKeys(getOwnPropertyKeysEvenIfPartial?: boolean = false): Array<PropertyKeyValue> {
+    return OrdinaryOwnPropertyKeys(this.$Realm, this, getOwnPropertyKeysEvenIfPartial);
+  }
+
+  static refuseSerializationOnPropertyBinding(pb: PropertyBinding): boolean {
+    if (pb.object.refuseSerialization) return true;
+    if (pb.internalSlot && typeof pb.key === "string" && pb.key[0] === "_") return true;
+    return false;
+  }
+
+  static isIntrinsicDerivedObject(obj: Value): boolean {
+    return obj instanceof ObjectValue && obj.intrinsicName !== undefined && obj.isScopedTemplate !== undefined;
   }
 }

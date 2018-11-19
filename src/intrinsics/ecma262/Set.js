@@ -7,13 +7,12 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NullValue, UndefinedValue } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
 import {
-  OrdinaryCreateFromConstructor,
   IsCallable,
   Call,
   GetIterator,
@@ -23,18 +22,21 @@ import {
   Get,
   HasSomeCompatibleType,
 } from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
+import { CompilerDiagnostic } from "../../errors.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 23.2.1.1
-  let func = new NativeFunctionValue(realm, "Set", "Set", 0, (context, [iterable], argCount, NewTarget) => {
+  let func = new NativeFunctionValue(realm, "Set", "Set", 0, (context, [_iterable], argCount, NewTarget) => {
+    let iterable = _iterable;
     // 1. If NewTarget is undefined, throw a TypeError exception.
     if (!NewTarget) {
       throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
     }
 
     // 2. Let set be ? OrdinaryCreateFromConstructor(NewTarget, "%SetPrototype%", « [[SetData]] »).
-    let set = OrdinaryCreateFromConstructor(realm, NewTarget, "SetPrototype", {
+    let set = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "SetPrototype", {
       $SetData: undefined,
     });
 
@@ -43,7 +45,14 @@ export default function(realm: Realm): NativeFunctionValue {
 
     // 4. If iterable is not present, let iterable be undefined.
     if (iterable && realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
-      throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError, "the set constructor doesn't take arguments");
+      let loc = realm.currentLocation;
+      let error = new CompilerDiagnostic(
+        "This version of JSC ignores the argument to Set, require the polyfill before doing this",
+        loc,
+        "PP0001",
+        "RecoverableError"
+      );
+      realm.handleError(error);
     }
     if (!iterable) iterable = realm.intrinsics.undefined;
 

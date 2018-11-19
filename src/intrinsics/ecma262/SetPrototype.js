@@ -11,15 +11,10 @@
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, ObjectValue, StringValue, NumberValue } from "../../values/index.js";
-import {
-  Call,
-  CreateSetIterator,
-  IsCallable,
-  SameValueZeroPartial,
-  ThrowIfMightHaveBeenDeleted,
-  ThrowIfInternalSlotNotWritable,
-} from "../../methods/index.js";
+import { Call, CreateSetIterator, IsCallable, SameValueZeroPartial } from "../../methods/index.js";
+import { Properties } from "../../singletons.js";
 import invariant from "../../invariant.js";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 23.2.3.1
@@ -38,7 +33,9 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of S's [[SetData]] internal slot.
+    realm.recordModifiedProperty((S: any).$SetData_binding);
     let entries = S.$SetData;
+    invariant(entries !== undefined);
 
     // 5. Repeat for each e that is an element of entries,
     for (let e of entries) {
@@ -56,7 +53,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 7. Append value as the last element of entries.
-    ThrowIfInternalSlotNotWritable(realm, S, "$SetData");
     entries.push(value);
 
     // 8. Return S.
@@ -82,7 +78,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 4. Let entries be the List that is the value of S's [[SetData]] internal slot.
     // 5. Repeat for each e that is an element of entries,
     // 5.a Replace the element of entries whose value is e with an element whose value is empty.
-    ThrowIfInternalSlotNotWritable(realm, S, "$SetData").$SetData = [];
+    realm.recordModifiedProperty((S: any).$SetData_binding);
+    S.$SetData = [];
 
     // 6. Return undefined.
     return realm.intrinsics.undefined;
@@ -104,6 +101,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     }
 
     // 4. Let entries be the List that is the value of S's [[SetData]] internal slot.
+    realm.recordModifiedProperty((S: any).$SetData_binding);
     let entries = S.$SetData;
     invariant(entries !== undefined);
 
@@ -114,7 +112,6 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // a. If e is not empty and SameValueZero(e, value) is true, then
       if (e !== undefined && SameValueZeroPartial(realm, e, value)) {
         // i. Replace the element of entries whose value is e with an element whose value is empty.
-        ThrowIfInternalSlotNotWritable(realm, S, "$SetData");
         entries[i] = undefined;
 
         // ii. Return true.
@@ -204,38 +201,41 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 23.2.3.9 get Set.prototype.size
-  obj.$DefineOwnProperty("size", {
-    get: new NativeFunctionValue(realm, "TODO", "get size", 0, context => {
-      // 1. Let S be the this value.
-      let S = context.throwIfNotConcrete();
+  obj.$DefineOwnProperty(
+    "size",
+    new PropertyDescriptor({
+      get: new NativeFunctionValue(realm, undefined, "get size", 0, context => {
+        // 1. Let S be the this value.
+        let S = context.throwIfNotConcrete();
 
-      // 2. If Type(S) is not Object, throw a TypeError exception.
-      if (!(S instanceof ObjectValue)) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-      }
+        // 2. If Type(S) is not Object, throw a TypeError exception.
+        if (!(S instanceof ObjectValue)) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+        }
 
-      // 3. If S does not have a [[SetData]] internal slot, throw a TypeError exception.
-      if (!S.$SetData) {
-        throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
-      }
+        // 3. If S does not have a [[SetData]] internal slot, throw a TypeError exception.
+        if (!S.$SetData) {
+          throw realm.createErrorThrowCompletion(realm.intrinsics.TypeError);
+        }
 
-      // 4. Let entries be the List that is the value of S's [[SetData]] internal slot.
-      let entries = S.$SetData;
+        // 4. Let entries be the List that is the value of S's [[SetData]] internal slot.
+        let entries = S.$SetData;
 
-      // 5. Let count be 0.
-      let count = 0;
+        // 5. Let count be 0.
+        let count = 0;
 
-      // 6. For each e that is an element of entries
-      for (let e of entries) {
-        // a. If e is not empty, set count to count+1.
-        if (e) count++;
-      }
+        // 6. For each e that is an element of entries
+        for (let e of entries) {
+          // a. If e is not empty, set count to count+1.
+          if (e) count++;
+        }
 
-      // 7. Return count.
-      return new NumberValue(realm, count);
-    }),
-    configurable: true,
-  });
+        // 7. Return count.
+        return new NumberValue(realm, count);
+      }),
+      configurable: true,
+    })
+  );
 
   // ECMA262 23.2.3.10
   obj.defineNativeMethod("values", 0, context => {
@@ -248,12 +248,12 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 23.2.3.8
   let valuesPropertyDescriptor = obj.$GetOwnProperty("values");
-  invariant(valuesPropertyDescriptor);
-  ThrowIfMightHaveBeenDeleted(valuesPropertyDescriptor.value);
-  obj.defineNativeProperty("keys", undefined, valuesPropertyDescriptor);
+  invariant(valuesPropertyDescriptor instanceof PropertyDescriptor);
+  Properties.ThrowIfMightHaveBeenDeleted(valuesPropertyDescriptor);
+  obj.$DefineOwnProperty("keys", valuesPropertyDescriptor);
 
   // ECMA262 23.2.3.11
-  obj.defineNativeProperty(realm.intrinsics.SymbolIterator, undefined, valuesPropertyDescriptor);
+  obj.$DefineOwnProperty(realm.intrinsics.SymbolIterator, valuesPropertyDescriptor);
 
   // ECMA262 23.2.3.12 Set.prototype [ @@toStringTag ]
   obj.defineNativeProperty(realm.intrinsics.SymbolToStringTag, new StringValue(realm, "Set"), { writable: false });

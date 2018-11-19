@@ -7,35 +7,63 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { ErrorHandler } from "./errors.js";
-import type { SerializerOptions, RealmOptions, Compatibility } from "./options";
+import type { SerializerOptions, RealmOptions, Compatibility, ReactOutputTypes, InvariantModeTypes } from "./options";
+import { type Realm } from "./realm.js";
+import { type Generator } from "./utils/generator.js";
+import { type FunctionValue } from "./values/index.js";
+import type { DebuggerConfigArguments, DebugReproArguments } from "./types";
+import type { BabelNodeFile } from "@babel/types";
 
 export type PrepackOptions = {|
-  additionalFunctions?: Array<string>,
+  additionalGlobals?: Realm => void,
+  lazyObjectsRuntime?: string,
+  heapGraphFormat?: "DotLanguage" | "VISJS",
   compatibility?: Compatibility,
   debugNames?: boolean,
   delayInitializations?: boolean,
-  delayUnsupportedRequires?: boolean,
-  inputSourceMapFilename?: string,
+  inputSourceMapFilenames?: Array<string>,
   internalDebug?: boolean,
+  debugScopes?: boolean,
+  debugIdentifiers?: Array<string>,
   logStatistics?: boolean,
   logModules?: boolean,
   mathRandomSeed?: string,
   errorHandler?: ErrorHandler,
+  invariantLevel?: number,
+  invariantMode?: InvariantModeTypes,
+  emitConcreteModel?: boolean,
   outputFilename?: string,
   profile?: boolean,
-  residual?: boolean,
+  instantRender?: boolean,
+  reactEnabled?: boolean,
+  reactOutput?: ReactOutputTypes,
+  reactVerbose?: boolean,
+  reactOptimizeNestedFunctions?: boolean,
   serialize?: boolean,
+  check?: Array<number>,
   inlineExpressions?: boolean,
+  removeModuleFactoryFunctions?: boolean,
   sourceMaps?: boolean,
-  initializeMoreModules?: boolean,
+  modulesToInitialize?: Set<string | number> | "ALL",
   statsFile?: string,
   strictlyMonotonicDateNow?: boolean,
+  stripFlow?: boolean,
   timeout?: number,
   trace?: boolean,
   uniqueSuffix?: string,
+  maxStackDepth?: number,
+  debugInFilePath?: string,
+  debugOutFilePath?: string,
+  abstractValueImpliesMax?: number,
+  debuggerConfigArgs?: DebuggerConfigArguments,
+  debugReproArgs?: DebugReproArguments,
+  onParse?: BabelNodeFile => void,
+  onExecute?: (Realm, Map<FunctionValue, Generator>) => void,
+  arrayNestedOptimizedFunctionsEnabled?: boolean,
+  reactFailOnUnsupportedSideEffects?: boolean,
 |};
 
 export function getRealmOptions({
@@ -43,48 +71,88 @@ export function getRealmOptions({
   debugNames = false,
   errorHandler,
   mathRandomSeed,
+  invariantLevel = 0,
+  invariantMode = "throw",
+  emitConcreteModel = false,
   uniqueSuffix,
-  residual,
-  serialize = !residual,
+  instantRender,
+  reactEnabled,
+  reactOutput,
+  reactVerbose,
+  reactOptimizeNestedFunctions,
+  serialize = true,
+  check,
   strictlyMonotonicDateNow,
+  stripFlow,
   timeout,
+  maxStackDepth,
+  abstractValueImpliesMax,
+  debuggerConfigArgs,
+  debugReproArgs,
+  arrayNestedOptimizedFunctionsEnabled,
+  reactFailOnUnsupportedSideEffects,
+  removeModuleFactoryFunctions,
 }: PrepackOptions): RealmOptions {
   return {
     compatibility,
     debugNames,
     errorHandler,
     mathRandomSeed,
+    invariantLevel,
+    invariantMode,
+    emitConcreteModel,
     uniqueSuffix,
-    residual,
+    instantRender,
+    reactEnabled,
+    reactOutput,
+    reactVerbose,
+    reactOptimizeNestedFunctions,
     serialize,
+    check,
     strictlyMonotonicDateNow,
+    stripFlow,
     timeout,
+    maxStackDepth,
+    abstractValueImpliesMax,
+    debuggerConfigArgs,
+    debugReproArgs,
+    arrayNestedOptimizedFunctionsEnabled,
+    reactFailOnUnsupportedSideEffects,
+    removeModuleFactoryFunctions,
   };
 }
 
 export function getSerializerOptions({
-  additionalFunctions,
+  lazyObjectsRuntime,
+  heapGraphFormat,
   delayInitializations = false,
-  delayUnsupportedRequires = false,
   internalDebug = false,
+  debugScopes = false,
+  debugIdentifiers,
   logStatistics = false,
   logModules = false,
   profile = false,
   inlineExpressions = false,
-  initializeMoreModules = false,
+  modulesToInitialize,
   trace = false,
 }: PrepackOptions): SerializerOptions {
   let result: SerializerOptions = {
     delayInitializations,
-    delayUnsupportedRequires,
-    initializeMoreModules,
+    modulesToInitialize,
     internalDebug,
+    debugScopes,
+    debugIdentifiers,
     logStatistics,
     logModules,
     profile,
     inlineExpressions,
     trace,
   };
-  if (additionalFunctions) result.additionalFunctions = additionalFunctions;
+  if (lazyObjectsRuntime !== undefined) {
+    result.lazyObjectsRuntime = lazyObjectsRuntime;
+  }
+  if (heapGraphFormat !== undefined) {
+    result.heapGraphFormat = heapGraphFormat;
+  }
   return result;
 }

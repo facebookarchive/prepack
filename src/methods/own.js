@@ -11,15 +11,16 @@
 
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
-import { Get, ToObject, CreateArrayFromList, IsArrayIndex, ThrowIfMightHaveBeenDeleted } from "./index.js";
+import { Get, IsArrayIndex } from "./index.js";
 import { StringValue, ObjectValue, Value, ArrayValue } from "../values/index.js";
+import { Create, Properties, To } from "../singletons.js";
 
 import invariant from "../invariant.js";
 
 // ECMA262 19.1.2.8.1
 export function GetOwnPropertyKeys(realm: Realm, O: Value, Type: Function): ArrayValue {
   // 1. Let obj be ? ToObject(O).
-  let obj = ToObject(realm, O.throwIfNotConcrete());
+  let obj = To.ToObject(realm, O);
 
   // 2. Let keys be ? obj.[[OwnPropertyKeys]]().
   let keys = obj.$OwnPropertyKeys();
@@ -37,17 +38,24 @@ export function GetOwnPropertyKeys(realm: Realm, O: Value, Type: Function): Arra
   }
 
   // 1. Return CreateArrayFromList(nameList).
-  return CreateArrayFromList(realm, nameList);
+  return Create.CreateArrayFromList(realm, nameList);
 }
 
 // ECMA262 9.1.11.1
-export function OrdinaryOwnPropertyKeys(realm: Realm, o: ObjectValue): Array<PropertyKeyValue> {
+export function OrdinaryOwnPropertyKeys(
+  realm: Realm,
+  o: ObjectValue,
+  getOwnPropertyKeysEvenIfPartial?: boolean = false
+): Array<PropertyKeyValue> {
   // 1. Let keys be a new empty List.
   let keys = [];
 
   // 2. For each own property key P of O that is an integer index, in ascending numeric index order
-  let properties = o.getOwnPropertyKeysArray();
-  for (let key of properties.filter(x => IsArrayIndex(realm, x)).map(x => parseInt(x, 10)).sort((x, y) => x - y)) {
+  let properties = Properties.GetOwnPropertyKeysArray(realm, o, false, getOwnPropertyKeysEvenIfPartial);
+  for (let key of properties
+    .filter(x => IsArrayIndex(realm, x))
+    .map(x => parseInt(x, 10))
+    .sort((x, y) => x - y)) {
     // i. Add P as the last element of keys.
     keys.push(new StringValue(realm, key + ""));
   }
@@ -69,12 +77,17 @@ export function OrdinaryOwnPropertyKeys(realm: Realm, o: ObjectValue): Array<Pro
 }
 
 // ECMA262 7.3.21
-export function EnumerableOwnProperties(realm: Realm, O: ObjectValue, kind: string): Array<Value> {
+export function EnumerableOwnProperties(
+  realm: Realm,
+  O: ObjectValue,
+  kind: string,
+  getOwnPropertyKeysEvenIfPartial?: boolean = false
+): Array<Value> {
   // 1. Assert: Type(O) is Object.
   invariant(O instanceof ObjectValue, "expected object");
 
   // 2. Let ownKeys be ? O.[[OwnPropertyKeys]]().
-  let ownKeys = O.$OwnPropertyKeys();
+  let ownKeys = O.$OwnPropertyKeys(getOwnPropertyKeysEvenIfPartial);
 
   // 3. Let properties be a new empty List.
   let properties = [];
@@ -87,8 +100,8 @@ export function EnumerableOwnProperties(realm: Realm, O: ObjectValue, kind: stri
       let desc = O.$GetOwnProperty(key);
 
       // ii. If desc is not undefined and desc.[[Enumerable]] is true, then
-      if (desc && desc.enumerable) {
-        ThrowIfMightHaveBeenDeleted(desc.value);
+      if (desc && desc.throwIfNotConcrete(realm).enumerable) {
+        Properties.ThrowIfMightHaveBeenDeleted(desc);
 
         // 1. If kind is "key", append key to properties.
         if (kind === "key") {
@@ -107,7 +120,7 @@ export function EnumerableOwnProperties(realm: Realm, O: ObjectValue, kind: stri
             invariant(kind === "key+value", "expected kind to be key+value");
 
             // ii. Let entry be CreateArrayFromList(« key, value »).
-            let entry = CreateArrayFromList(realm, [key, value]);
+            let entry = Create.CreateArrayFromList(realm, [key, value]);
 
             // iii. Append entry to properties.
             properties.push(entry);

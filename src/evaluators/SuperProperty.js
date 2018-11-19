@@ -7,20 +7,21 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { FunctionEnvironmentRecord } from "../environment.js";
 import { Reference } from "../environment.js";
 import { StringValue } from "../values/index.js";
-import { GetValue, ToPropertyKeyPartial, RequireObjectCoercible, GetThisEnvironment } from "../methods/index.js";
-import type { BabelNodeMemberExpression } from "babel-types";
+import { RequireObjectCoercible } from "../methods/index.js";
+import { Environment, To } from "../singletons.js";
+import type { BabelNodeMemberExpression } from "@babel/types";
 import invariant from "../invariant.js";
 
 function MakeSuperPropertyReference(realm: Realm, propertyKey, strict: boolean): Reference {
   // 1. Let env be GetThisEnvironment( ).
-  let env = GetThisEnvironment(realm);
+  let env = Environment.GetThisEnvironment(realm);
   invariant(env instanceof FunctionEnvironmentRecord);
 
   // 2. If env.HasSuperBinding() is false, throw a ReferenceError exception.
@@ -53,15 +54,15 @@ export default function SuperProperty(
   realm: Realm
 ): Reference {
   // SuperProperty : super [ Expression ]
-  if (ast.computed) {
+  if (ast.computed === true) {
     // 1. Let propertyNameReference be the result of evaluating Expression.
     let propertyNameReference = env.evaluate(ast.property, strictCode);
 
     // 2. Let propertyNameValue be GetValue(propertyNameReference).
-    let propertyNameValue = GetValue(realm, propertyNameReference);
+    let propertyNameValue = Environment.GetValue(realm, propertyNameReference);
 
     // 3. Let propertyKey be ToPropertyKey(propertyNameValue).
-    let propertyKey = ToPropertyKeyPartial(realm, propertyNameValue);
+    let propertyKey = To.ToPropertyKeyPartial(realm, propertyNameValue);
 
     // 4. ReturnIfAbrupt(propertyKey).
 

@@ -7,28 +7,35 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import invariant from "../../invariant.js";
+import { PropertyDescriptor } from "../../descriptors.js";
 
 export default function(realm: Realm): void {
   let global = realm.$GlobalObject;
 
-  global.$DefineOwnProperty("global", {
-    value: global,
-    writable: true,
-    enumerable: false,
-    configurable: true,
-  });
+  global.$DefineOwnProperty(
+    "global",
+    new PropertyDescriptor({
+      value: global,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    })
+  );
 
   for (let name of ["undefined", "NaN", "Infinity"]) {
-    global.$DefineOwnProperty(name, {
-      value: realm.intrinsics[name],
-      writable: false,
-      enumerable: false,
-      configurable: false,
-    });
+    global.$DefineOwnProperty(
+      name,
+      new PropertyDescriptor({
+        value: realm.intrinsics[name],
+        writable: false,
+        enumerable: false,
+        configurable: false,
+      })
+    );
   }
   let typeNames = [
     "String",
@@ -64,22 +71,25 @@ export default function(realm: Realm): void {
     "ArrayBuffer",
     "JSON",
   ];
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     typeNames = typeNames.concat("Symbol", "Promise", "WeakSet", "Proxy", "Reflect");
   for (let name of typeNames) {
     // need to check if the property exists (it may not due to --compatibility)
     if (realm.intrinsics[name]) {
-      global.$DefineOwnProperty(name, {
-        value: realm.intrinsics[name],
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      });
+      global.$DefineOwnProperty(
+        name,
+        new PropertyDescriptor({
+          value: realm.intrinsics[name],
+          writable: true,
+          enumerable: false,
+          configurable: true,
+        })
+      );
     } else {
       invariant(
         name === "Symbol" || name === "Promise" || name === "WeakSet" || name === "Proxy" || name === "Reflect"
       );
-      invariant(realm.isCompatibleWith(realm.MOBILE_JSC_VERSION));
+      invariant(realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) || realm.isCompatibleWith("mobile"));
     }
   }
   for (let name of [
@@ -94,11 +104,14 @@ export default function(realm: Realm): void {
     "encodeURIComponent",
     "decodeURIComponent",
   ]) {
-    global.$DefineOwnProperty(name, {
-      value: realm.intrinsics[name],
-      writable: true,
-      enumerable: false,
-      configurable: true,
-    });
+    global.$DefineOwnProperty(
+      name,
+      new PropertyDescriptor({
+        value: realm.intrinsics[name],
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      })
+    );
   }
 }

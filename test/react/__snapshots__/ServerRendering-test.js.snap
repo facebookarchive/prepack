@@ -1,0 +1,81 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Hacker News app: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Hacker News app: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Hacker News app: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`Hacker News app: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`PE Functional Components benchmark: (JSX => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`PE Functional Components benchmark: (JSX => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`PE Functional Components benchmark: (createElement => JSX) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;
+
+exports[`PE Functional Components benchmark: (createElement => createElement) 1`] = `
+ReactStatistics {
+  "componentsEvaluated": 0,
+  "evaluatedRootNodes": Array [],
+  "inlinedComponents": 0,
+  "optimizedNestedClosures": 0,
+  "optimizedTrees": 0,
+}
+`;

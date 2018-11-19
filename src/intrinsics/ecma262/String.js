@@ -7,27 +7,18 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { NativeFunctionValue, NumberValue, StringValue, SymbolValue } from "../../values/index.js";
-import {
-  ToString,
-  ToStringPartial,
-  ToUint16,
-  ToNumber,
-  ToInteger,
-  ToObjectPartial,
-  ToLength,
-} from "../../methods/to.js";
-import { Get } from "../../methods/get.js";
-import { GetPrototypeFromConstructor, SymbolDescriptiveString, StringCreate } from "../../methods/index.js";
+import { NativeFunctionValue, NumberValue, StringValue, SymbolValue, Value } from "../../values/index.js";
+import { Get, GetPrototypeFromConstructor, SymbolDescriptiveString } from "../../methods/index.js";
+import { Create, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 21.1.1
   let func = new NativeFunctionValue(realm, "String", "String", 1, (context, [value], argCount, NewTarget) => {
-    let s: ?StringValue;
+    let s: ?Value;
 
     // 1. If no arguments were passed to this function invocation, let s be "".
     if (argCount === 0) {
@@ -40,14 +31,15 @@ export default function(realm: Realm): NativeFunctionValue {
       }
 
       // b. Let s be ? ToString(value).
-      s = new StringValue(realm, ToStringPartial(realm, value));
+      s = To.ToStringValue(realm, value);
     }
 
     // 3. If NewTarget is undefined, return s.
     if (!NewTarget) return s;
 
     // 4. Return ? StringCreate(s, ? GetPrototypeFromConstructor(NewTarget, "%StringPrototype%")).
-    return StringCreate(realm, s, GetPrototypeFromConstructor(realm, NewTarget, "StringPrototype"));
+    s = s.throwIfNotConcreteString();
+    return Create.StringCreate(realm, s, GetPrototypeFromConstructor(realm, NewTarget, "StringPrototype"));
   });
 
   // ECMA262 21.1.2.1 ( ..._codeUnits_ )
@@ -70,7 +62,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let next = codeUnits[nextIndex];
 
       // b. Let nextCU be ? ToUint16(next).
-      let nextCU = ToUint16(realm, next);
+      let nextCU = To.ToUint16(realm, next);
 
       // c. Append nextCU to the end of elements.
       elements.push(nextCU);
@@ -84,7 +76,7 @@ export default function(realm: Realm): NativeFunctionValue {
   });
 
   // ECMA262 21.1.2.2 ( ..._codePoints_ )
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
     func.defineNativeMethod("fromCodePoint", 1, (context, codePoints, argCount) => {
       // 1. Let codePoints be a List containing the arguments passed to this function.
       codePoints;
@@ -104,13 +96,13 @@ export default function(realm: Realm): NativeFunctionValue {
         let next = codePoints[nextIndex];
 
         // b. Let nextCP be ? ToNumber(next).
-        let nextCP = ToNumber(realm, next);
+        let nextCP = To.ToNumber(realm, next);
 
         // c. If SameValue(nextCP, ToInteger(nextCP)) is false, throw a RangeError exception.
-        if (nextCP !== ToInteger(realm, nextCP)) {
+        if (nextCP !== To.ToInteger(realm, nextCP)) {
           throw realm.createErrorThrowCompletion(
             realm.intrinsics.RangeError,
-            "SameValue(nextCP, ToInteger(nextCP)) is false"
+            "SameValue(nextCP, To.ToInteger(nextCP)) is false"
           );
         }
 
@@ -118,7 +110,7 @@ export default function(realm: Realm): NativeFunctionValue {
         if (nextCP < 0 || nextCP > 0x10ffff) {
           throw realm.createErrorThrowCompletion(
             realm.intrinsics.RangeError,
-            "SameValue(nextCP, ToInteger(nextCP)) is false"
+            "SameValue(nextCP, To.ToInteger(nextCP)) is false"
           );
         }
 
@@ -135,8 +127,9 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 21.1.2.4
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-    func.defineNativeMethod("raw", 1, (context, [template, ...substitutions], argCount) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    func.defineNativeMethod("raw", 1, (context, [template, ..._substitutions], argCount) => {
+      let substitutions = _substitutions;
       // 1. Let substitutions be a List consisting of all of the arguments passed to this function, starting with the second argument. If fewer than two arguments were passed, the List is empty.
       substitutions = argCount < 2 ? [] : substitutions;
 
@@ -144,13 +137,13 @@ export default function(realm: Realm): NativeFunctionValue {
       let numberOfSubstitutions = substitutions.length;
 
       // 3. Let cooked be ? ToObject(template).
-      let cooked = ToObjectPartial(realm, template);
+      let cooked = To.ToObject(realm, template);
 
       // 4. Let raw be ? ToObject(? Get(cooked, "raw")).
-      let raw = ToObjectPartial(realm, Get(realm, cooked, "raw"));
+      let raw = To.ToObject(realm, Get(realm, cooked, "raw"));
 
       // 5. Let literalSegments be ? ToLength(? Get(raw, "length")).
-      let literalSegments = ToLength(realm, Get(realm, raw, "length"));
+      let literalSegments = To.ToLength(realm, Get(realm, raw, "length"));
 
       // 6. If literalSegments ≤ 0, return the empty string.
       if (literalSegments <= 0) return realm.intrinsics.emptyString;
@@ -164,10 +157,10 @@ export default function(realm: Realm): NativeFunctionValue {
       // 9. Repeat
       while (true) {
         // a. Let nextKey be ! ToString(nextIndex).
-        let nextKey = ToString(realm, new NumberValue(realm, nextIndex));
+        let nextKey = To.ToString(realm, new NumberValue(realm, nextIndex));
 
         // b. Let nextSeg be ? ToString(? Get(raw, nextKey)).
-        let nextSeg = ToStringPartial(realm, Get(realm, raw, nextKey));
+        let nextSeg = To.ToStringPartial(realm, Get(realm, raw, nextKey));
 
         // c. Append in order the code unit elements of nextSeg to the end of stringElements.
         stringElements = stringElements + nextSeg;
@@ -181,12 +174,12 @@ export default function(realm: Realm): NativeFunctionValue {
         let next;
         // e. If nextIndex < numberOfSubstitutions, let next be substitutions[nextIndex].
         if (nextIndex < numberOfSubstitutions) next = substitutions[nextIndex];
-        else
+        else {
           // f. Else, let next be the empty String.
           next = realm.intrinsics.emptyString;
-
+        }
         // g. Let nextSub be ? ToString(next).
-        let nextSub = ToStringPartial(realm, next);
+        let nextSub = To.ToStringPartial(realm, next);
 
         // h. Append in order the code unit elements of nextSub to the end of stringElements.
         stringElements = stringElements + nextSub;

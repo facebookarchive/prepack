@@ -7,12 +7,15 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict */
 
-export default function invariant(condition: any, format: string): void {
+import { InvariantError } from "./errors.js";
+
+export default function invariant(condition: boolean, format: string = ""): void {
   if (condition) return;
-
-  let error = new Error(format);
+  const message = `${format}
+This is likely a bug in Prepack, not your code. Feel free to open an issue on GitHub.`;
+  let error = new InvariantError(message);
   error.name = "Invariant Violation";
   throw error;
 }

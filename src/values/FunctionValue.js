@@ -9,22 +9,21 @@
 
 /* @flow */
 
-import type { ObjectKind } from "../types.js";
+import type { PathConditions, ObjectKind } from "../types.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Realm } from "../realm.js";
 import { ObjectValue, NumberValue } from "./index.js";
-import { Generator } from "../utils/generator.js";
 import invariant from "../invariant.js";
 
 /* Abstract base class for all function objects */
 export default class FunctionValue extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
     super(realm, realm.intrinsics.FunctionPrototype, intrinsicName);
-    this.parent = realm.generator;
   }
 
-  parent: void | Generator;
+  pathConditionDuringDeclaration: PathConditions | void;
   $Environment: LexicalEnvironment;
+  $InnerEnvironment: LexicalEnvironment;
   $ScriptOrModule: any;
 
   // Indicates whether this function has been referenced by a __residual call.
@@ -35,6 +34,10 @@ export default class FunctionValue extends ObjectValue {
   // Allows for residual function with inference of parameters
   isUnsafeResidual: void | true;
 
+  getName(): string {
+    throw new Error("Abstract method");
+  }
+
   getKind(): ObjectKind {
     return "Function";
   }
@@ -44,16 +47,16 @@ export default class FunctionValue extends ObjectValue {
     invariant(binding);
     let desc = binding.descriptor;
     invariant(desc);
-    let value = desc.value;
+    let value = desc.throwIfNotConcrete(this.$Realm).value;
     if (!(value instanceof NumberValue)) return undefined;
     return value.value;
   }
 
-  getParent(): void | Generator {
-    return this.parent;
-  }
-
   hasDefaultLength(): boolean {
     invariant(false, "abstract method; please override");
+  }
+
+  getDebugName(): string {
+    return super.getDebugName() || this.getName();
   }
 }

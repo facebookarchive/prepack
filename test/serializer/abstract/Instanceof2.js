@@ -1,6 +1,6 @@
 // throws introspection error
 
-var b = global.__abstract ? __abstract("boolean", true) : true;
+var b = global.__abstract ? __abstract("boolean", "true") : true;
 var o = global.__abstract ? __abstract("object", "({})") : {};
 
 try {
@@ -9,4 +9,6 @@ try {
   x1 = err;
 }
 
-inspect = function() { return "" + x1; }
+inspect = function() {
+  return "" + x1;
+};

@@ -7,13 +7,17 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
-import { PrimitiveValue } from "./index.js";
+import { PrimitiveValue, Value } from "./index.js";
 
 export default class NullValue extends PrimitiveValue {
   _serialize(): null {
     return null;
+  }
+
+  equals(x: Value): boolean {
+    return x instanceof NullValue;
   }
 
   getHash(): number {
@@ -22,5 +26,9 @@ export default class NullValue extends PrimitiveValue {
 
   mightBeFalse(): boolean {
     return true;
+  }
+
+  toDisplayString(): string {
+    return "null";
   }
 }

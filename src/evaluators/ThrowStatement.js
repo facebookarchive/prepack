@@ -7,14 +7,14 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { ThrowCompletion } from "../completions.js";
-import { GetValue } from "../methods/index.js";
-import type { BabelNodeThrowStatement } from "babel-types";
+import { Environment } from "../singletons.js";
+import type { BabelNodeThrowStatement } from "@babel/types";
 
 export default function(
   ast: BabelNodeThrowStatement,
@@ -23,6 +23,6 @@ export default function(
   realm: Realm
 ): Value {
   let exprRef = env.evaluate(ast.argument, strictCode);
-  let exprValue = GetValue(realm, exprRef);
+  let exprValue = Environment.GetValue(realm, exprRef);
   throw new ThrowCompletion(exprValue, ast.loc);
 }

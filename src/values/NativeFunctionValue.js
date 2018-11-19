@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Value } from "./index.js";
 import type { Realm } from "../realm.js";
@@ -22,8 +22,10 @@ import {
   UndefinedValue,
   AbstractObjectValue,
 } from "./index.js";
+import type { PromiseCapability } from "../types.js";
 import { ReturnCompletion } from "../completions.js";
-import { $Call, $Construct } from "../methods/function.js";
+import { Functions } from "../singletons.js";
+import { PropertyDescriptor } from "../descriptors.js";
 export type NativeFunctionCallback = (
   context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
   args: Array<Value>,
@@ -48,13 +50,13 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     this.$FunctionKind = "normal";
 
     this.$Call = (thisArgument, argsList) => {
-      return $Call(this.$Realm, this, thisArgument, argsList);
+      return Functions.$Call(this.$Realm, this, thisArgument, argsList);
     };
 
     if (constructor) {
       this.$ConstructorKind = "base";
       this.$Construct = (argumentsList, newTarget) => {
-        return $Construct(this.$Realm, this, argumentsList, newTarget);
+        return Functions.$Construct(this.$Realm, this, argumentsList, newTarget);
       };
     }
 
@@ -63,28 +65,40 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
     this.callback = callback;
     this.length = length;
 
-    this.$DefineOwnProperty("length", {
-      value: new NumberValue(realm, length),
-      writable: false,
-      configurable: true,
-      enumerable: false,
-    });
+    this.$DefineOwnProperty(
+      "length",
+      new PropertyDescriptor({
+        value: new NumberValue(realm, length),
+        writable: false,
+        configurable: true,
+        enumerable: false,
+      })
+    );
 
-    if (name) {
+    if (name !== undefined && name !== "") {
       if (name instanceof SymbolValue) {
         this.name = name.$Description ? `[${name.$Description.throwIfNotConcreteString().value}]` : "[native]";
       } else {
         this.name = name;
       }
-      this.$DefineOwnProperty("name", {
-        value: new StringValue(realm, this.name),
-        writable: false,
-        configurable: true,
-        enumerable: false,
-      });
+      this.$DefineOwnProperty(
+        "name",
+        new PropertyDescriptor({
+          value: new StringValue(realm, this.name),
+          writable: false,
+          configurable: true,
+          enumerable: false,
+        })
+      );
     } else {
       this.name = "native";
     }
+  }
+
+  static trackedPropertyNames = ObjectValue.trackedPropertyNames.concat("$RevocableProxy");
+
+  getTrackedPropertyNames(): Array<string> {
+    return NativeFunctionValue.trackedPropertyNames;
   }
 
   hasDefaultLength(): boolean {
@@ -95,14 +109,20 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
   callback: NativeFunctionCallback;
   length: number;
 
+  // Override.
+  getName(): string {
+    return this.name;
+  }
+
   callCallback(
     context: UndefinedValue | NullValue | ObjectValue | AbstractObjectValue,
-    argsList: Array<Value>,
+    originalArgsList: Array<Value>,
     newTarget?: void | ObjectValue
   ): ReturnCompletion {
-    let originalLength = argsList.length;
+    let originalLength = originalArgsList.length;
+    let argsList = originalArgsList.slice();
     for (let i = 0; i < this.length; i++) {
-      argsList[i] = argsList[i] || this.$Realm.intrinsics.undefined;
+      argsList[i] = originalArgsList[i] || this.$Realm.intrinsics.undefined;
     }
     return new ReturnCompletion(
       this.callback(context, argsList, originalLength, newTarget),
@@ -112,4 +132,16 @@ export default class NativeFunctionValue extends ECMAScriptFunctionValue {
 
   // for Proxy
   $RevocableProxy: void | NullValue | ProxyValue;
+
+  // for Promise resolve/reject functions
+  $Promise: ?ObjectValue;
+  $AlreadyResolved: void | { value: boolean };
+
+  // for Promise resolve functions
+  $Capability: void | PromiseCapability;
+  $AlreadyCalled: void | { value: boolean };
+  $Index: void | number;
+  $Values: void | Array<Value>;
+  $Capabilities: void | PromiseCapability;
+  $RemainingElements: void | { value: number };
 }

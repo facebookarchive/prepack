@@ -11,29 +11,22 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { BreakCompletion } from "../completions.js";
+import { BreakCompletion, SimpleNormalCompletion } from "../completions.js";
 import { DeclarativeEnvironmentRecord } from "../environment.js";
 import { CompilerDiagnostic, FatalError } from "../errors.js";
 import { ForInOfHeadEvaluation, ForInOfBodyEvaluation } from "./ForOfStatement.js";
-import { BoundNames, EnumerableOwnProperties, NewDeclarativeEnvironment, UpdateEmpty } from "../methods/index.js";
-import {
-  AbstractValue,
-  AbstractObjectValue,
-  ArrayValue,
-  ObjectValue,
-  StringValue,
-  UndefinedValue,
-  Value,
-} from "../values/index.js";
+import { EnumerableOwnProperties, UpdateEmpty } from "../methods/index.js";
+import { Environment } from "../singletons.js";
+import { AbstractValue, AbstractObjectValue, ArrayValue, ObjectValue, StringValue, Value } from "../values/index.js";
 import type {
   BabelNodeExpression,
   BabelNodeForInStatement,
   BabelNodeSourceLocation,
   BabelNodeStatement,
   BabelNodeVariableDeclaration,
-} from "babel-types";
+} from "@babel/types";
 import invariant from "../invariant.js";
-import * as t from "babel-types";
+import * as t from "@babel/types";
 
 // helper func to report error
 function reportError(realm: Realm, loc: ?BabelNodeSourceLocation) {
@@ -87,7 +80,14 @@ export default function(
       } else {
         // for (ForDeclaration in Expression) Statement
         // 1. Let keyResult be the result of performing ? ForIn/OfHeadEvaluation(BoundNames of ForDeclaration, Expression, enumerate).
-        let keyResult = ForInOfHeadEvaluation(realm, env, BoundNames(realm, left), right, "enumerate", strictCode);
+        let keyResult = ForInOfHeadEvaluation(
+          realm,
+          env,
+          Environment.BoundNames(realm, left),
+          right,
+          "enumerate",
+          strictCode
+        );
         reportErrorAndThrowIfNotConcrete(keyResult, right.loc);
         invariant(keyResult instanceof ObjectValue);
 
@@ -124,35 +124,45 @@ function emitResidualLoopIfSafe(
 ) {
   invariant(ob.isSimpleObject());
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
-  let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
+  let blockEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
   realm.getRunningContext().lexicalEnvironment = blockEnv;
   try {
     let envRec = blockEnv.environmentRecord;
     invariant(envRec instanceof DeclarativeEnvironmentRecord, "expected declarative environment record");
     let absStr = AbstractValue.createFromType(realm, StringValue);
     let boundName;
-    for (let n of BoundNames(realm, lh)) {
+    for (let n of Environment.BoundNames(realm, lh)) {
       invariant(boundName === undefined);
       boundName = t.identifier(n);
       envRec.CreateMutableBinding(n, false);
       envRec.InitializeBinding(n, absStr);
     }
-    let [compl, gen, bindings, properties, createdObj] = realm.evaluateNodeForEffects(body, strictCode, blockEnv);
-    if (compl instanceof Value && gen.empty() && bindings.size === 0 && properties.size === 1) {
-      invariant(createdObj.size === 0); // or there will be more than one property
+    let { result, generator: gen, modifiedBindings, modifiedProperties, createdObjects } = realm.evaluateNodeForEffects(
+      body,
+      strictCode,
+      blockEnv
+    );
+    if (
+      result instanceof SimpleNormalCompletion &&
+      gen.empty() &&
+      modifiedBindings.size === 0 &&
+      modifiedProperties.size === 1
+    ) {
+      invariant(createdObjects.size === 0); // or there will be more than one property
       let targetObject;
       let sourceObject;
-      properties.forEach((desc, key, map) => {
+      modifiedProperties.forEach((desc, key, map) => {
         if (key.object.unknownProperty === key) {
           targetObject = key.object;
           invariant(desc !== undefined);
-          let sourceValue = desc.value;
+          let sourceValue = desc.throwIfNotConcrete(realm).value;
           if (sourceValue instanceof AbstractValue) {
             // because sourceValue was written to key.object.unknownProperty it must be that
             let cond = sourceValue.args[0];
             // and because the write always creates a value of this shape
             invariant(cond instanceof AbstractValue && cond.kind === "template for property name condition");
-            if (sourceValue.args[2] instanceof UndefinedValue) {
+            let falseVal = sourceValue.args[2];
+            if (falseVal instanceof AbstractValue && falseVal.kind === "template for prototype member expression") {
               // check that the value that was assigned itself came from
               // an expression of the form sourceObject[absStr].
               let mem = sourceValue.args[1];
@@ -183,7 +193,13 @@ function emitResidualLoopIfSafe(
       if (targetObject instanceof ObjectValue && sourceObject !== undefined) {
         let o = ob;
         if (ob instanceof AbstractObjectValue && !ob.values.isTop() && ob.values.getElements().size === 1) {
-          for (let oe of ob.values.getElements()) o = oe;
+          // Note that it is not safe, in general, to extract a concrete object from the values domain of
+          // an abstract object. We can get away with it here only because the concrete object does not
+          // escape the code below and is thus never referenced directly in generated code because of this logic.
+          for (let oe of ob.values.getElements()) {
+            invariant(oe instanceof ObjectValue);
+            o = oe;
+          }
         }
         let generator = realm.generator;
         invariant(generator !== undefined);
@@ -192,13 +208,10 @@ function emitResidualLoopIfSafe(
         targetObject.makeSimple();
         targetObject.makePartial();
         if (sourceObject === o) {
-          // Known enumerable properties of sourceObject can become known
-          // properties of targetObject.
+          // Known enumerable properties of sourceObject can become known properties of targetObject.
           invariant(sourceObject.isPartialObject());
-          sourceObject.makeNotPartial();
           // EnumerableOwnProperties is sufficient because sourceObject is simple
-          let keyValPairs = EnumerableOwnProperties(realm, sourceObject, "key+value");
-          sourceObject.makePartial();
+          let keyValPairs = EnumerableOwnProperties(realm, sourceObject, "key+value", true);
           for (let keyVal of keyValPairs) {
             invariant(keyVal instanceof ArrayValue);
             let key = keyVal.$Get("0", keyVal);
@@ -208,33 +221,15 @@ function emitResidualLoopIfSafe(
           }
         }
         // add loop to generator
-        generator.body.push({
-          // duplicate args to ensure refcount > 1
-          args: [o, targetObject, sourceObject, targetObject, sourceObject],
-          buildNode: ([obj, tgt, src, obj1, tgt1, src1]) => {
-            invariant(boundName !== undefined);
-            return t.forInStatement(
-              lh,
-              obj,
-              t.blockStatement([
-                t.expressionStatement(
-                  t.assignmentExpression(
-                    "=",
-                    t.memberExpression(tgt, boundName, true),
-                    t.memberExpression(src, boundName, true)
-                  )
-                ),
-              ])
-            );
-          },
-        });
-
+        invariant(boundName != null);
+        generator.emitForInStatement(o, lh, sourceObject, targetObject, boundName);
         return realm.intrinsics.undefined;
       }
     }
   } finally {
     // 6. Set the running execution context's LexicalEnvironment to oldEnv.
     realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.onDestroyScope(blockEnv);
   }
 
   reportError(realm, obexpr.loc);

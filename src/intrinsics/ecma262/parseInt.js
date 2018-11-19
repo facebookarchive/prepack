@@ -7,12 +7,12 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { NumberValue } from "../../values/index.js";
-import { ToStringPartial, ToInt32 } from "../../methods/to.js";
+import { To } from "../../singletons.js";
 
 function ToDigit(ch: string): number | void {
   if (ch >= "0" && ch <= "9") {
@@ -33,7 +33,7 @@ export default function(realm: Realm): NativeFunctionValue {
     2,
     (context, [string, radix]) => {
       // 1. Let inputString be ? ToString(string).
-      let inputString = ToStringPartial(realm, string);
+      let inputString = To.ToStringPartial(realm, string);
 
       // 2. Let S be a newly created substring of inputString consisting of the first code unit that is not a StrWhiteSpaceChar and all code units following that code unit. (In other words, remove leading white space.) If inputString does not contain any such code unit, let S be the empty string.
       let S = inputString.trim();
@@ -48,7 +48,7 @@ export default function(realm: Realm): NativeFunctionValue {
       if (S !== "" && (S.charAt(0) === "-" || S.charAt(0) === "+")) S = S.substr(1);
 
       // 6. Let R be ? ToInt32(radix).
-      let R = ToInt32(realm, radix);
+      let R = To.ToInt32(realm, radix);
 
       // 7. Let stripPrefix be true.
       let stripPrefix = true;

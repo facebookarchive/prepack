@@ -14,8 +14,8 @@ import type { LexicalEnvironment } from "../environment.js";
 import { Value } from "../values/index.js";
 import { ThrowCompletion } from "../completions.js";
 import invariant from "../invariant.js";
-import { NewDeclarativeEnvironment, BoundNames, BindingInitialization } from "../methods/index.js";
-import type { BabelNodeCatchClause } from "babel-types";
+import { Environment } from "../singletons.js";
+import type { BabelNodeCatchClause } from "@babel/types";
 
 // ECAM262 13.15.7
 export default function(
@@ -31,13 +31,13 @@ export default function(
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 
   // 2. Let catchEnv be NewDeclarativeEnvironment(oldEnv).
-  let catchEnv = NewDeclarativeEnvironment(realm, oldEnv);
+  let catchEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
 
   // 3. Let catchEnvRec be catchEnv's EnvironmentRecord.
   let catchEnvRec = catchEnv.environmentRecord;
 
   // 4. For each element argName of the BoundNames of CatchParameter, do
-  for (let argName of BoundNames(realm, ast.param)) {
+  for (let argName of Environment.BoundNames(realm, ast.param)) {
     // a. Perform ! catchEnvRec.CreateMutableBinding(argName, false).
     catchEnvRec.CreateMutableBinding(argName, false);
   }
@@ -47,7 +47,7 @@ export default function(
 
   try {
     // 6. Let status be the result of performing BindingInitialization for CatchParameter passing thrownValue and catchEnv as arguments.
-    BindingInitialization(realm, ast.param, thrownValue.value, strictCode, catchEnv);
+    Environment.BindingInitialization(realm, ast.param, thrownValue.value, strictCode, catchEnv);
 
     // 7. If status is an abrupt completion, then
     // a. Set the running execution context's LexicalEnvironment to oldEnv.
@@ -62,5 +62,6 @@ export default function(
   } finally {
     // 9. Set the running execution context's LexicalEnvironment to oldEnv.
     realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.onDestroyScope(catchEnv);
   }
 }

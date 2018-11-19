@@ -7,13 +7,48 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { ObjectValue } from "../../values/index.js";
+import { ObjectValue, AbstractObjectValue } from "../../values/index.js";
+import { createAbstract } from "../prepack/utils.js";
+import { Properties } from "../../singletons.js";
+import invariant from "../../invariant";
 
-export default function(realm: Realm): ObjectValue {
-  let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "document");
+const functions = [
+  "getElementById",
+  "getElementByTag",
+  "getElementByClassName",
+  "getElementByName",
+  "getElementByTagName",
+  "getElementByTagNameNS",
+  "querySelector",
+  "querySelectorAll",
+  "createElement",
+  "createDocumentFragment",
+  "createTextNode",
+];
 
-  return obj;
+export default function(realm: Realm): AbstractObjectValue {
+  // document object
+  let document = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "document", false);
+
+  // check if we can use abstracts
+  if (realm.useAbstractInterpretation) {
+    // common methods on document
+    for (let name of functions) {
+      let func = createAbstract(realm, "function", `document.${name}`);
+      Properties.Set(realm, document, name, func, false);
+    }
+
+    // document.body
+    let body = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "document.body");
+    Properties.Set(realm, document, "body", body, false);
+
+    // make abstract
+    let abstractObject = createAbstract(realm, document, "document");
+    invariant(abstractObject instanceof AbstractObjectValue);
+    return abstractObject;
+  }
+  return document;
 }

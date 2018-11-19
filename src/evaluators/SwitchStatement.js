@@ -11,17 +11,20 @@
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
-import { AbruptCompletion, BreakCompletion } from "../completions.js";
-import { InternalGetResultValue } from "./ForOfStatement.js";
-import { EmptyValue, Value } from "../values/index.js";
+import { InfeasiblePathError } from "../errors.js";
+import { computeBinary } from "./BinaryExpression.js";
 import {
-  GetValue,
-  NewDeclarativeEnvironment,
-  BlockDeclarationInstantiation,
-  StrictEqualityComparisonPartial,
-  UpdateEmpty,
-} from "../methods/index.js";
-import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "babel-types";
+  AbruptCompletion,
+  BreakCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
+} from "../completions.js";
+import { InternalGetResultValue } from "./ForOfStatement.js";
+import { EmptyValue, AbstractValue, Value } from "../values/index.js";
+import { StrictEqualityComparisonPartial, UpdateEmpty } from "../methods/index.js";
+import { Environment, Functions, Join, Path } from "../singletons.js";
+import type { BabelNodeSwitchStatement, BabelNodeSwitchCase, BabelNodeExpression } from "@babel/types";
 import invariant from "../invariant.js";
 
 // 13.12.10 Runtime Semantics: CaseSelectorEvaluation
@@ -35,7 +38,145 @@ function CaseSelectorEvaluation(
   let exprRef = env.evaluate(expression, strictCode);
 
   // 2. Return ? GetValue(exprRef).
-  return GetValue(realm, exprRef);
+  return Environment.GetValue(realm, exprRef);
+}
+
+function AbstractCaseBlockEvaluation(
+  cases: Array<BabelNodeSwitchCase>,
+  defaultCaseIndex: number,
+  input: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm
+): Value {
+  invariant(realm.useAbstractInterpretation);
+
+  let DefiniteCaseEvaluation = (caseIndex: number): Value => {
+    let result = realm.intrinsics.undefined;
+    // we start at the case we've been asked to evaluate, and process statements
+    // until there is either a break statement or exception thrown (this means we
+    // implicitly fall through correctly in the absence of a break statement).
+    while (caseIndex < cases.length) {
+      let c = cases[caseIndex];
+      for (let i = 0; i < c.consequent.length; i += 1) {
+        let node = c.consequent[i];
+        let r = env.evaluateCompletionDeref(node, strictCode);
+
+        if (r instanceof JoinedNormalAndAbruptCompletions) {
+          r = realm.composeWithSavedCompletion(r);
+        }
+
+        result = UpdateEmpty(realm, r, result);
+        if (result instanceof Completion) break;
+      }
+
+      if (result instanceof Completion) break;
+      caseIndex++;
+    }
+    let sc = Functions.incorporateSavedCompletion(realm, result);
+    invariant(sc !== undefined);
+    result = sc;
+
+    if (result instanceof JoinedAbruptCompletions || result instanceof JoinedNormalAndAbruptCompletions) {
+      let selector = c => c instanceof BreakCompletion && !c.target;
+      let jc = AbstractValue.createJoinConditionForSelectedCompletions(selector, result);
+      let jv = AbstractValue.createFromConditionalOp(realm, jc, realm.intrinsics.empty, result.value);
+      result = Completion.normalizeSelectedCompletions(selector, result);
+      realm.composeWithSavedCompletion(result);
+      return jv;
+    } else if (result instanceof BreakCompletion) {
+      return result.value;
+    } else if (result instanceof AbruptCompletion) {
+      throw result;
+    } else {
+      invariant(result instanceof Value);
+      return result;
+    }
+  };
+
+  let AbstractCaseEvaluation = (caseIndex: number): Value => {
+    if (caseIndex === defaultCaseIndex) {
+      // skip the default case until we've exhausted all other options
+      return AbstractCaseEvaluation(caseIndex + 1);
+    } else if (caseIndex >= cases.length) {
+      // this is the stop condition for our recursive search for a matching case.
+      // we tried every available case index and since nothing matches we return
+      // the default (and if none exists....just empty)
+      if (defaultCaseIndex !== -1) {
+        return DefiniteCaseEvaluation(defaultCaseIndex);
+      } else {
+        return realm.intrinsics.empty;
+      }
+    }
+    // else we have a normal in-range case index
+
+    let c = cases[caseIndex];
+    let test = c.test;
+    invariant(test);
+
+    let selector = CaseSelectorEvaluation(test, strictCode, env, realm);
+    let selectionResult = computeBinary(realm, "===", input, selector);
+
+    if (Path.implies(selectionResult)) {
+      //  we have a winning result for the switch case, bubble it back up!
+      return DefiniteCaseEvaluation(caseIndex);
+    } else if (Path.impliesNot(selectionResult)) {
+      // we have a case that is definitely *not* taken
+      // so we go and look at the next one in the hope of finding a match
+      return AbstractCaseEvaluation(caseIndex + 1);
+    } else {
+      // we can't be sure whether the case selector evaluates true or not
+      // so we evaluate the case in the abstract as an if-else with the else
+      // leading to the next case statement
+      let trueEffects;
+      try {
+        trueEffects = Path.withCondition(selectionResult, () => {
+          return realm.evaluateForEffects(
+            () => {
+              return DefiniteCaseEvaluation(caseIndex);
+            },
+            undefined,
+            "AbstractCaseEvaluation/1"
+          );
+        });
+      } catch (e) {
+        if (e instanceof InfeasiblePathError) {
+          // selectionResult cannot be true in this path, after all.
+          return AbstractCaseEvaluation(caseIndex + 1);
+        }
+        throw e;
+      }
+
+      let falseEffects;
+      try {
+        falseEffects = Path.withInverseCondition(selectionResult, () => {
+          return realm.evaluateForEffects(
+            () => {
+              return AbstractCaseEvaluation(caseIndex + 1);
+            },
+            undefined,
+            "AbstractCaseEvaluation/2"
+          );
+        });
+      } catch (e) {
+        if (e instanceof InfeasiblePathError) {
+          // selectionResult cannot be false in this path, after all.
+          return DefiniteCaseEvaluation(caseIndex);
+        }
+        throw e;
+      }
+
+      invariant(trueEffects !== undefined);
+      invariant(falseEffects !== undefined);
+      let joinedEffects = Join.joinEffects(selectionResult, trueEffects, falseEffects);
+      realm.applyEffects(joinedEffects);
+
+      return realm.returnOrThrowCompletion(joinedEffects.result);
+    }
+  };
+
+  // let the recursive search for a matching case begin!
+  return AbstractCaseEvaluation(0);
 }
 
 function CaseBlockEvaluation(
@@ -104,6 +245,12 @@ function CaseBlockEvaluation(
     return clause.test === null;
   });
 
+  // Abstract interpretation of case blocks is a significantly different process
+  // from regular interpretation, so we fork off early to keep things tidily separated.
+  if (input instanceof AbstractValue && cases.length < 6) {
+    return AbstractCaseBlockEvaluation(cases, default_case_num, input, strictCode, env, realm);
+  }
+
   if (default_case_num !== -1) {
     // 2. Let A be the List of CaseClause items in the first CaseClauses, in source text order. If the first CaseClauses is not present, A is « ».
     let A = cases.slice(0, default_case_num);
@@ -170,23 +317,48 @@ export default function(
   labelSet: Array<string>
 ): Value {
   let expression = ast.discriminant;
-  let cases: Array<BabelNodeSwitchCase> = ast.cases;
 
   // 1. Let exprRef be the result of evaluating Expression.
   let exprRef = env.evaluate(expression, strictCode);
 
   // 2. Let switchValue be ? GetValue(exprRef).
-  let switchValue = GetValue(realm, exprRef);
+  let switchValue = Environment.GetValue(realm, exprRef);
+  if (switchValue instanceof AbstractValue && !switchValue.values.isTop()) {
+    let elems = switchValue.values.getElements();
+    let n = elems.size;
+    if (n > 1 && n < 10) {
+      return Join.mapAndJoin(
+        realm,
+        elems,
+        concreteSwitchValue => AbstractValue.createFromBinaryOp(realm, "===", switchValue, concreteSwitchValue),
+        concreteSwitchValue => evaluationHelper(ast, concreteSwitchValue, strictCode, env, realm, labelSet)
+      );
+    }
+  }
+
+  return evaluationHelper(ast, switchValue, strictCode, env, realm, labelSet);
+}
+
+function evaluationHelper(
+  ast: BabelNodeSwitchStatement,
+  switchValue: Value,
+  strictCode: boolean,
+  env: LexicalEnvironment,
+  realm: Realm,
+  labelSet: Array<string>
+): Value {
+  let cases: Array<BabelNodeSwitchCase> = ast.cases;
 
   // 3. Let oldEnv be the running execution context's LexicalEnvironment.
   let oldEnv = realm.getRunningContext().lexicalEnvironment;
 
   // 4. Let blockEnv be NewDeclarativeEnvironment(oldEnv).
-  let blockEnv = NewDeclarativeEnvironment(realm, oldEnv);
+  let blockEnv = Environment.NewDeclarativeEnvironment(realm, oldEnv);
 
   // 5. Perform BlockDeclarationInstantiation(CaseBlock, blockEnv).
-  let CaseBlock = cases.map(c => c.consequent).reduce((stmts, case_blk) => stmts.concat(case_blk), []);
-  BlockDeclarationInstantiation(realm, strictCode, CaseBlock, blockEnv);
+  let CaseBlock = [];
+  cases.forEach(c => CaseBlock.push(...c.consequent));
+  Environment.BlockDeclarationInstantiation(realm, strictCode, CaseBlock, blockEnv);
 
   // 6. Set the running execution context's LexicalEnvironment to blockEnv.
   realm.getRunningContext().lexicalEnvironment = blockEnv;
@@ -206,5 +378,6 @@ export default function(
   } finally {
     // 8. Set the running execution context's LexicalEnvironment to oldEnv.
     realm.getRunningContext().lexicalEnvironment = oldEnv;
+    realm.onDestroyScope(blockEnv);
   }
 }

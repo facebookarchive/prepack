@@ -1,3 +1,5 @@
 global.foo = 42;
 
-inspect = function() { return foo; }
+inspect = function() {
+  return global.foo;
+};

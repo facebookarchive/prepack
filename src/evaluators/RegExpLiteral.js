@@ -7,13 +7,13 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Value, StringValue } from "../values/index.js";
 import { RegExpCreate } from "../methods/index.js";
-import type { BabelNodeRegExpLiteral } from "babel-types";
+import type { BabelNodeRegExpLiteral } from "@babel/types";
 
 export default function(
   ast: BabelNodeRegExpLiteral,
@@ -24,6 +24,6 @@ export default function(
   return RegExpCreate(
     realm,
     new StringValue(realm, ast.pattern),
-    ast.flags ? new StringValue(realm, ast.flags) : undefined
+    ast.flags !== undefined ? new StringValue(realm, ast.flags) : undefined
   );
 }

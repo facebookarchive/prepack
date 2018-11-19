@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { ToNumber } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.2
@@ -22,7 +22,7 @@ export default function(realm: Realm): NativeFunctionValue {
     1,
     (context, [number]) => {
       // 1. Let num be ? ToNumber(number).
-      let num = ToNumber(realm, number);
+      let num = To.ToNumber(realm, number);
 
       // 2. If num is NaN, +∞, or -∞, return false.
       if (isNaN(num) || num === +Infinity || num === -Infinity) return realm.intrinsics.false;

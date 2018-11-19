@@ -7,19 +7,24 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "./realm.js";
 import initializePrepackGlobals from "./intrinsics/prepack/global.js";
 import initializeDOMGlobals from "./intrinsics/dom/global.js";
 import initializeReactNativeGlobals from "./intrinsics/react-native/global.js";
+import initializeReactMocks from "./intrinsics/fb-www/global.js";
 
 export default function(realm: Realm): Realm {
   initializePrepackGlobals(realm);
   if (realm.isCompatibleWith("browser")) {
     initializeDOMGlobals(realm);
   }
-  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) {
+  if (realm.isCompatibleWith("fb-www") || realm.isCompatibleWith("node-react")) {
+    initializeDOMGlobals(realm);
+    initializeReactMocks(realm);
+  }
+  if (realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) || realm.isCompatibleWith("mobile")) {
     initializeReactNativeGlobals(realm);
   }
   return realm;

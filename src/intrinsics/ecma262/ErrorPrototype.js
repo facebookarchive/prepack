@@ -7,11 +7,12 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, UndefinedValue } from "../../values/index.js";
-import { ToStringPartial, Get } from "../../methods/index.js";
+import { Get } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
   return build("Error", realm, obj);
@@ -38,14 +39,16 @@ export function build(name: string, realm: Realm, obj: ObjectValue): void {
     let nameValue = Get(realm, O, "name");
 
     // 4. If name is undefined, let name be "Error"; otherwise let name be ? ToString(name).
-    let nameString = nameValue instanceof UndefinedValue ? "Error" : ToStringPartial(realm, nameValue);
+    let nameString = nameValue instanceof UndefinedValue ? "Error" : To.ToStringPartial(realm, nameValue);
 
     // 5. Let msg be ? Get(O, "message").
     let msg = Get(realm, O, "message");
 
     // 6. If msg is undefined, let msg be the empty String; otherwise let msg be ? ToString(msg).
-    msg = msg instanceof UndefinedValue ? "" : ToStringPartial(realm, msg);
+    msg = msg instanceof UndefinedValue ? "" : To.ToStringPartial(realm, msg);
 
+    // Note that in ES5, both name and msg are checked for emptiness in step 7,
+    // which however is later dropped in ES6.
     // 7. If name is the empty String, return msg.
     if (nameString === "") return new StringValue(realm, msg);
 

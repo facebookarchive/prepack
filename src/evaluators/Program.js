@@ -9,16 +9,22 @@
 
 /* @flow */
 
+import {
+  AbruptCompletion,
+  Completion,
+  JoinedAbruptCompletions,
+  JoinedNormalAndAbruptCompletions,
+  ThrowCompletion,
+} from "../completions.js";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { Value, EmptyValue } from "../values/index.js";
 import { GlobalEnvironmentRecord } from "../environment.js";
-import { FindVarScopedDeclarations } from "../methods/function.js";
-import { BoundNames } from "../methods/index.js";
+import { Environment, Functions, Join } from "../singletons.js";
 import IsStrict from "../utils/strict.js";
 import invariant from "../invariant.js";
 import traverseFast from "../utils/traverse-fast.js";
-import type { BabelNodeProgram } from "babel-types";
+import type { BabelNodeProgram, BabelNodeVariableDeclaration } from "@babel/types";
 
 // ECMA262 15.1.11
 export function GlobalDeclarationInstantiation(
@@ -26,7 +32,7 @@ export function GlobalDeclarationInstantiation(
   ast: BabelNodeProgram,
   env: LexicalEnvironment,
   strictCode: boolean
-) {
+): EmptyValue {
   realm.getRunningContext().isStrict = realm.isStrict = strictCode;
 
   // 1. Let envRec be env's EnvironmentRecord.
@@ -43,10 +49,10 @@ export function GlobalDeclarationInstantiation(
 
   traverseFast(ast, node => {
     if (node.type === "VariableDeclaration") {
-      if (node.kind === "var") {
-        varNames = varNames.concat(BoundNames(realm, node));
+      if (((node: any): BabelNodeVariableDeclaration).kind === "var") {
+        varNames = varNames.concat(Environment.BoundNames(realm, node));
       } else {
-        lexNames = lexNames.concat(BoundNames(realm, node));
+        lexNames = lexNames.concat(Environment.BoundNames(realm, node));
       }
     } else if (node.type === "FunctionExpression" || node.type === "FunctionDeclaration") {
       return true;
@@ -90,7 +96,7 @@ export function GlobalDeclarationInstantiation(
   }
 
   // 7. Let varDeclarations be the VarScopedDeclarations of script.
-  let varDeclarations = FindVarScopedDeclarations(ast);
+  let varDeclarations = Functions.FindVarScopedDeclarations(ast);
 
   // 8. Let functionsToInitialize be a new empty List.
   let functionsToInitialize = [];
@@ -108,7 +114,7 @@ export function GlobalDeclarationInstantiation(
       // ii. NOTE If there are multiple FunctionDeclarations for the same name, the last declaration is used.
 
       // iii. Let fn be the sole element of the BoundNames of d.
-      let fn = BoundNames(realm, d)[0];
+      let fn = Environment.BoundNames(realm, d)[0];
 
       // iv. If fn is not an element of declaredFunctionNames, then
       if (declaredFunctionNames.indexOf(fn) < 0) {
@@ -140,7 +146,7 @@ export function GlobalDeclarationInstantiation(
     // a. If d is a VariableDeclaration or a ForBinding, then
     if (d.type === "VariableDeclaration") {
       // i. For each String vn in the BoundNames of d, do
-      for (let vn of BoundNames(realm, d)) {
+      for (let vn of Environment.BoundNames(realm, d)) {
         // ii. If vn is not an element of declaredFunctionNames, then
         if (declaredFunctionNames.indexOf(vn) < 0) {
           // 1. Let vnDefinable be ? envRec.CanDeclareGlobalVar(vn).
@@ -181,7 +187,7 @@ export function GlobalDeclarationInstantiation(
     // a. NOTE Lexically declared names are only instantiated here but not initialized.
 
     // b. For each element dn of the BoundNames of d do
-    for (let dn of BoundNames(realm, d)) {
+    for (let dn of Environment.BoundNames(realm, d)) {
       // i. If IsConstantDeclaration of d is true, then
       if (d.kind === "const") {
         // 1. Perform ? envRec.CreateImmutableBinding(dn, true).
@@ -197,7 +203,7 @@ export function GlobalDeclarationInstantiation(
   // 17. For each production f in functionsToInitialize, do
   for (let f of functionsToInitialize) {
     // a. Let fn be the sole element of the BoundNames of f.
-    let fn = BoundNames(realm, f)[0];
+    let fn = Environment.BoundNames(realm, f)[0];
 
     // b. Let fo be the result of performing InstantiateFunctionObject for f with argument env.
     let fo = env.evaluate(f, strictCode);
@@ -222,21 +228,55 @@ export default function(ast: BabelNodeProgram, strictCode: boolean, env: Lexical
 
   GlobalDeclarationInstantiation(realm, ast, env, strictCode);
 
-  let val;
+  let val, res;
 
   for (let node of ast.body) {
     if (node.type !== "FunctionDeclaration") {
-      let potentialVal = env.evaluate(node, strictCode);
-      if (!(potentialVal instanceof EmptyValue)) val = potentialVal;
+      res = env.evaluateCompletionDeref(node, strictCode);
+      if (res instanceof AbruptCompletion && !realm.useAbstractInterpretation) throw res;
+      res = Functions.incorporateSavedCompletion(realm, res);
+      if (res instanceof Completion) {
+        emitThrowStatementsIfNeeded(res);
+        if (res instanceof ThrowCompletion) return res.value; // Program ends here at runtime, so don't carry on
+        res = res.value;
+      }
+      if (!(res instanceof EmptyValue)) {
+        val = res;
+      }
     }
   }
-
   let directives = ast.directives;
   if (!val && directives && directives.length) {
     let directive = directives[directives.length - 1];
     val = env.evaluate(directive, strictCode);
+    invariant(val instanceof Value);
   }
 
+  // We are about to leave this program and this presents a join point where all control flows
+  // converge into a single flow and the joined effects become the final state.
   invariant(val === undefined || val instanceof Value);
+  if (val instanceof Value) {
+    res = Functions.incorporateSavedCompletion(realm, val);
+    if (res instanceof Completion) emitThrowStatementsIfNeeded(res);
+  }
+
   return val || realm.intrinsics.empty;
+
+  function emitThrowStatementsIfNeeded(completion: Completion): void {
+    let generator = realm.generator;
+    invariant(generator !== undefined);
+    let selector = c =>
+      c instanceof ThrowCompletion && c.value !== realm.intrinsics.__bottomValue && !(c.value instanceof EmptyValue);
+    if (res instanceof ThrowCompletion && selector(res)) {
+      generator.emitThrow(res.value);
+    } else if (
+      (res instanceof JoinedAbruptCompletions || res instanceof JoinedNormalAndAbruptCompletions) &&
+      res.containsSelectedCompletion(selector)
+    ) {
+      generator.emitConditionalThrow(Join.joinValuesOfSelectedCompletions(selector, res, true));
+      res = realm.intrinsics.undefined;
+    } else {
+      // might get here for completions where all throws have already been handled.
+    }
+  }
 }

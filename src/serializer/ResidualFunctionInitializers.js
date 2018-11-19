@@ -7,46 +7,37 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { FunctionValue, Value } from "../values/index.js";
-import * as t from "babel-types";
-import type { BabelNodeStatement } from "babel-types";
-import { NameGenerator } from "../utils/generator.js";
+import * as t from "@babel/types";
+import type { BabelNodeStatement } from "@babel/types";
+import { NameGenerator } from "../utils/NameGenerator.js";
 import traverseFast from "../utils/traverse-fast.js";
 import invariant from "../invariant.js";
-import { voidExpression, nullExpression } from "../utils/internalizer.js";
-import type { LocationService } from "./types.js";
+import { voidExpression, nullExpression } from "../utils/babelhelpers.js";
+import type { LocationService, SerializedBody } from "./types.js";
+import { factorifyObjects } from "./factorify.js";
 
 // This class manages information about values
 // which are only referenced by residual functions,
 // and it provides the ability to generate initialization code for those values that
 // can be placed into the residual functions.
 export class ResidualFunctionInitializers {
-  constructor(
-    locationService: LocationService,
-    prelude: Array<BabelNodeStatement>,
-    initializerNameGenerator: NameGenerator
-  ) {
+  constructor(locationService: LocationService) {
     this.functionInitializerInfos = new Map();
     this.initializers = new Map();
     this.sharedInitializers = new Map();
     this.locationService = locationService;
-    this.initializerNameGenerator = initializerNameGenerator;
-    this.prelude = prelude;
   }
 
+  // ownId: uid of the FunctionValue, initializer ids are strings of sorted lists of FunctionValues referencing the value
   functionInitializerInfos: Map<FunctionValue, { ownId: string, initializerIds: Set<string> }>;
-  initializers: Map<string, { id: string, order: number, body: Array<BabelNodeStatement>, values: Array<Value> }>;
+  initializers: Map<string, { id: string, order: number, body: SerializedBody, values: Array<Value> }>;
   sharedInitializers: Map<string, BabelNodeStatement>;
   locationService: LocationService;
-  prelude: Array<BabelNodeStatement>;
-  initializerNameGenerator: NameGenerator;
 
-  registerValueOnlyReferencedByResidualFunctions(
-    functionValues: Array<FunctionValue>,
-    val: Value
-  ): Array<BabelNodeStatement> {
+  registerValueOnlyReferencedByResidualFunctions(functionValues: Array<FunctionValue>, val: Value): SerializedBody {
     invariant(functionValues.length >= 1);
     let infos = [];
     for (let functionValue of functionValues) {
@@ -58,19 +49,30 @@ export class ResidualFunctionInitializers {
         );
       infos.push(info);
     }
-    let id = infos.map(info => info.ownId).sort().join();
+    let id = infos
+      .map(info => info.ownId)
+      .sort()
+      .join();
     for (let info of infos) info.initializerIds.add(id);
     let initializer = this.initializers.get(id);
     if (initializer === undefined)
-      this.initializers.set(id, (initializer = { id, order: infos.length, values: [], body: [] }));
+      this.initializers.set(
+        id,
+        (initializer = {
+          id,
+          order: infos.length,
+          values: [],
+          body: { type: "DelayInitializations", parentBody: undefined, entries: [], done: false },
+        })
+      );
     initializer.values.push(val);
     return initializer.body;
   }
 
-  scrubFunctionInitializers() {
+  scrubFunctionInitializers(): void {
     // Deleting trivial entries in order to avoid creating empty initialization functions that serve no purpose.
     for (let initializer of this.initializers.values())
-      if (initializer.body.length === 0) this.initializers.delete(initializer.id);
+      if (initializer.body.entries.length === 0) this.initializers.delete(initializer.id);
     for (let [functionValue, info] of this.functionInitializerInfos) {
       for (let id of info.initializerIds) {
         let initializer = this.initializers.get(id);
@@ -83,6 +85,7 @@ export class ResidualFunctionInitializers {
   }
 
   _conditionalInitialization(
+    containingAdditionalFunction: void | FunctionValue,
     initializedValues: Array<Value>,
     initializationStatements: Array<BabelNodeStatement>
   ): BabelNodeStatement {
@@ -97,7 +100,8 @@ export class ResidualFunctionInitializers {
     // to figure out if initialization needs to run.
     let location;
     for (let value of initializedValues) {
-      if (!value.mightBeUndefined()) {
+      // function declarations get hoisted, so let's not use their initialization state as a marker
+      if (!value.mightBeUndefined() && !(value instanceof FunctionValue)) {
         location = this.locationService.getLocation(value);
         if (location !== undefined) break;
       }
@@ -105,7 +109,7 @@ export class ResidualFunctionInitializers {
     if (location === undefined) {
       // Second, if we didn't find a non-undefined value, let's make one up.
       // It will transition from `undefined` to `null`.
-      location = this.locationService.createLocation();
+      location = this.locationService.createLocation(containingAdditionalFunction);
       initializationStatements.unshift(t.expressionStatement(t.assignmentExpression("=", location, nullExpression)));
     }
     return t.ifStatement(
@@ -118,9 +122,16 @@ export class ResidualFunctionInitializers {
     return !!this.functionInitializerInfos.get(functionValue);
   }
 
+  factorifyInitializers(nameGenerator: NameGenerator): void {
+    for (const initializer of this.initializers.values()) {
+      factorifyObjects(initializer.body.entries, nameGenerator);
+    }
+  }
+
   getInitializerStatement(functionValue: FunctionValue): void | BabelNodeStatement {
     let initializerInfo = this.functionInitializerInfos.get(functionValue);
     if (initializerInfo === undefined) return undefined;
+    let containingAdditionalFunction = this.locationService.getContainingAdditionalFunction(functionValue);
 
     invariant(initializerInfo.initializerIds.size > 0);
     let ownInitializer = this.initializers.get(initializerInfo.ownId);
@@ -130,7 +141,7 @@ export class ResidualFunctionInitializers {
     for (let initializerId of initializerInfo.initializerIds) {
       let initializer = this.initializers.get(initializerId);
       invariant(initializer !== undefined);
-      invariant(initializer.body.length > 0);
+      invariant(initializer.body.entries.length > 0);
       initializers.push(initializer);
     }
     // Sorting initializers by the number of scopes they are required by.
@@ -143,11 +154,15 @@ export class ResidualFunctionInitializers {
         initializedValues = initializer.values;
       }
       if (initializer === ownInitializer) {
-        initializationStatements = initializationStatements.concat(initializer.body);
+        initializationStatements = initializationStatements.concat(initializer.body.entries);
       } else {
         let ast = this.sharedInitializers.get(initializer.id);
         if (ast === undefined) {
-          ast = this._conditionalInitialization(initializer.values, initializer.body);
+          ast = this._conditionalInitialization(
+            containingAdditionalFunction,
+            initializer.values,
+            initializer.body.entries
+          );
           // We inline compact initializers, as calling a function would introduce too much
           // overhead. To determine if an initializer is compact, we count the number of
           // nodes in the AST, and check if it exceeds a certain threshold.
@@ -159,8 +174,7 @@ export class ResidualFunctionInitializers {
             return false;
           });
           if (count > 24) {
-            let id = t.identifier(this.initializerNameGenerator.generate());
-            this.prelude.push(t.functionDeclaration(id, [], t.blockStatement([ast])));
+            let id = this.locationService.createFunction(containingAdditionalFunction, [ast]);
             ast = t.expressionStatement(t.callExpression(id, []));
           }
           this.sharedInitializers.set(initializer.id, ast);
@@ -169,6 +183,10 @@ export class ResidualFunctionInitializers {
       }
     }
 
-    return this._conditionalInitialization(initializedValues || [], initializationStatements);
+    return this._conditionalInitialization(
+      containingAdditionalFunction,
+      initializedValues || [],
+      initializationStatements
+    );
   }
 }

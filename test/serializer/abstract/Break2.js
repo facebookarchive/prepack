@@ -1,13 +1,16 @@
-// throws introspection error
-
+let x = global.__abstract ? __abstract("boolean", "true") : true;
 let arr = [];
 
 function foo() {
-  let x = __abstract("boolean", "true");
   xyz: while (true) {
     arr[0] = 123;
-    if (x) break; else break xyz;
+    if (x) break;
+    else break xyz;
   }
 }
 
-z = foo();
+var z = foo();
+
+inspect = function() {
+  return z;
+};

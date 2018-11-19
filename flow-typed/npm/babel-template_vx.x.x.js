@@ -13,7 +13,7 @@
  * https://github.com/flowtype/flow-typed
  */
 
- import { BabelNodeStatement } from "babel-types";
+ import { BabelNodeStatement } from "@babel/types";
 
 declare module 'babel-template' {
   declare module.exports: (code: string, opts?: Object) => Object => BabelNodeStatement;

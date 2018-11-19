@@ -10,7 +10,7 @@
 /* @flow */
 
 import { CompilerDiagnostic, type ErrorHandlerResult, FatalError } from "../lib/errors.js";
-import type { BabelNodeSourceLocation } from "babel-types";
+import type { BabelNodeSourceLocation } from "@babel/types";
 import { prepackSources } from "../lib/prepack-standalone.js";
 
 let chalk = require("chalk");
@@ -46,7 +46,7 @@ let errorList: Array<CompilerDiagnostic>;
 function errorHandler(diagnostic: CompilerDiagnostic): ErrorHandlerResult {
   if (diagnostic.location) errors.set(diagnostic.location, diagnostic);
   else errorList.push(diagnostic);
-  return "Fail";
+  return "Recover";
 }
 
 function runTest(name: string, code: string): boolean {
@@ -56,49 +56,48 @@ function runTest(name: string, code: string): boolean {
     errorList = [];
     let modelName = name + ".model";
     let sourceMapName = name + ".map";
+    let modulesName = name + ".modules";
     let sourceCode = fs.readFileSync(name, "utf8");
     let modelCode = fs.existsSync(modelName) ? fs.readFileSync(modelName, "utf8") : undefined;
     let sourceMap = fs.existsSync(sourceMapName) ? fs.readFileSync(sourceMapName, "utf8") : undefined;
+    let modulesString = fs.existsSync(modulesName) ? JSON.parse(fs.readFileSync(modulesName, "utf8")) : undefined;
     let sources = [];
-    if (modelCode) sources.push({ filePath: modelName, fileContents: modelCode });
+    if (modelCode) {
+      sources.push({ filePath: modelName, fileContents: modelCode });
+    }
     sources.push({ filePath: name, fileContents: sourceCode, sourceMapContents: sourceMap });
 
     let options = {
       internalDebug: true,
       compatibility: "jsc-600-1-4-17",
-      delayUnsupportedRequires: true,
       mathRandomSeed: "0",
       errorHandler,
       serialize: true,
-      initializeMoreModules: !modelCode,
+      modulesToInitialize: modulesString || (modelCode ? undefined : "ALL"),
       sourceMaps: !!sourceMap,
     };
-    if (name.endsWith("/bundle.js~"))
-      (options: any).additionalFunctions = [
-        "global.WildeBundle.prepareComponentScript",
-        "global.WildeBundle.prepareReact",
-      ];
     let serialized = prepackSources(sources, options);
     let new_map = serialized.map; // force source maps to get computed
-    if (!new_map) console.log(chalk.red("No source map"));
+    if (!new_map) console.error(chalk.red("No source map"));
     if (!serialized) {
-      console.log(chalk.red("Error during serialization"));
+      console.error(chalk.red("Error during serialization"));
       return false;
     } else {
       return true;
     }
   } catch (e) {
-    if (!(e instanceof FatalError)) console.log(e);
+    if (!(e instanceof FatalError)) console.error(e);
     return false;
   } finally {
     for (let [loc, error] of errors) {
-      console.log(
-        `${error.severity}: ${loc.source || ""} ${loc.start.line}:${loc.start.column +
-          1} ${error.errorCode} ${error.message}`
+      console.error(
+        `${error.severity}: ${loc.source || ""} ${loc.start.line}:${loc.start.column + 1} ${error.errorCode} ${
+          error.message
+        }`
       );
     }
     for (let error of errorList) {
-      console.log(`${error.severity}: ${error.errorCode} ${error.message}`);
+      console.error(`${error.severity}: ${error.errorCode} ${error.message}`);
     }
   }
 }
@@ -116,7 +115,7 @@ function run() {
     else failed++;
   }
 
-  console.log("Passed:", `${passed}/${total}`, (Math.round(passed / total * 100) || 0) + "%");
+  console.log("Passed:", `${passed}/${total}`, (Math.floor((passed / total) * 100) || 0) + "%");
   return failed === 0;
 }
 

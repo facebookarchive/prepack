@@ -7,27 +7,24 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { AbstractValue, NativeFunctionValue, NumberValue, StringValue, ObjectValue } from "../../values/index.js";
-import { ToInteger, ToNumber, ToPrimitive } from "../../methods/to.js";
-import { OrdinaryCreateFromConstructor } from "../../methods/create.js";
+import { Create, To } from "../../singletons.js";
 import { MakeTime, MakeDate, MakeDay, TimeClip, UTC, ToDateString, thisTimeValue } from "../../methods/date.js";
 import { FatalError } from "../../errors.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
 import seedrandom from "seedrandom";
 
 const buildDateNowSrc = "global.Date.now()";
-const buildDateNow = buildExpressionTemplate(buildDateNowSrc);
 
 export default function(realm: Realm): NativeFunctionValue {
   let lastNow;
   let offsetGenerator;
   function getCurrentTime(): AbstractValue | NumberValue {
     if (realm.useAbstractInterpretation) {
-      return AbstractValue.createTemporalFromTemplate(realm, buildDateNow, NumberValue, [], {
+      return AbstractValue.createTemporalFromTemplate(realm, buildDateNowSrc, NumberValue, [], {
         isPure: true,
         skipInvariant: true,
       });
@@ -36,7 +33,7 @@ export default function(realm: Realm): NativeFunctionValue {
       if (realm.strictlyMonotonicDateNow && lastNow >= newNow) {
         if (!offsetGenerator) offsetGenerator = seedrandom(0);
         // certain behaviors in the test262 test suite can only be (reliably) triggered if Date.now() is strictly monotonically increasing
-        // TODO: Set the strictlyMonotonicDateNow option on the realm in the test262 test runner, fix the issues that will come up in the tests, and remove this TODO.
+        // TODO #1004: Set the strictlyMonotonicDateNow option on the realm in the test262 test runner, fix the issues that will come up in the tests, and remove this comment.
         newNow = lastNow + 1 + Math.floor(offsetGenerator() * 500);
       }
       lastNow = newNow;
@@ -59,30 +56,30 @@ export default function(realm: Realm): NativeFunctionValue {
       // 3. If NewTarget is not undefined, then
       if (NewTarget) {
         // a. Let y be ? ToNumber(year).
-        let y = ToNumber(realm, year);
+        let y = To.ToNumber(realm, year);
 
         // b. Let m be ? ToNumber(month).
-        let m = ToNumber(realm, month);
+        let m = To.ToNumber(realm, month);
 
         // c. If date is supplied, let dt be ? ToNumber(date); else let dt be 1.
-        let dt = argCount >= 3 ? ToNumber(realm, date) : 1;
+        let dt = argCount >= 3 ? To.ToNumber(realm, date) : 1;
 
         // d. If hours is supplied, let h be ? ToNumber(hours); else let h be 0.
-        let h = argCount >= 4 ? ToNumber(realm, hours) : 0;
+        let h = argCount >= 4 ? To.ToNumber(realm, hours) : 0;
 
         // e. If minutes is supplied, let min be ? ToNumber(minutes); else let min be 0.
-        let min = argCount >= 5 ? ToNumber(realm, minutes) : 0;
+        let min = argCount >= 5 ? To.ToNumber(realm, minutes) : 0;
 
         // f. If seconds is supplied, let s be ? ToNumber(seconds); else let s be 0.
-        let s = argCount >= 6 ? ToNumber(realm, seconds) : 0;
+        let s = argCount >= 6 ? To.ToNumber(realm, seconds) : 0;
 
         // g. If ms is supplied, let milli be ? ToNumber(ms); else let milli be 0.
-        let milli = argCount >= 7 ? ToNumber(realm, ms) : 0;
+        let milli = argCount >= 7 ? To.ToNumber(realm, ms) : 0;
 
         // h. If y is not NaN and 0 ≤ ToInteger(y) ≤ 99, let yr be 1900+ToInteger(y); otherwise, let yr be y.
         let yr;
-        if (!isNaN(y) && ToInteger(realm, y) >= 0 && ToInteger(realm, y) <= 99) {
-          yr = 1900 + ToInteger(realm, new NumberValue(realm, y));
+        if (!isNaN(y) && To.ToInteger(realm, y) >= 0 && To.ToInteger(realm, y) <= 99) {
+          yr = 1900 + To.ToInteger(realm, new NumberValue(realm, y));
         } else {
           yr = y;
         }
@@ -91,7 +88,7 @@ export default function(realm: Realm): NativeFunctionValue {
         let finalDate = MakeDate(realm, MakeDay(realm, yr, m, dt), MakeTime(realm, h, min, s, milli));
 
         // j. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%DatePrototype%", « [[DateValue]] »).
-        let O = OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
+        let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
 
         // k. Set the [[DateValue]] internal slot of O to TimeClip(UTC(finalDate)).
         O.$DateValue = TimeClip(realm, UTC(realm, finalDate));
@@ -128,7 +125,7 @@ export default function(realm: Realm): NativeFunctionValue {
         } else {
           // b. Else,
           // i. Let v be ? ToPrimitive(value)
-          let v = ToPrimitive(realm, value);
+          let v = To.ToPrimitive(realm, value);
 
           // ii. If Type(v) is String, then
           if (v instanceof StringValue) {
@@ -140,12 +137,12 @@ export default function(realm: Realm): NativeFunctionValue {
           } else {
             // iii. Else,
             // 1. Let tv be ? ToNumber(v).
-            tv = new NumberValue(realm, ToNumber(realm, v));
+            tv = new NumberValue(realm, To.ToNumber(realm, v));
           }
         }
 
         // c. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%DatePrototype%", « [[DateValue]] »).
-        let O = OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
+        let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
 
         // d. Set the [[DateValue]] internal slot of O to TimeClip(tv).
         O.$DateValue = TimeClip(realm, tv);
@@ -172,7 +169,7 @@ export default function(realm: Realm): NativeFunctionValue {
       // 3. If NewTarget is not undefined, then
       if (NewTarget) {
         // a. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%DatePrototype%", « [[DateValue]] »).
-        let O = OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
+        let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "DatePrototype", { $DateValue: undefined });
 
         // b. Set the [[DateValue]] internal slot of O to the time value (UTC) identifying the current time.
         O.$DateValue = getCurrentTime();
@@ -209,28 +206,29 @@ export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 20.3.3.4
   func.defineNativeMethod("UTC", 7, (context, [year, month, date, hours, minutes, seconds, ms], argCount) => {
     // 1. Let y be ? ToNumber(year).
-    let y = ToNumber(realm, year);
+    let y = To.ToNumber(realm, year);
 
     // 2. Let m be ? ToNumber(month).
-    let m = argCount >= 2 ? ToNumber(realm, month) : 0;
+    let m = argCount >= 2 ? To.ToNumber(realm, month) : 0;
 
     // 3. If date is supplied, let dt be ? ToNumber(date); else let dt be 1.
-    let dt = argCount >= 3 ? ToNumber(realm, date) : 1;
+    let dt = argCount >= 3 ? To.ToNumber(realm, date) : 1;
 
     // 4. If hours is supplied, let h be ? ToNumber(hours); else let h be 0.
-    let h = argCount >= 4 ? ToNumber(realm, hours) : 0;
+    let h = argCount >= 4 ? To.ToNumber(realm, hours) : 0;
 
     // 5. If minutes is supplied, let min be ? ToNumber(minutes); else let min be 0.
-    let min = argCount >= 5 ? ToNumber(realm, minutes) : 0;
+    let min = argCount >= 5 ? To.ToNumber(realm, minutes) : 0;
 
     // 6. If seconds is supplied, let s be ? ToNumber(seconds); else let s be 0.
-    let s = argCount >= 6 ? ToNumber(realm, seconds) : 0;
+    let s = argCount >= 6 ? To.ToNumber(realm, seconds) : 0;
 
     // 7. If ms is supplied, let milli be ? ToNumber(ms); else let milli be 0.
-    let milli = argCount >= 7 ? ToNumber(realm, ms) : 0;
+    let milli = argCount >= 7 ? To.ToNumber(realm, ms) : 0;
 
     // 8. If y is not NaN and 0 ≤ ToInteger(y) ≤ 99, let yr be 1900+ToInteger(y); otherwise, let yr be y.
-    let yr = !isNaN(y) && ToInteger(realm, y) >= 0 && ToInteger(realm, y) <= 99 ? 1900 + ToInteger(realm, y) : y;
+    let yr =
+      !isNaN(y) && To.ToInteger(realm, y) >= 0 && To.ToInteger(realm, y) <= 99 ? 1900 + To.ToInteger(realm, y) : y;
 
     // 9. Return TimeClip(MakeDate(MakeDay(yr, m, dt), MakeTime(h, min, s, milli))).
     return TimeClip(realm, MakeDate(realm, MakeDay(realm, yr, m, dt), MakeTime(realm, h, min, s, milli)));

@@ -1,11 +1,13 @@
 // throws introspection error
 
-let x = global.__abstract ? __abstract("boolean", "true") : true;
-let ob = global.__abstract ? __abstract("object", "({})") : {};
+let x = global.__abstract ? global.__abstract("boolean", "true") : true;
+let ob = global.__abstract ? global.__abstract("object", "({})") : {};
 if (global.__makeSimple) global.__makeSimple(ob);
 
 let p = x ? 1 : ob.p;
 
-z = Number.isFinite(p);
+var z = Number.isFinite(p);
 
-inspect = function() { return "" + z; }
+inspect = function() {
+  return "" + z;
+};

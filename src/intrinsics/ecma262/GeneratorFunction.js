@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { CreateDynamicFunction } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 25.2.1
@@ -20,7 +20,8 @@ export default function(realm: Realm): NativeFunctionValue {
     "GeneratorFunction",
     "GeneratorFunction",
     1,
-    (context, args, argCount, NewTarget) => {
+    (context, _args, argCount, NewTarget) => {
+      let args = _args;
       // 1. Let C be the active function object.
       let C = func;
 
@@ -28,7 +29,7 @@ export default function(realm: Realm): NativeFunctionValue {
       args = argCount > 0 ? args : [];
 
       // 3. Return ? CreateDynamicFunction(C, NewTarget, "generator", args).
-      return CreateDynamicFunction(realm, C, NewTarget, "generator", args);
+      return Create.CreateDynamicFunction(realm, C, NewTarget, "generator", args);
     }
   );
 

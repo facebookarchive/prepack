@@ -7,13 +7,13 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { FatalError } from "../errors.js";
 import type { Value } from "../values/index.js";
-import type { BabelNodeYieldExpression } from "babel-types";
+import type { BabelNodeYieldExpression } from "@babel/types";
 
 export default function(
   ast: BabelNodeYieldExpression,
@@ -21,5 +21,5 @@ export default function(
   env: LexicalEnvironment,
   realm: Realm
 ): Value {
-  throw new FatalError("TODO: YieldExpression");
+  throw new FatalError("TODO: #712 YieldExpression");
 }

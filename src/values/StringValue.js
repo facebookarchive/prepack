@@ -7,10 +7,10 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import { hashString } from "../methods/index.js";
-import { PrimitiveValue } from "../values/index.js";
+import { PrimitiveValue, Value } from "./index.js";
 import type { Realm } from "../realm.js";
 
 export default class StringValue extends PrimitiveValue {
@@ -20,6 +20,10 @@ export default class StringValue extends PrimitiveValue {
   }
 
   value: string;
+
+  equals(x: Value): boolean {
+    return x instanceof StringValue && this.value === x.value;
+  }
 
   getHash(): number {
     return hashString(this.value);
@@ -35,5 +39,9 @@ export default class StringValue extends PrimitiveValue {
 
   _serialize(): string {
     return this.value;
+  }
+
+  toDisplayString(): string {
+    return JSON.stringify(this.value);
   }
 }

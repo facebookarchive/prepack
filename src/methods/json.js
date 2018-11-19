@@ -7,16 +7,15 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import { Value, ObjectValue, NumberValue, UndefinedValue, StringValue } from "../values/index.js";
-import { CreateDataProperty } from "../methods/create.js";
-import { Get } from "../methods/get.js";
-import { Call } from "../methods/call.js";
-import { IsArray } from "../methods/is.js";
-import { ToLength, ToString } from "../methods/to.js";
-import { EnumerableOwnProperties } from "../methods/own.js";
+import { Create, To } from "../singletons.js";
+import { Get } from "./get.js";
+import { Call } from "./call.js";
+import { IsArray } from "./is.js";
+import { EnumerableOwnProperties } from "./own.js";
 import type { PropertyKeyValue } from "../types.js";
 import invariant from "../invariant.js";
 
@@ -40,21 +39,26 @@ export function InternalizeJSONProperty(
       let I = 0;
 
       // ii. Let len be ? ToLength(? Get(val, "length")).
-      let len = ToLength(realm, Get(realm, val, "length"));
+      let len = To.ToLength(realm, Get(realm, val, "length"));
 
       // iii. Repeat while I < len,
       while (I < len) {
         // 1. Let newElement be ? InternalizeJSONProperty(val, ! ToString(I)).
-        let newElement = InternalizeJSONProperty(realm, reviver, val, ToString(realm, new NumberValue(realm, I)));
+        let newElement = InternalizeJSONProperty(realm, reviver, val, To.ToString(realm, new NumberValue(realm, I)));
 
         // 2. If newElement is undefined, then
         if (newElement instanceof UndefinedValue) {
           // a. Perform ? val.[[Delete]](! ToString(I)).
-          val.$Delete(ToString(realm, new NumberValue(realm, I)));
+          val.$Delete(To.ToString(realm, new NumberValue(realm, I)));
         } else {
           // 3. Else,
           // a. Perform ? CreateDataProperty(val, ! ToString(I), newElement).
-          CreateDataProperty(realm, val, ToString(realm, new NumberValue(realm, I)), newElement.throwIfNotConcrete());
+          Create.CreateDataProperty(
+            realm,
+            val,
+            To.ToString(realm, new NumberValue(realm, I)),
+            newElement.throwIfNotConcrete()
+          );
 
           // b. NOTE This algorithm intentionally does not throw an exception if CreateDataProperty returns false.
         }
@@ -81,7 +85,7 @@ export function InternalizeJSONProperty(
         } else {
           // 3. Else,
           // a. Perform ? CreateDataProperty(val, P, newElement).
-          CreateDataProperty(realm, val, P, newElement);
+          Create.CreateDataProperty(realm, val, P, newElement);
 
           // b. NOTE This algorithm intentionally does not throw an exception if CreateDataProperty returns false.
         }

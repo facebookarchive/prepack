@@ -1,12 +1,12 @@
-// throws introspection error
-let x = __abstract("boolean", "true")
+let x = global.__abstract ? __abstract("boolean", "true") : true;
 
-y = 1;
-y1 = 2;
+var y = 1;
+var y1 = 2;
 
 function f(b) {
   y = 2;
-  if (b) {} else return 0;
+  if (b) {
+  } else return 0;
   y1 = 3;
   if (x) {
     return 1;
@@ -15,4 +15,8 @@ function f(b) {
   }
 }
 
-z = f(!x);
+var z = f(!x);
+
+inspect = function() {
+  return z;
+};

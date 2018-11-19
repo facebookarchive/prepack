@@ -1,5 +1,7 @@
 test262
 lib
+/fb-www
 underscore-with-tests.js
 flow-typed
 test/**/*.js
+babel.config.js

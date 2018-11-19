@@ -12,16 +12,8 @@
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, ObjectValue, NullValue, UndefinedValue } from "../../values/index.js";
 import { AbruptCompletion } from "../../completions.js";
-import {
-  OrdinaryCreateFromConstructor,
-  Get,
-  IsCallable,
-  IteratorClose,
-  IteratorValue,
-  GetIterator,
-  IteratorStep,
-  Call,
-} from "../../methods/index.js";
+import { Get, IsCallable, IteratorClose, IteratorValue, GetIterator, IteratorStep, Call } from "../../methods/index.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -32,7 +24,7 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 2. Let map be ? OrdinaryCreateFromConstructor(NewTarget, "%WeakMapPrototype%", « [[WeakMapData]] »).
-    let map = OrdinaryCreateFromConstructor(realm, NewTarget, "WeakMapPrototype", {
+    let map = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "WeakMapPrototype", {
       $WeakMapData: undefined,
     });
 

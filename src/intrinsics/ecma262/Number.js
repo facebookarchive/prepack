@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue, NumberValue } from "../../values/index.js";
-import { OrdinaryCreateFromConstructor, ToNumber, ToInteger } from "../../methods/index.js";
+import { Create, To } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 20.1.1
@@ -23,14 +23,14 @@ export default function(realm: Realm): NativeFunctionValue {
       n = realm.intrinsics.zero;
     } else {
       // 2. Else, let n be ? ToNumber(value).
-      n = new NumberValue(realm, ToNumber(realm, value));
+      n = new NumberValue(realm, To.ToNumber(realm, value));
     }
 
     // 3. If NewTarget is undefined, return n.
     if (!NewTarget) return n;
 
     // 4. Let O be ? OrdinaryCreateFromConstructor(NewTarget, "%NumberPrototype%", « [[NumberData]] »).
-    let O = OrdinaryCreateFromConstructor(realm, NewTarget, "NumberPrototype", { $NumberData: undefined });
+    let O = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "NumberPrototype", { $NumberData: undefined });
 
     // 5. Set the value of O's [[NumberData]] internal slot to n.
     O.$NumberData = n;
@@ -43,8 +43,9 @@ export default function(realm: Realm): NativeFunctionValue {
   func.defineNativeConstant("EPSILON", new NumberValue(realm, 2.220446049250313e-16));
 
   // ECMA262 20.1.2.2
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-    func.defineNativeMethod("isFinite", 1, (context, [number]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    func.defineNativeMethod("isFinite", 1, (context, [_number]) => {
+      let number = _number;
       // 1. If Type(number) is not Number, return false.
       if (!number.mightBeNumber()) return realm.intrinsics.false;
 
@@ -58,8 +59,9 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 20.1.2.3
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-    func.defineNativeMethod("isInteger", 1, (context, [number]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    func.defineNativeMethod("isInteger", 1, (context, [_number]) => {
+      let number = _number;
       // 1. If Type(number) is not Number, return false.
       if (!number.mightBeNumber()) return realm.intrinsics.false;
 
@@ -69,7 +71,7 @@ export default function(realm: Realm): NativeFunctionValue {
         return realm.intrinsics.false;
 
       // 3. Let integer be ToInteger(number).
-      let integer = ToInteger(realm, number);
+      let integer = To.ToInteger(realm, number);
 
       // 4. If integer is not equal to number, return false.
       if (integer !== number.value) return realm.intrinsics.false;
@@ -79,8 +81,9 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 20.1.2.4
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-    func.defineNativeMethod("isNaN", 1, (context, [number]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    func.defineNativeMethod("isNaN", 1, (context, [_number]) => {
+      let number = _number;
       // 1. If Type(number) is not Number, return false.
       if (!number.mightBeNumber()) return realm.intrinsics.false;
 
@@ -93,8 +96,9 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 20.1.2.5
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
-    func.defineNativeMethod("isSafeInteger", 1, (context, [number]) => {
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    func.defineNativeMethod("isSafeInteger", 1, (context, [_number]) => {
+      let number = _number;
       // 1. If Type(number) is not Number, return false.
       if (!number.mightBeNumber()) return realm.intrinsics.false;
 
@@ -104,7 +108,7 @@ export default function(realm: Realm): NativeFunctionValue {
         return realm.intrinsics.false;
 
       // 3. Let integer be ToInteger(number).
-      let integer = ToInteger(realm, number);
+      let integer = To.ToInteger(realm, number);
 
       // 4. If integer is not equal to number, return false.
       if (integer !== number.value) return realm.intrinsics.false;
@@ -117,13 +121,15 @@ export default function(realm: Realm): NativeFunctionValue {
     });
 
   // ECMA262 20.1.2.6
-  func.defineNativeConstant("MAX_SAFE_INTEGER", new NumberValue(realm, 9007199254740991));
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+    func.defineNativeConstant("MAX_SAFE_INTEGER", new NumberValue(realm, 9007199254740991));
 
   // ECMA262 20.1.2.7
   func.defineNativeConstant("MAX_VALUE", new NumberValue(realm, 1.7976931348623157e308));
 
   // ECMA262 20.1.2.8
-  func.defineNativeConstant("MIN_SAFE_INTEGER", new NumberValue(realm, -9007199254740991));
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION))
+    func.defineNativeConstant("MIN_SAFE_INTEGER", new NumberValue(realm, -9007199254740991));
 
   // ECMA262 20.1.2.9
   func.defineNativeConstant("MIN_VALUE", new NumberValue(realm, 5e-324));

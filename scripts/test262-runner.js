@@ -16,9 +16,10 @@ import { Realm, ExecutionContext } from "../lib/realm.js";
 import construct_realm from "../lib/construct_realm.js";
 import initializeGlobals from "../lib/globals.js";
 import { DetachArrayBuffer } from "../lib/methods/arraybuffer.js";
-import { ToStringPartial } from "../lib/methods/to.js";
+import { To } from "../lib/singletons.js";
 import { Get } from "../lib/methods/get.js";
 import invariant from "../lib/invariant.js";
+import { prepackSources } from "../lib/prepack-node.js";
 
 import yaml from "js-yaml";
 import chalk from "chalk";
@@ -30,14 +31,25 @@ import cluster from "cluster";
 import os from "os";
 import tty from "tty";
 import minimist from "minimist";
+import process from "process";
+import vm from "vm";
+import * as babelTypes from "@babel/types";
+import traverse from "@babel/traverse";
+import generate from "@babel/generator";
 
 const EOL = os.EOL;
-const numCPUs = os.cpus().length;
+const cpus = os.cpus();
+const numCPUs = cpus ? cpus.length : 1;
 require("source-map-support").install();
 
 type HarnessMap = { [key: string]: string };
 type TestRecord = { test: TestFileInfo, result: TestResult[] };
 type GroupsMap = { [key: string]: TestRecord[] };
+
+type TestRunOptions = {|
+  +timeout: number,
+  +serializer: boolean | "abstract-scalar",
+|};
 
 // A TestTask is a task for a worker process to execute, which contains a
 // single test to run
@@ -233,6 +245,10 @@ class MasterProgramArgs {
   filterString: string;
   singleThreaded: boolean;
   relativeTestPath: string;
+  serializer: boolean | "abstract-scalar";
+  expectedES5: number;
+  expectedES6: number;
+  expectedTimeouts: number;
 
   constructor(
     verbose: boolean,
@@ -242,7 +258,11 @@ class MasterProgramArgs {
     statusFile: string,
     filterString: string,
     singleThreaded: boolean,
-    relativeTestPath: string
+    relativeTestPath: string,
+    serializer: boolean | "abstract-scalar",
+    expectedES5: number,
+    expectedES6: number,
+    expectedTimeouts: number
   ) {
     this.verbose = verbose;
     this.timeout = timeout;
@@ -252,15 +272,21 @@ class MasterProgramArgs {
     this.filterString = filterString;
     this.singleThreaded = singleThreaded;
     this.relativeTestPath = relativeTestPath;
+    this.serializer = serializer;
+    this.expectedES5 = expectedES5;
+    this.expectedES6 = expectedES6;
+    this.expectedTimeouts = expectedTimeouts;
   }
 }
 
 class WorkerProgramArgs {
-  timeout: number;
   relativeTestPath: string;
+  timeout: number;
+  serializer: boolean | "abstract-scalar";
 
-  constructor(timeout: number, relativeTestPath: string) {
+  constructor(relativeTestPath: string, timeout: number, serializer: boolean | "abstract-scalar") {
     this.timeout = timeout;
+    this.serializer = serializer;
     this.relativeTestPath = relativeTestPath;
   }
 }
@@ -306,11 +332,11 @@ function main(): number {
     }
   } catch (e) {
     if (e instanceof ArgsParseError) {
-      console.log("Illegal argument: %s.\n%s", e.message, usage());
+      console.error("Illegal argument: %s.\n%s", e.message, usage());
     } else {
-      console.log(e);
+      console.error(e);
     }
-    return 1;
+    process.exit(1);
   }
   return 0;
 }
@@ -321,7 +347,9 @@ function usage(): string {
     EOL +
     `[--verbose] [--timeout <number>] [--bailAfter <number>] ` +
     EOL +
-    `[--cpuScale <number>] [--statusFile <string>] [--singleThreaded] [--relativeTestPath <string>]`
+    `[--cpuScale <number>] [--statusFile <string>] [--singleThreaded] [--relativeTestPath <string>]` +
+    EOL +
+    `[--expectedCounts <es5pass,es6pass,timeouts>]`
   );
 }
 
@@ -337,39 +365,62 @@ function masterArgsParse(): MasterProgramArgs {
       bailAfter: Infinity,
       singleThreaded: false,
       relativeTestPath: "/../test/test262",
+      serializer: false,
+      expectedCounts: "11943,5641,2",
     },
   });
   let filterString = parsedArgs._[0];
   if (typeof parsedArgs.verbose !== "boolean") {
     throw new ArgsParseError("verbose must be a boolean (either --verbose or not)");
   }
+  let verbose = parsedArgs.verbose;
   if (typeof parsedArgs.timeout !== "number") {
     throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
   }
+  let timeout = parsedArgs.timeout;
   if (typeof parsedArgs.bailAfter !== "number") {
     throw new ArgsParseError("bailAfter must be a number (--bailAfter 10)");
   }
+  let bailAfter = parsedArgs.bailAfter;
   if (typeof parsedArgs.cpuScale !== "number") {
     throw new ArgsParseError("cpuScale must be a number (--cpuScale 0.5)");
   }
+  let cpuScale = parsedArgs.cpuScale;
   if (typeof parsedArgs.statusFile !== "string") {
     throw new ArgsParseError("statusFile must be a string (--statusFile file.txt)");
   }
+  let statusFile = parsedArgs.statusFile;
   if (typeof parsedArgs.singleThreaded !== "boolean") {
     throw new ArgsParseError("singleThreaded must be a boolean (either --singleThreaded or not)");
   }
+  let singleThreaded = parsedArgs.singleThreaded;
   if (typeof parsedArgs.relativeTestPath !== "string") {
     throw new ArgsParseError("relativeTestPath must be a string (--relativeTestPath /../test/test262)");
   }
+  let relativeTestPath = parsedArgs.relativeTestPath;
+  if (!(typeof parsedArgs.serializer === "boolean" || parsedArgs.serializer === "abstract-scalar")) {
+    throw new ArgsParseError(
+      "serializer must be a boolean or must be the string 'abstract-scalar' (--serializer or --serializer abstract-scalar)"
+    );
+  }
+  let serializer = parsedArgs.serializer;
+  if (typeof parsedArgs.expectedCounts !== "string") {
+    throw new ArgsParseError("expectedCounts must be a string (--expectedCounts 11944,5566,2");
+  }
+  let expectedCounts = parsedArgs.expectedCounts.split(",").map(x => Number(x));
   let programArgs = new MasterProgramArgs(
-    parsedArgs.verbose,
-    parsedArgs.timeout,
-    parsedArgs.bailAfter,
-    parsedArgs.cpuScale,
-    parsedArgs.statusFile,
+    verbose,
+    timeout,
+    bailAfter,
+    cpuScale,
+    statusFile,
     filterString,
-    parsedArgs.singleThreaded,
-    parsedArgs.relativeTestPath
+    singleThreaded,
+    relativeTestPath,
+    serializer,
+    expectedCounts[0],
+    expectedCounts[1],
+    expectedCounts[2]
   );
   if (programArgs.filterString) {
     // if filterstring is provided, assume that verbosity is desired
@@ -381,17 +432,23 @@ function masterArgsParse(): MasterProgramArgs {
 function workerArgsParse(): WorkerProgramArgs {
   let parsedArgs = minimist(process.argv.slice(2), {
     default: {
-      timeout: 10,
       relativeTestPath: "/../test/test262",
+      timeout: 10,
+      serializer: false,
     },
   });
-  if (typeof parsedArgs.timeout !== "number") {
-    throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
-  }
   if (typeof parsedArgs.relativeTestPath !== "string") {
     throw new ArgsParseError("relativeTestPath must be a string (--relativeTestPath /../test/test262)");
   }
-  return new WorkerProgramArgs(parsedArgs.timeout, parsedArgs.relativeTestPath);
+  if (typeof parsedArgs.timeout !== "number") {
+    throw new ArgsParseError("timeout must be a number (in seconds) (--timeout 10)");
+  }
+  if (!(typeof parsedArgs.serializer === "boolean" || parsedArgs.serializer === "abstract-scalar")) {
+    throw new ArgsParseError(
+      "serializer must be a boolean or must be the string 'abstract-scalar' (--serializer or --serializer abstract-scalar)"
+    );
+  }
+  return new WorkerProgramArgs(parsedArgs.relativeTestPath, parsedArgs.timeout, parsedArgs.serializer);
 }
 
 function masterRun(args: MasterProgramArgs) {
@@ -425,10 +482,14 @@ function masterRunSingleProcess(
   let harnesses = getHarnesses(args.relativeTestPath);
   let numLeft = tests.length;
   for (let t of tests) {
-    handleTest(t, harnesses, args.timeout, (err, results) => {
+    let options: TestRunOptions = {
+      timeout: args.timeout,
+      serializer: args.serializer,
+    };
+    handleTest(t, harnesses, options, (err, results) => {
       if (err) {
         if (args.verbose) {
-          console.log(err);
+          console.error(err);
         }
       } else {
         let ok = handleTestResults(groups, t, results);
@@ -463,7 +524,7 @@ function masterRunMultiProcess(
   const granularity = Math.floor(tests.length / 10);
   const originalTestLength = tests.length;
   // Fork workers.
-  const numWorkers = Math.floor(numCPUs * args.cpuScale);
+  const numWorkers = Math.max(1, Math.floor(numCPUs * args.cpuScale));
   console.log(`Master starting up, forking ${numWorkers} workers`);
   for (let i = 0; i < numWorkers; i++) {
     cluster.fork();
@@ -471,9 +532,14 @@ function masterRunMultiProcess(
 
   let exitCount = 0;
   cluster.on("exit", (worker, code, signal) => {
-    exitCount++;
-    if (exitCount === numWorkers) {
-      process.exit(handleFinished(args, groups, numFiltered));
+    if (code !== 0) {
+      console.log(`Worker ${worker.process.pid} died with ${signal || code}. Restarting...`);
+      cluster.fork();
+    } else {
+      exitCount++;
+      if (exitCount === numWorkers) {
+        process.exit(handleFinished(args, groups, numFiltered));
+      }
     }
   });
 
@@ -492,8 +558,8 @@ function masterRunMultiProcess(
         let errMsg = ErrorMessage.fromObject(message);
         // just skip the error, thus skipping that test
         if (args.verbose) {
-          console.log(`An error occurred in worker #${worker.process.pid}:`);
-          console.log(errMsg.err);
+          console.error(`An error occurred in worker #${worker.process.pid}:`);
+          console.error(errMsg.err);
         }
         giveTask(worker);
         break;
@@ -593,7 +659,7 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
     if (args.verbose) {
       console.log(msg);
       if (errmsg) {
-        console.log(errmsg);
+        console.error(errmsg);
       }
     }
     if (group_es5_failed + group_es6_failed > 0) {
@@ -635,9 +701,13 @@ function handleFinished(args: MasterProgramArgs, groups: GroupsMap, earlierNumSk
   }
 
   // exit status
-  if (!args.filterString && (numPassedES5 < 11798 || numPassedES6 < 5244 || numTimeouts > 0)) {
-    console.log(chalk.red("Overall failure. Expected more tests to pass!"));
-    return 1;
+  if (
+    !args.filterString &&
+    (numPassedES5 < args.expectedES5 || numPassedES6 < args.expectedES6 || numTimeouts > args.expectedTimeouts)
+  ) {
+    console.error(chalk.red("Overall failure. Expected more tests to pass!"));
+    process.exit(1);
+    invariant(false);
   } else {
     // use 0 to avoid the npm error messages
     return 0;
@@ -674,7 +744,7 @@ function toPercentage(x: number, total: number): number {
   if (total === 0) {
     return 100;
   }
-  return Math.floor(x / total * 100);
+  return Math.floor((x / total) * 100);
 }
 
 function create_test_message(name: string, success: boolean, err: ?Error, isES6: boolean, isStrict: boolean): string {
@@ -725,7 +795,11 @@ function workerRun(args: WorkerProgramArgs) {
       case TestTask.sentinel:
         // begin executing this TestTask
         let task = TestTask.fromObject(message);
-        handleTest(task.file, harnesses, args.timeout, (err, results) => {
+        let options: TestRunOptions = {
+          timeout: args.timeout,
+          serializer: args.serializer,
+        };
+        handleTest(task.file, harnesses, options, (err, results) => {
           handleTestResultsMultiProcess(err, task.file, results);
         });
         break;
@@ -743,7 +817,6 @@ function workerRun(args: WorkerProgramArgs) {
 
 function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResults: TestResult[]): void {
   if (err) {
-    // $FlowFixMe flow says "process.send" could be undefined
     process.send(new ErrorMessage(err));
   } else {
     let msg = new DoneMessage(test);
@@ -751,7 +824,6 @@ function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResu
       msg.testResults.push(t);
     }
     try {
-      // $FlowFixMe flow says "process.send" could be undefined
       process.send(msg);
     } catch (jsonCircularSerializationErr) {
       // JSON circular serialization, ThrowCompletion is too deep to be
@@ -763,7 +835,6 @@ function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResu
         }
       }
       // now try again
-      // $FlowFixMe flow says "process.send" could be undefined
       process.send(msg);
     }
   }
@@ -772,7 +843,7 @@ function handleTestResultsMultiProcess(err: ?Error, test: TestFileInfo, testResu
 function handleTest(
   test: TestFileInfo,
   harnesses: HarnessMap,
-  timeout: number,
+  options: TestRunOptions,
   cb: (err: ?Error, testResults: TestResult[]) => void
 ): void {
   prepareTest(test, testFilterByContents, (err, banners, testFileContents) => {
@@ -788,15 +859,17 @@ function handleTest(
       // filter out by flags, features, and includes
       let keepThisTest =
         filterFeatures(banners) &&
+        filterNegative(banners) &&
         filterFlags(banners) &&
         filterIncludes(banners) &&
         filterDescription(banners) &&
         filterCircleCI(banners) &&
-        filterSneakyGenerators(banners, testFileContents);
+        filterSneakyGenerators(banners, testFileContents) &&
+        (!options.serializer || filterReallyBigArrays(test, testFileContents));
       let testResults = [];
       if (keepThisTest) {
         // now run the test
-        testResults = runTestWithStrictness(test, testFileContents, banners, harnesses, timeout);
+        testResults = runTestWithStrictness(test, testFileContents, banners, harnesses, options);
       }
       cb(null, testResults);
     }
@@ -909,6 +982,7 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   // Create a new realm.
   let realm = construct_realm({
     strictlyMonotonicDateNow: true,
+    errorHandler: () => "Fail",
     timeout: timeout * 1000,
   });
   initializeGlobals(realm);
@@ -935,7 +1009,7 @@ function createRealm(timeout: number): { realm: Realm, $: ObjectValue } {
   $.defineNativeProperty("global", realm.$GlobalObject);
 
   let glob = ((realm.$GlobalObject: any): ObjectValue);
-  glob.defineNativeProperty("$", $);
+  glob.defineNativeProperty("$262", $);
   glob.defineNativeMethod("print", 1, (context, [arg]) => {
     return realm.intrinsics.undefined;
   });
@@ -956,9 +1030,13 @@ function runTest(
   // eslint-disable-next-line flowtype/no-weak-types
   harnesses: Object,
   strict: boolean,
-  timeout: number
+  options: TestRunOptions
 ): ?TestResult {
-  let { realm } = createRealm(timeout);
+  if (options.serializer) {
+    return executeTestUsingSerializer(test, testFileContents, data, harnesses, strict, options);
+  }
+
+  let { realm } = createRealm(options.timeout);
 
   // Run the test.
   try {
@@ -991,22 +1069,20 @@ function runTest(
     // succeeded
     return new TestResult(true, strict);
   } catch (err) {
-    switch (err.message) {
-      case "TODO: Patterns aren't supported yet":
-      case "TODO: AwaitExpression":
-      case "TODO: YieldExpression":
-        return null;
-      default:
-        if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
-          return null;
-        }
-        break;
+    // Skip syntax errors.
+    if (err.value && err.value.$Prototype && err.value.$Prototype.intrinsicName === "SyntaxError.prototype") {
+      return null;
     }
 
     let stack = err.stack;
     if (data.negative.type) {
       let type = data.negative.type;
-      if (err && err instanceof ThrowCompletion && Get(realm, err.value, "name").value === type) {
+      if (
+        err &&
+        err instanceof ThrowCompletion &&
+        err.value instanceof ObjectValue &&
+        (Get(realm, err.value, "name"): any).value === type
+      ) {
         // Expected an error and got one.
         return new TestResult(true, strict);
       } else {
@@ -1025,9 +1101,9 @@ function runTest(
 
           if (err.value instanceof ObjectValue) {
             if (err.value.$HasProperty("stack")) {
-              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "stack"));
+              interpreterStack = To.ToStringPartial(realm, Get(realm, err.value, "stack"));
             } else {
-              interpreterStack = ToStringPartial(realm, Get(realm, err.value, "message"));
+              interpreterStack = To.ToStringPartial(realm, Get(realm, err.value, "message"));
             }
             // filter out if the error stack is due to async
             if (interpreterStack.includes("async ")) {
@@ -1058,6 +1134,185 @@ function runTest(
       return new TestResult(false, strict, new Error(`Got an error, but was not expecting one:${EOL}${stack}`));
     }
   }
+}
+
+function executeTestUsingSerializer(
+  test: TestFileInfo,
+  testFileContents: string,
+  data: BannerData,
+  // eslint-disable-next-line flowtype/no-weak-types
+  harnesses: Object,
+  strict: boolean,
+  options: TestRunOptions
+) {
+  let { timeout } = options;
+  let sources = [];
+
+  // Add the test262 intrinsics.
+  sources.push({
+    filePath: "test262.js",
+    fileContents: `\
+var $ = {
+  evalScript: () => {}, // noop for now
+  global,
+};
+var $262 = $;
+var print = () => {}; // noop for now
+  `,
+  });
+
+  // Add the harness files.
+  for (let name of ["sta.js", "assert.js"].concat(data.includes || [])) {
+    let harness = harnesses[name];
+    sources.push({ filePath: name, fileContents: harness });
+  }
+
+  // Add the test file.
+  sources.push({ filePath: test.location, fileContents: (strict ? '"use strict";' + EOL : "") + testFileContents });
+
+  let result;
+  try {
+    result = prepackSources(sources, {
+      serialize: true,
+      timeout: timeout * 1000,
+      errorHandler: diag => {
+        if (diag.severity === "Information") return "Recover";
+        if (diag.severity !== "Warning") return "Fail";
+        return "Recover";
+      },
+      onParse: ast => {
+        // Transform all statements which come from our test source file. Do not transform statements from our
+        // harness files.
+        if (options.serializer === "abstract-scalar") {
+          ast.program.body.forEach(node => {
+            if ((node.loc: any).filename === test.location) {
+              transformScalarsToAbstractValues(node);
+            }
+          });
+        }
+      },
+    });
+  } catch (error) {
+    if (error.message === "Timed out") return new TestResult(false, strict, error);
+    if (error.message.includes("Syntax error")) return null;
+    // Uncomment the following JS code to do analysis on what kinds of Prepack errors we get.
+    //
+    // ```js
+    // console.error(
+    //   `${error.name.replace(/\n/g, "\\n")}: ${error.message.replace(/\n/g, "\\n")} (${error.stack
+    //     .match(/at .+$/gm)
+    //     .slice(0, 3)
+    //     .join(", ")})`
+    // );
+    // ```
+    //
+    // Analysis bash command:
+    //
+    // ```bash
+    // yarn test-test262 --serializer 2> result.err
+    // cat result.err | sort | uniq -c | sort -nr
+    // ```
+    return new TestResult(false, strict, new Error(`Prepack error:\n${error.stack}`));
+  }
+
+  const context = vm.createContext({
+    // TODO(#2292): Workaround since Prepack serializes code that expects a global `TypedArray` class which does not
+    // exist per the ECMAScript specification.
+    TypedArray: Object.getPrototypeOf(Int8Array),
+  });
+
+  try {
+    vm.runInContext(result.code, context, { timeout: timeout * 1000 });
+  } catch (error) {
+    if (error.message === "Timed out") return new TestResult(false, strict, error);
+    if (data.negative && data.negative.type === error.name) {
+      return new TestResult(true, strict);
+    } else {
+      return new TestResult(false, strict, new Error(`Runtime error:\n${error.stack}`));
+    }
+  }
+  if (data.negative.type) {
+    return new TestResult(false, strict, new Error(`Expected \`${data.negative.type}\` error.`));
+  } else {
+    return new TestResult(true, strict);
+  }
+}
+
+const TransformScalarsToAbstractValuesVisitor = (() => {
+  const t = babelTypes;
+
+  function createAbstractCall(type, actual, { allowDuplicateNames, disablePlaceholders } = {}) {
+    const args = [type, actual];
+    if (allowDuplicateNames) {
+      args.push(
+        t.objectExpression([
+          t.objectProperty(t.identifier("allowDuplicateNames"), t.booleanLiteral(!!allowDuplicateNames)),
+          t.objectProperty(t.identifier("disablePlaceholders"), t.booleanLiteral(!!disablePlaceholders)),
+        ])
+      );
+    }
+    return t.callExpression(t.identifier("__abstract"), args);
+  }
+
+  const defaultOptions = {
+    allowDuplicateNames: true,
+    disablePlaceholders: true,
+  };
+
+  const symbolOptions = {
+    // Intentionally false since two symbol calls will be referentially not equal, but Prepack will share
+    // a variable.
+    allowDuplicateNames: false,
+    disablePlaceholders: true,
+  };
+
+  return {
+    noScope: true,
+
+    BooleanLiteral(p) {
+      p.node = p.container[p.key] = createAbstractCall(
+        t.stringLiteral("boolean"),
+        t.stringLiteral(p.node.value.toString()),
+        defaultOptions
+      );
+    },
+    StringLiteral(p) {
+      // `eval()` does not support abstract arguments and we don't care to fix that.
+      if (
+        p.parent.type === "CallExpression" &&
+        p.parent.callee.type === "Identifier" &&
+        p.parent.callee.name === "eval"
+      ) {
+        return;
+      }
+      p.node = p.container[p.key] = createAbstractCall(
+        t.stringLiteral("string"),
+        t.stringLiteral(JSON.stringify(p.node.value)),
+        defaultOptions
+      );
+    },
+    CallExpression(p) {
+      if (p.node.callee.type === "Identifier" && p.node.callee.name === "Symbol") {
+        p.node = p.container[p.key] = createAbstractCall(
+          t.stringLiteral("symbol"),
+          t.stringLiteral(generate(p.node).code),
+          symbolOptions
+        );
+      }
+    },
+    NumericLiteral(p) {
+      p.node = p.container[p.key] = createAbstractCall(
+        t.stringLiteral(Number.isInteger(p.node.value) ? "integral" : "number"),
+        t.stringLiteral(p.node.extra.raw),
+        defaultOptions
+      );
+    },
+  };
+})();
+
+function transformScalarsToAbstractValues(ast) {
+  traverse(ast, TransformScalarsToAbstractValuesVisitor);
+  traverse.cache.clear();
 }
 
 /**
@@ -1126,9 +1381,6 @@ function testFilterByMetadata(test: TestFileInfo): boolean {
   // disable SharedArrayBuffer tests
   if (test.location.includes("sharedarraybuffer") || test.location.includes("SharedArrayBuffer")) return false;
 
-  // disable outdated arguments.caller test
-  if (test.location.includes("StrictFunction_restricted-properties.js")) return false;
-
   return true;
 }
 
@@ -1165,6 +1417,30 @@ function filterFeatures(data: BannerData): boolean {
   if (features.includes("default-parameters")) return false;
   if (features.includes("generators")) return false;
   if (features.includes("generator")) return false;
+  if (features.includes("BigInt")) return false;
+  if (features.includes("class-fields")) return false;
+  if (features.includes("async-iteration")) return false;
+  if (features.includes("Function.prototype.toString")) return false;
+  if (features.includes("SharedArrayBuffer")) return false;
+  if (features.includes("cross-realm")) return false;
+  if (features.includes("atomics")) return false;
+  if (features.includes("u180e")) return false;
+  if (features.includes("Symbol.isConcatSpreadable")) return false;
+  if (features.includes("IsHTMLDDA")) return false;
+  if (features.includes("regexp-unicode-property-escapes")) return false;
+  if (features.includes("character-class-escape-non-whitespace")) return false;
+  if (features.includes("regexp-named-groups")) return false;
+  if (features.includes("regexp-lookbehind")) return false;
+  if (features.includes("regexp-dotall")) return false;
+  if (features.includes("optional-catch-binding")) return false;
+  if (features.includes("Symbol.asyncIterator")) return false;
+  if (features.includes("Promise.prototype.finally")) return false;
+  return true;
+}
+
+function filterNegative(data: BannerData): boolean {
+  let negative = data.negative;
+  if (negative.phase === "parse") return false;
   return true;
 }
 
@@ -1214,6 +1490,18 @@ function filterSneakyGenerators(data: BannerData, testFileContents: string) {
   return true;
 }
 
+function filterReallyBigArrays(test: TestFileInfo, testFileContents: string) {
+  // In tests where we serialize our values disable large array serialization. Serializing arrays with gaps
+  // is inefficient. Consider: https://prepack.io/repl#G4QwTgBCELwQ2gXQNwCgTwAyNhAjGhnptrgakA
+  return !(
+    ((test.location.includes("Array") || test.location.includes("Object")) &&
+      testFileContents.includes("4294967294")) ||
+    (test.location.includes("Array") && testFileContents.includes("Math.pow(2, 32)")) ||
+    // Sneaky...
+    test.location.includes("Array/S15.4_A1.1_T10.js")
+  );
+}
+
 /**
  * Run a given ${test} whose file contents are ${testFileContents} and return
  * a list of results, one for each strictness level (strict or not).
@@ -1225,10 +1513,10 @@ function runTestWithStrictness(
   data: BannerData,
   // eslint-disable-next-line flowtype/no-weak-types
   harnesses: Object,
-  timeout: number
+  options: TestRunOptions
 ): Array<TestResult> {
   let fn = (strict: boolean) => {
-    return runTest(test, testFileContents, data, harnesses, strict, timeout);
+    return runTest(test, testFileContents, data, harnesses, strict, options);
   };
   if (data.flags.includes("onlyStrict")) {
     if (testFileContents.includes("assert.throws(SyntaxError")) return [];
@@ -1274,7 +1562,13 @@ function getBanners(test: TestFileInfo, fileContents: string): ?BannerData {
     } else if (bannerText.includes("attribute of 'arguments'")) {
       return null;
     } else if (bannerText.includes("poisoned")) return null;
-    data = yaml.safeLoad(banners[0].slice(3, -3));
+    try {
+      data = yaml.safeLoad(banners[0].slice(3, -3));
+    } catch (e) {
+      // Some versions of test262 have comments inside of yaml banners.
+      // parsing these will usually fail.
+      return null;
+    }
   }
   return BannerData.fromObject(data);
 }

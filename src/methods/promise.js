@@ -12,19 +12,25 @@
 import type { Realm } from "../realm.js";
 import type { ResolvingFunctions, PromiseCapability, PromiseReaction } from "../types.js";
 import { AbruptCompletion } from "../completions.js";
-import { Value, ObjectValue, StringValue, NativeFunctionValue, FunctionValue } from "../values/index.js";
-import { SameValue } from "../methods/abstract.js";
-import { Construct } from "../methods/construct.js";
-import { Get } from "../methods/get.js";
-import { Invoke, Call } from "../methods/call.js";
-import { CreateArrayFromList } from "../methods/create.js";
-import { IsCallable, IsConstructor, IsPromise } from "../methods/is.js";
-import { IteratorStep, IteratorValue } from "../methods/iterator.js";
-import { ThrowIfInternalSlotNotWritable } from "../methods/properties.js";
+import {
+  Value,
+  ObjectValue,
+  StringValue,
+  NativeFunctionValue,
+  FunctionValue,
+  type UndefinedValue,
+} from "../values/index.js";
+import { SameValue } from "./abstract.js";
+import { Construct } from "./construct.js";
+import { Get } from "./get.js";
+import { Invoke, Call } from "./call.js";
+import { IsCallable, IsConstructor, IsPromise } from "./is.js";
+import { IteratorStep, IteratorValue } from "./iterator.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
 
 // ECMA262 8.4.1
-export function EnqueueJob(realm: Realm, queueName: string, job: Function, args: Array<any>) {}
+export function EnqueueJob(realm: Realm, queueName: string, job: Function, args: Array<any>): void {}
 
 // ECMA262 25.4.1.5
 export function NewPromiseCapability(realm: Realm, C: Value): PromiseCapability {
@@ -90,7 +96,7 @@ export function NewPromiseCapability(realm: Realm, C: Value): PromiseCapability 
   executor.$Capability = promiseCapability;
 
   // 6. Let promise be ? Construct(C, « executor »).
-  let promise = Construct(realm, C, [executor]);
+  let promise = Construct(realm, C, [executor]).throwIfNotConcreteObject();
 
   // 7. If IsCallable(promiseCapability.[[Resolve]]) is false, throw a TypeError exception.
   if (IsCallable(realm, promiseCapability.resolve) === false) {
@@ -160,7 +166,7 @@ function createResolveElementFunction(realm) {
       // 10. If remainingElementsCount.[[Value]] is 0, then
       if (remainingElementsCount.value === 0) {
         // a. Let valuesArray be CreateArrayFromList(values).
-        let valuesArray = CreateArrayFromList(realm, values);
+        let valuesArray = Create.CreateArrayFromList(realm, values);
 
         // b. Return ? Call(promiseCapability.[[Resolve]], undefined, « valuesArray »).
         Call(realm, promiseCapability.resolve, realm.intrinsics.undefined, [valuesArray]);
@@ -226,7 +232,7 @@ export function PerformPromiseAll(
       // iii. If remainingElementsCount.[[Value]] is 0, then
       if (remainingElementsCount.value === 0) {
         // 1. Let valuesArray be CreateArrayFromList(values).
-        let valuesArray = CreateArrayFromList(realm, values);
+        let valuesArray = Create.CreateArrayFromList(realm, values);
 
         // 2. Perform ? Call(resultCapability.[[Resolve]], undefined, « valuesArray »).
         Call(realm, resultCapability.resolve, realm.intrinsics.undefined, [valuesArray]);
@@ -383,11 +389,11 @@ export function PerformPromiseThen(
   // 7. If the value of promise's [[PromiseState]] internal slot is "pending", then
   if (promise.$PromiseState === "pending") {
     // a. Append fulfillReaction as the last element of the List that is the value of promise's [[PromiseFulfillReactions]] internal slot.
-    ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseFulfillReactions");
+    Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseFulfillReactions");
     invariant(promise.$PromiseFulfillReactions);
     promise.$PromiseFulfillReactions.push(fulfillReaction);
     // b. Append rejectReaction as the last element of the List that is the value of promise's [[PromiseRejectReactions]] internal slot.
-    ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseRejectReactions");
+    Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseRejectReactions");
     invariant(promise.$PromiseRejectReactions);
     promise.$PromiseRejectReactions.push(rejectReaction);
   } else if (promise.$PromiseState === "fulfilled") {
@@ -412,7 +418,7 @@ export function PerformPromiseThen(
   }
 
   // 10. Set promise's [[PromiseIsHandled]] internal slot to true.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseIsHandled").$PromiseIsHandled = true;
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseIsHandled").$PromiseIsHandled = true;
 
   // 11. Return resultCapability.[[Promise]].
   invariant(resultCapability.promise instanceof ObjectValue);
@@ -565,16 +571,24 @@ export function FulfillPromise(realm: Realm, promise: ObjectValue, value: Value)
   invariant(reactions);
 
   // 3. Set promise.[[PromiseResult]] to value.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseResult").$PromiseResult = value;
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseResult").$PromiseResult = value;
 
   // 4. Set promise.[[PromiseFulfillReactions]] to undefined.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseFulfillReactions").$PromiseFulfillReactions = undefined;
+  Properties.ThrowIfInternalSlotNotWritable(
+    realm,
+    promise,
+    "$PromiseFulfillReactions"
+  ).$PromiseFulfillReactions = undefined;
 
   // 5. Set promise.[[PromiseRejectReactions]] to undefined.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseRejectReactions").$PromiseRejectReactions = undefined;
+  Properties.ThrowIfInternalSlotNotWritable(
+    realm,
+    promise,
+    "$PromiseRejectReactions"
+  ).$PromiseRejectReactions = undefined;
 
   // 6. Set promise.[[PromiseState]] to "fulfilled".
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseState").$PromiseState = "fulfilled";
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseState").$PromiseState = "fulfilled";
 
   // 7. Return TriggerPromiseReactions(reactions, value).
   return TriggerPromiseReactions(realm, reactions, value);
@@ -590,16 +604,24 @@ export function RejectPromise(realm: Realm, promise: ObjectValue, reason: Value)
   invariant(reactions);
 
   // 3. Set promise.[[PromiseResult]] to reason.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseResult").$PromiseResult = reason;
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseResult").$PromiseResult = reason;
 
   // 4. Set promise.[[PromiseFulfillReactions]] to undefined.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseFulfillReactions").$PromiseFulfillReactions = undefined;
+  Properties.ThrowIfInternalSlotNotWritable(
+    realm,
+    promise,
+    "$PromiseFulfillReactions"
+  ).$PromiseFulfillReactions = undefined;
 
   // 5. Set promise.[[PromiseRejectReactions]] to undefined.
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseRejectReactions").$PromiseRejectReactions = undefined;
+  Properties.ThrowIfInternalSlotNotWritable(
+    realm,
+    promise,
+    "$PromiseRejectReactions"
+  ).$PromiseRejectReactions = undefined;
 
   // 6. Set promise.[[PromiseState]] to "rejected".
-  ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseState").$PromiseState = "rejected";
+  Properties.ThrowIfInternalSlotNotWritable(realm, promise, "$PromiseState").$PromiseState = "rejected";
 
   // 7. If promise.[[PromiseIsHandled]] is false, perform HostPromiseRejectionTracker(promise, "reject").
   if (promise.$PromiseIsHandled === false) HostPromiseRejectionTracker(realm, promise, "reject");
@@ -609,7 +631,11 @@ export function RejectPromise(realm: Realm, promise: ObjectValue, reason: Value)
 }
 
 // ECMA262 25.4.1.8
-export function TriggerPromiseReactions(realm: Realm, reactions: Array<PromiseReaction>, argument: Value) {
+export function TriggerPromiseReactions(
+  realm: Realm,
+  reactions: Array<PromiseReaction>,
+  argument: Value
+): UndefinedValue {
   // 1. Repeat for each reaction in reactions, in original insertion order
   for (let reaction of reactions) {
     // a. Perform EnqueueJob("PromiseJobs", PromiseReactionJob, « reaction, argument »).
@@ -620,7 +646,12 @@ export function TriggerPromiseReactions(realm: Realm, reactions: Array<PromiseRe
 }
 
 // ECMA262 25.4.1.9
-export function HostPromiseRejectionTracker(realm: Realm, promise: ObjectValue, operation: "reject" | "handle") {}
+export function HostPromiseRejectionTracker(realm: Realm, promise: ObjectValue, operation: "reject" | "handle"): void {}
 
 // ECMA262 25.4.2.2
-export function PromiseResolveThenableJob(realm: Realm, promiseToResolve: ObjectValue, thenable: Value, then: Value) {}
+export function PromiseResolveThenableJob(
+  realm: Realm,
+  promiseToResolve: ObjectValue,
+  thenable: Value,
+  then: Value
+): void {}

@@ -7,13 +7,13 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
 import { ContinueCompletion } from "../completions.js";
-import type { BabelNodeContinueStatement } from "babel-types";
+import type { BabelNodeContinueStatement } from "@babel/types";
 
 export default function(
   ast: BabelNodeContinueStatement,

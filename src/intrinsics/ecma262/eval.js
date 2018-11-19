@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
-import { PerformEval } from "../../methods/function.js";
+import { Functions } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.1
@@ -32,7 +32,7 @@ export default function(realm: Realm): NativeFunctionValue {
       let directEval = false;
 
       // 4. Return ? PerformEval(x, evalRealm, strictCaller, directEval).
-      return PerformEval(realm, x, evalRealm, strictCaller, directEval);
+      return Functions.PerformEval(realm, x, evalRealm, strictCaller, directEval);
     },
     false
   );

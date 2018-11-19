@@ -7,14 +7,15 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import type { Value } from "../values/index.js";
-import type { BabelNodeClassExpression } from "babel-types";
-import { HasOwnProperty, SetFunctionName } from "../methods/index.js";
+import type { BabelNodeClassExpression } from "@babel/types";
+import { HasOwnProperty } from "../methods/index.js";
 import { ClassDefinitionEvaluation } from "./ClassDeclaration";
+import { Functions } from "../singletons.js";
 
 // ECMA262 14.5.16
 export default function(
@@ -26,7 +27,7 @@ export default function(
   // 1. If BindingIdentifieropt is not present, let className be undefined.
   let className;
   // 2. Else, let className be StringValue of BindingIdentifier.
-  if (ast.id) {
+  if (ast.id != null) {
     className = ast.id.name;
   }
   // 3. Let value be the result of ClassDefinitionEvaluation of ClassTail with argument className.
@@ -35,7 +36,7 @@ export default function(
   // 4. ReturnIfAbrupt(value).
 
   // 5. If className is not undefined, then
-  if (className) {
+  if (className !== undefined) {
     // a. Let hasNameProperty be HasOwnProperty(value, "name").
     let hasNameProperty = HasOwnProperty(realm, value, "name");
 
@@ -44,7 +45,7 @@ export default function(
     // c. If hasNameProperty is false, then
     if (!hasNameProperty) {
       // i. Perform SetFunctionName(value, className).
-      SetFunctionName(realm, value, className);
+      Functions.SetFunctionName(realm, value, className);
     }
   }
 

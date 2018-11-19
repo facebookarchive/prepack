@@ -7,18 +7,12 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue, StringValue, NumberValue, UndefinedValue } from "../../values/index.js";
-import {
-  Construct,
-  SpeciesConstructor,
-  IsDetachedBuffer,
-  ToInteger,
-  SameValue,
-  CopyDataBlockBytes,
-} from "../../methods/index.js";
+import { Construct, CopyDataBlockBytes, IsDetachedBuffer, SameValue, SpeciesConstructor } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -81,13 +75,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(typeof len === "number");
 
     // 6. Let relativeStart be ? ToInteger(start).
-    let relativeStart = ToInteger(realm, start);
+    let relativeStart = To.ToInteger(realm, start);
 
     // 7. If relativeStart < 0, let first be max((len + relativeStart), 0); else let first be min(relativeStart, len).
     let first = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 9. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -99,7 +93,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let ctor = SpeciesConstructor(realm, O, realm.intrinsics.ArrayBuffer);
 
     // 12. Let New be ? Construct(ctor, « newLen »).
-    let New = Construct(realm, ctor, [new NumberValue(realm, newLen)]);
+    let New = Construct(realm, ctor, [new NumberValue(realm, newLen)]).throwIfNotConcreteObject();
 
     // 13. If New does not have an [[ArrayBufferData]] internal slot, throw a TypeError exception.
     if (!("$ArrayBufferData" in New)) {

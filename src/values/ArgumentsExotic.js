@@ -7,24 +7,18 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, Value } from "../values/index.js";
-import {
-  OrdinaryGetOwnProperty,
-  OrdinaryDefineOwnProperty,
-  OrdinaryDelete,
-  Set,
-  OrdinarySet,
-  ThrowIfMightHaveBeenDeleted,
-} from "../methods/properties.js";
+import { ObjectValue, Value } from "./index.js";
 import { IsDataDescriptor, IsAccessorDescriptor } from "../methods/is.js";
 import { HasOwnProperty } from "../methods/has.js";
 import { SameValuePartial } from "../methods/abstract.js";
 import { Get, OrdinaryGet } from "../methods/get.js";
-import invariant from "../invariant";
+import { Properties } from "../singletons.js";
+import invariant from "../invariant.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export default class ArgumentsExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -39,11 +33,12 @@ export default class ArgumentsExotic extends ObjectValue {
     let args = this;
 
     // 2. Let desc be OrdinaryGetOwnProperty(args, P).
-    let desc = OrdinaryGetOwnProperty(this.$Realm, args, P);
+    let desc = Properties.OrdinaryGetOwnProperty(this.$Realm, args, P);
 
     // 3. If desc is undefined, return desc.
     if (desc === undefined) return undefined;
-    ThrowIfMightHaveBeenDeleted(desc.value);
+    Properties.ThrowIfMightHaveBeenDeleted(desc);
+    desc = desc.throwIfNotConcrete(this.$Realm);
 
     // 4. Let map be args.[[ParameterMap]].
     let map = args.$ParameterMap;
@@ -63,7 +58,9 @@ export default class ArgumentsExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.4.2
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor) {
+  $DefineOwnProperty(P: PropertyKeyValue, _Desc: Descriptor): boolean {
+    let Desc = _Desc.throwIfNotConcrete(this.$Realm);
+
     // 1. Let args be the arguments object.
     let args = this;
 
@@ -82,7 +79,7 @@ export default class ArgumentsExotic extends ObjectValue {
       // a. If Desc.[[Value]] is not present and Desc.[[Writable]] is present and its value is false, then
       if (Desc.value === undefined && Desc.writable === false) {
         // i. Let newArgDesc be a copy of Desc.
-        newArgDesc = Object.assign({}, Desc);
+        newArgDesc = new PropertyDescriptor(Desc);
 
         // ii. Set newArgDesc.[[Value]] to Get(map, P).
         newArgDesc.value = Get(this.$Realm, map, P);
@@ -90,7 +87,7 @@ export default class ArgumentsExotic extends ObjectValue {
     }
 
     // 6. Let allowed be ? OrdinaryDefineOwnProperty(args, P, newArgDesc).
-    let allowed = OrdinaryDefineOwnProperty(this.$Realm, args, P, newArgDesc);
+    let allowed = Properties.OrdinaryDefineOwnProperty(this.$Realm, args, P, newArgDesc);
 
     // 7. If allowed is false, return false.
     if (allowed === false) return false;
@@ -106,7 +103,8 @@ export default class ArgumentsExotic extends ObjectValue {
         // i. If Desc.[[Value]] is present, then
         if (Desc.value !== undefined) {
           // 1. Let setStatus be Set(map, P, Desc.[[Value]], false).
-          let setStatus = Set(this.$Realm, map, P, Desc.value, false);
+          invariant(Desc.value instanceof Value);
+          let setStatus = Properties.Set(this.$Realm, map, P, Desc.value, false);
 
           // 2. Assert: setStatus is true because formal parameters mapped by argument objects are always writable.
           invariant(setStatus === true);
@@ -171,14 +169,14 @@ export default class ArgumentsExotic extends ObjectValue {
     if (isMapped === true) {
       invariant(map);
       // a. Let setStatus be Set(map, P, V, false).
-      let setStatus = Set(this.$Realm, map, P, V, false);
+      let setStatus = Properties.Set(this.$Realm, map, P, V, false);
 
       // b. Assert: setStatus is true because formal parameters mapped by argument objects are always writable.
       invariant(setStatus === true);
     }
 
     // 5. Return ? OrdinarySet(args, P, V, Receiver).
-    return OrdinarySet(this.$Realm, args, P, V, Receiver);
+    return Properties.OrdinarySet(this.$Realm, args, P, V, Receiver);
   }
 
   // ECMA262 9.4.4.5
@@ -194,7 +192,7 @@ export default class ArgumentsExotic extends ObjectValue {
     let isMapped = HasOwnProperty(this.$Realm, map, P);
 
     // 4. Let result be ? OrdinaryDelete(args, P).
-    let result = OrdinaryDelete(this.$Realm, args, P);
+    let result = Properties.OrdinaryDelete(this.$Realm, args, P);
 
     // 5. If result is true and isMapped is true, then
     if (result === true && isMapped === true) {

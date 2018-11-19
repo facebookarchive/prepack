@@ -1,9 +1,11 @@
 # Prepack [![Circle CI](https://circleci.com/gh/facebook/prepack.png?style=shield&circle-token=1109197a81e634fd06e162c25d309a420585acd5)](https://circleci.com/gh/facebook/prepack)
 
+<img src="assets/PrepackLogo.png" width=150 align=right>
+
 Prepack is a partial evaluator for JavaScript. Prepack rewrites a JavaScript bundle, resulting in JavaScript code that executes more efficiently.
 For initialization-heavy code, Prepack works best in an environment where JavaScript parsing is effectively cached.
 
-See the official [prepack.io](http://prepack.io) website for an introduction and an [interactive REPL playground](http://prepack.io/repl.html).
+See the official [prepack.io](https://prepack.io) website for an introduction and an [interactive REPL playground](https://prepack.io/repl.html).
 
 ## How to use Prepack
 
@@ -39,6 +41,15 @@ $ prepack script.js --out script-processed.js
 ```
 
 Detailed instructions and the API can be found at [Prepack CLI: Getting Started](https://prepack.io/getting-started.html)
+
+### Plugins to other tools
+The following are a few plugins to other tools. They have been created and are maintained separately from Prepack itself. If you run into any issues with those plugins, please ask the plugin maintainers for support.
+
+- [A Rollup plugin for Prepack](https://www.npmjs.com/package/rollup-plugin-prepack)
+- [A Webpack plugin for Prepack](https://www.npmjs.com/package/prepack-webpack-plugin)
+- [A Parcel plugin for Prepack](https://www.npmjs.com/package/parcel-plugin-prepack)
+- [A Visual Studio code plugin for Prepack](https://marketplace.visualstudio.com/items?itemName=RobinMalfait.prepack-vscode)
+- [A babel plugin which transforms Flow annotations into prepack model declarations](https://www.npmjs.com/package/babel-plugin-flow-prepack).
 
 ## Status
 
@@ -90,7 +101,7 @@ You can run individual test suites as follows:
 2. Have a JavaScript file handy that you want to prepack, for example:  
    `echo "function hello() { return 'hello'; } function world() { return 'world'; } s = hello() + ' ' + world();" >/tmp/sample.js`
 
-3. `cat /tmp/sample.js | yarn prepack`  
+3. `cat /tmp/sample.js | yarn prepack-cli`  
    Try `--help` for more options.
 
 ## How to validate changes
@@ -100,11 +111,15 @@ Instead of building, linting, type checking, testing separately, the following d
 
 ## How to edit the website
 
-The content for [prepack.io](http://prepack.io) resides in the [gh-pages branch](https://github.com/facebook/prepack/tree/gh-pages) of this repository. To make changes, submit a pull request, just like for any code changes. In order to run the website locally at [localhost:8000](http://localhost:8000), run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the cloned `gh-pages` branch.
+The content for [prepack.io](https://prepack.io) resides in the [website directory](https://github.com/facebook/prepack/tree/master/website) of this repository. To make changes, submit a pull request, just like for any code changes.
 
-At this time, a particular bundled version of Prepack is checked in to the `gh-pages` branch at `js/prepack.min.js`. To update the bundle, run `yarn build-bundle` from the `master` branch, and copy the resulting `prepack.min.js` file into the `gh-pages` branch into the `js` directory, and submit a pull request for that change.
+In order to run the website locally at [localhost:8000](http://localhost:8000):
+1. Build prepack into the website: `yarn build && mv prepack.min.js website/js`
+2. Run `python -m SimpleHTTPServer` (Python 2) or `python -m http.server` (Python 3) from the `website/` directory
 
 ## How to contribute
+
+To read more about the project, check out this [suggested reading wiki](https://github.com/facebook/prepack/wiki/Suggested-reading)
 
 For more information about contributing pull requests and issues, see our [Contribution Guidelines](./CONTRIBUTING.md).
 

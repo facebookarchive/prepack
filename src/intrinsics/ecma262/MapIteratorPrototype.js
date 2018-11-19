@@ -7,11 +7,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { StringValue, NumberValue, ObjectValue, UndefinedValue } from "../../values/index.js";
-import { CreateIterResultObject, CreateArrayFromList } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -40,7 +40,8 @@ export default function(realm: Realm, obj: ObjectValue): void {
     let itemKind = O.$MapIterationKind;
 
     // 7. If m is undefined, return CreateIterResultObject(undefined, true).
-    if (!m || m instanceof UndefinedValue) return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+    if (!m || m instanceof UndefinedValue)
+      return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     invariant(m instanceof ObjectValue);
 
     // 8. Assert: m has a [[MapData]] internal slot.
@@ -77,11 +78,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
           invariant(itemKind === "key+value");
 
           // 2. Let result be CreateArrayFromList(« e.[[Key]], e.[[Value]] »).
-          result = CreateArrayFromList(realm, [e.$Key, e.$Value]);
+          result = Create.CreateArrayFromList(realm, [e.$Key, e.$Value]);
         }
 
         // iv. Return CreateIterResultObject(result, false).
-        return CreateIterResultObject(realm, result, false);
+        return Create.CreateIterResultObject(realm, result, false);
       }
     }
 
@@ -89,7 +90,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     O.$Map = realm.intrinsics.undefined;
 
     // 12. Return CreateIterResultObject(undefined, true).
-    return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+    return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
   });
 
   // ECMA262 23.1.5.2.2

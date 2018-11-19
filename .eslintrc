@@ -11,10 +11,6 @@
     "prettier"
   ],
 
-  "ecmaFeatures": {
-    "jsx": true
-  },
-
   "env": {
     "es6": true,
     "jasmine": true,
@@ -29,7 +25,8 @@
     "clearTimeout": false,
     "clearInterval": false,
     "__dirname": false,
-    "Set": false
+    "Set": false,
+    "gc": false
   },
 
   "rules": {
@@ -218,8 +215,14 @@
 
   // Prettier
     "prettier/prettier": ["error", {
+      "parser": "flow",
       "trailingComma": "es5",
       "printWidth": 120,
+    }],
+
+  // Reject imports from lib/*
+    "no-restricted-imports": ["error", {
+      "patterns": ["**/../lib/**"]
     }]
   }
 }

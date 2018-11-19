@@ -7,22 +7,33 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-const path = require('path');
-const webpack = require('webpack');
+const path = require("path");
+
+process.env.NODE_ENV = "production";
 
 const WebpackConfig = {
-    entry: "./",
-    output: {
-        path: path.join(__dirname),
-        filename: "prepack.min.js",
-        library: 'Prepack',
-    },
-
-    plugins: [
-      new webpack.optimize.UglifyJsPlugin({
-        sourceMap: false,
-      })
+  entry: "./",
+  output: {
+    path: path.join(__dirname),
+    filename: "prepack.min.js",
+    library: "Prepack",
+  },
+  parallelism: 1,
+  profile: true,
+  mode: "production",
+  optimization: {
+    minimize: true,
+  },
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        use: {
+          loader: "babel-loader",
+        },
+      },
     ],
+  },
 };
 
 module.exports = WebpackConfig;

@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { ObjectValue, FunctionValue, NativeFunctionValue } from "../../values/index.js";
@@ -18,16 +18,9 @@ import {
   PerformPromiseRace,
   CreateResolvingFunctions,
 } from "../../methods/promise.js";
-import {
-  IsCallable,
-  OrdinaryCreateFromConstructor,
-  Call,
-  GetIterator,
-  SameValuePartial,
-  Get,
-  IsPromise,
-} from "../../methods/index.js";
+import { IsCallable, Call, GetIterator, SameValuePartial, Get, IsPromise } from "../../methods/index.js";
 import { IteratorClose } from "../../methods/iterator.js";
+import { Create } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm): NativeFunctionValue {
@@ -44,7 +37,7 @@ export default function(realm: Realm): NativeFunctionValue {
     }
 
     // 3. Let promise be ? OrdinaryCreateFromConstructor(NewTarget, "%PromisePrototype%", « [[PromiseState]], [[PromiseResult]], [[PromiseFulfillReactions]], [[PromiseRejectReactions]], [[PromiseIsHandled]] »).
-    let promise = OrdinaryCreateFromConstructor(realm, NewTarget, "PromisePrototype", {
+    let promise = Create.OrdinaryCreateFromConstructor(realm, NewTarget, "PromisePrototype", {
       $PromiseState: undefined,
       $PromiseResult: undefined,
       $PromiseFulfillReactions: undefined,

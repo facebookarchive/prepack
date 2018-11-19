@@ -14,114 +14,122 @@
 import Serializer from "./serializer/index.js";
 import construct_realm from "./construct_realm.js";
 import initializeGlobals from "./globals.js";
-import * as t from "babel-types";
+import { EvaluateDirectCallWithArgList } from "./methods/index.js";
 import { getRealmOptions, getSerializerOptions } from "./prepack-options";
 import { FatalError } from "./errors.js";
-import { SerializerStatistics, TimingStatistics } from "./serializer/types.js";
-import type { SourceFile } from "./types.js";
+import { SourceFileCollection, type SourceFile } from "./types.js";
 import { AbruptCompletion } from "./completions.js";
 import type { PrepackOptions } from "./prepack-options";
 import { defaultOptions } from "./options";
-import type { BabelNodeFile, BabelNodeProgram } from "babel-types";
 import invariant from "./invariant.js";
-
-// IMPORTANT: This function is now deprecated and will go away in a future release.
-// Please use FatalError instead.
-export function InitializationError() {
-  let self = new Error("An error occurred while prepacking. See the error logs.");
-  Object.setPrototypeOf(self, InitializationError.prototype);
-  return self;
-}
-Object.setPrototypeOf(InitializationError, Error);
-Object.setPrototypeOf(InitializationError.prototype, Error.prototype);
-Object.setPrototypeOf(FatalError.prototype, InitializationError.prototype);
+import { version } from "../package.json";
+import { type SerializedResult } from "./serializer/types.js";
+import { SerializerStatistics } from "./serializer/statistics.js";
+import { ResidualHeapVisitor } from "./serializer/ResidualHeapVisitor.js";
+import { Modules } from "./utils/modules.js";
+import { Logger } from "./utils/logger.js";
+import { Generator } from "./utils/generator.js";
+import { AbstractObjectValue, AbstractValue, ObjectValue } from "./values/index.js";
 
 export function prepackSources(
-  sources: Array<SourceFile>,
-  options: PrepackOptions = defaultOptions
-): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
+  sourceFileCollection: SourceFileCollection | Array<SourceFile>,
+  options: PrepackOptions = defaultOptions,
+  statistics: SerializerStatistics | void = undefined
+): SerializedResult {
+  if (Array.isArray(sourceFileCollection)) sourceFileCollection = new SourceFileCollection(sourceFileCollection);
+
   let realmOptions = getRealmOptions(options);
   realmOptions.errorHandler = options.errorHandler;
-  let realm = construct_realm(realmOptions);
+  let realm = construct_realm(
+    realmOptions,
+    options.debuggerConfigArgs,
+    statistics || new SerializerStatistics(),
+    options.debugReproArgs
+  );
   initializeGlobals(realm);
+  if (typeof options.additionalGlobals === "function") {
+    options.additionalGlobals(realm);
+  }
 
-  if (options.serialize || !options.residual) {
+  if (options.check) {
+    realm.generator = new Generator(realm, "main", realm.pathConditions);
+    let logger = new Logger(realm, !!options.internalDebug);
+    let modules = new Modules(realm, logger, !!options.logModules);
+    let [result] = realm.$GlobalEnv.executeSources(sourceFileCollection.toArray());
+    if (result instanceof AbruptCompletion) throw result;
+    invariant(options.check);
+    checkResidualFunctions(modules, options.check[0], options.check[1]);
+    return { code: "", map: undefined };
+  } else {
     let serializer = new Serializer(realm, getSerializerOptions(options));
-    let serialized = serializer.init(sources, options.sourceMaps);
+    let serialized = serializer.init(sourceFileCollection, options.sourceMaps, options.onParse, options.onExecute);
+
+    //Turn off the debugger if there is one
+    if (realm.debuggerInstance) {
+      realm.debuggerInstance.shutdown();
+    }
+
     if (!serialized) {
       throw new FatalError("serializer failed");
     }
-    if (!options.residual) return serialized;
-    let residualSources = [
-      {
-        filePath: options.outputFilename || "unknown",
-        fileContents: serialized.code,
-        sourceMapContents: JSON.stringify(serialized.map),
-      },
-    ];
-    let result = realm.$GlobalEnv.executePartialEvaluator(residualSources, options);
-    if (result instanceof AbruptCompletion) throw result;
-    // $FlowFixMe This looks like a Flow bug
-    return result;
-  } else {
-    invariant(options.residual);
-    let result = realm.$GlobalEnv.executePartialEvaluator(sources, options);
-    if (result instanceof AbruptCompletion) throw result;
-    // $FlowFixMe This looks like a Flow bug
-    return result;
+
+    if (realm.debugReproManager) {
+      let localManager = realm.debugReproManager;
+      let sourcePaths = {
+        sourceFiles: localManager.getSourceFilePaths(),
+        sourceMaps: localManager.getSourceMapPaths(),
+      };
+      serialized.sourceFilePaths = sourcePaths;
+    }
+
+    return serialized;
   }
 }
 
-/* deprecated: please use prepackSources instead. */
-export function prepackString(
-  filename: string,
-  code: string,
-  sourceMap: string,
-  options: PrepackOptions = defaultOptions
-): { code: string, map?: SourceMap, statistics?: SerializerStatistics, timingStats?: TimingStatistics } {
-  return prepackSources([{ filePath: filename, fileContents: code, sourceMapContents: sourceMap }], options);
+function checkResidualFunctions(modules: Modules, startFunc: number, totalToAnalyze: number) {
+  let realm = modules.realm;
+  let env = realm.$GlobalEnv;
+  realm.$GlobalObject.makeSimple();
+  let errorHandler = realm.errorHandler;
+  if (!errorHandler) errorHandler = (diag, suppressDiagnostics) => realm.handleError(diag);
+  realm.errorHandler = (diag, suppressDiagnostics) => {
+    invariant(errorHandler);
+    if (diag.severity === "FatalError") return errorHandler(diag, realm.suppressDiagnostics);
+    else return "Recover";
+  };
+  modules.resolveInitializedModules();
+  let residualHeapVisitor = new ResidualHeapVisitor(realm, modules.logger, modules, new Map());
+  residualHeapVisitor.visitRoots();
+  if (modules.logger.hasErrors()) return;
+  let totalFunctions = 0;
+  let nonFatalFunctions = 0;
+  for (let fi of residualHeapVisitor.functionInstances.values()) {
+    totalFunctions++;
+    if (totalFunctions <= startFunc) continue;
+    let fv = fi.functionValue;
+    console.log("analyzing: " + totalFunctions);
+    let thisValue = realm.intrinsics.null;
+    let n = fv.getLength() || 0;
+    let args = [];
+    for (let i = 0; i < n; i++) {
+      let name = "dummy parameter";
+      let ob: AbstractObjectValue = (AbstractValue.createFromType(realm, ObjectValue, name): any);
+      ob.makeSimple("transitive");
+      ob.intrinsicName = name;
+      args[i] = ob;
+    }
+    // todo: eventually join these effects, apply them to the global state and iterate to a fixed point
+    try {
+      realm.evaluateForEffectsInGlobalEnv(() =>
+        EvaluateDirectCallWithArgList(modules.realm, true, env, fv, fv, thisValue, args)
+      );
+      nonFatalFunctions++;
+    } catch (e) {}
+    if (totalFunctions >= startFunc + totalToAnalyze) break;
+  }
+  console.log(
+    `Analyzed ${totalToAnalyze} functions starting at ${startFunc} of which ${nonFatalFunctions} did not have fatal errors.`
+  );
 }
 
-/* deprecated: please use prepackSources instead. */
-export function prepack(code: string, options: PrepackOptions = defaultOptions) {
-  let filename = options.filename || "unknown";
-  let sources = [{ filePath: filename, fileContents: code }];
-
-  let realmOptions = getRealmOptions(options);
-  realmOptions.errorHandler = options.errorHandler;
-  let realm = construct_realm(realmOptions);
-  initializeGlobals(realm);
-
-  let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init(sources, options.sourceMaps);
-  if (!serialized) {
-    throw new FatalError("serializer failed");
-  }
-  return serialized;
-}
-
-/* deprecated: please use prepackSources instead. */
-export function prepackFromAst(
-  ast: BabelNodeFile | BabelNodeProgram,
-  code: string,
-  options: PrepackOptions = defaultOptions
-) {
-  if (ast && ast.type === "Program") {
-    ast = t.file(ast, [], []);
-  }
-  invariant(ast && ast.type === "File");
-  let filename = options.filename || (ast.loc && ast.loc.source) || "unknown";
-  let sources = [{ filePath: filename, fileContents: code }];
-
-  // TODO: Expose an option to wire an already parsed ast all the way through
-  // to the execution environment. For now, we just reparse.
-
-  let realm = construct_realm(getRealmOptions(options));
-  initializeGlobals(realm);
-  let serializer = new Serializer(realm, getSerializerOptions(options));
-  let serialized = serializer.init(sources, options.sourceMaps);
-  if (!serialized) {
-    throw new FatalError("serializer failed");
-  }
-  return serialized;
-}
+export const prepackVersion = version;

@@ -7,10 +7,10 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
-import { CreateIterResultObject } from "../../methods/create.js";
+import { Create } from "../../singletons.js";
 import { ObjectValue, StringValue } from "../../values/index.js";
 import invariant from "../../invariant.js";
 
@@ -35,7 +35,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     // 5. If s is undefined, return CreateIterResultObject(undefined, true).
     if (!s) {
-      return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+      return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     }
 
     // 6. Let position be O.[[StringIteratorNextIndex]].
@@ -51,7 +51,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       O.$IteratedString = undefined;
 
       // b. Return CreateIterResultObject(undefined, true).
-      return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+      return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     }
 
     // 9. Let first be the code unit value at index position in s.
@@ -81,7 +81,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     O.$StringIteratorNextIndex = position + resultSize;
 
     // 14. Return CreateIterResultObject(resultString, false).
-    return CreateIterResultObject(realm, new StringValue(realm, resultString), false);
+    return Create.CreateIterResultObject(realm, new StringValue(realm, resultString), false);
   });
 
   // ECMA262 21.1.5.2.2

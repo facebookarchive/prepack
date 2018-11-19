@@ -7,15 +7,14 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import { AbruptCompletion } from "../completions.js";
 import { Value, ObjectValue, UndefinedValue } from "../values/index.js";
-import { CreateIterResultObject } from "../methods/create.js";
-import { ThrowIfInternalSlotNotWritable } from "../methods/properties.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeBlockStatement } from "babel-types";
+import type { BabelNodeBlockStatement } from "@babel/types";
 
 // ECMA26225.3.3.1
 export function GeneratorStart(
@@ -60,7 +59,7 @@ export function GeneratorStart(
 }
 
 // ECMA26225.3.3.2
-export function GeneratorValidate(realm: Realm, generator: Value) {
+export function GeneratorValidate(realm: Realm, generator: Value): void | "suspendedStart" {
   // 1. If Type(generator) is not Object, throw a TypeError exception.
   if (!(generator instanceof ObjectValue)) {
     throw realm.createErrorThrowCompletion(realm.intrinsics.SyntaxError, "Type(generator) is not Object");
@@ -93,7 +92,7 @@ export function GeneratorResume(realm: Realm, generator: Value, value: Value): V
   invariant(generator instanceof ObjectValue);
 
   // 2. If state is "completed", return CreateIterResultObject(undefined, true).
-  if (state === "completed") return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+  if (state === "completed") return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
 
   // 3. Assert: state is either "suspendedStart" or "suspendedYield".
   invariant(
@@ -112,7 +111,7 @@ export function GeneratorResume(realm: Realm, generator: Value, value: Value): V
   methodContext.suspend();
 
   // 7. Set generator.[[GeneratorState]] to "executing".
-  ThrowIfInternalSlotNotWritable(realm, generator, "$GeneratorState").$GeneratorState = "executing";
+  Properties.ThrowIfInternalSlotNotWritable(realm, generator, "$GeneratorState").$GeneratorState = "executing";
 
   // 8. Push genContext onto the execution context stack; genContext is now the running execution context.
   realm.pushContext(genContext);

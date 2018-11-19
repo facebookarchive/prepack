@@ -7,7 +7,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import {
@@ -20,20 +20,22 @@ import {
   EmptyValue,
 } from "../values/index.js";
 import { IsConstructor, IsStatic } from "./is.js";
-import { ObjectCreate } from "./create.js";
-import { DefinePropertyOrThrow } from "./properties.js";
 import { Get } from "./get.js";
 import { HasSomeCompatibleType } from "./has.js";
+import { Create, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeClassMethod } from "babel-types";
+import type { BabelNodeClassMethod } from "@babel/types";
+import { PropertyDescriptor } from "../descriptors.js";
 
 // ECMA262 9.2.8
 export function MakeConstructor(
   realm: Realm,
   F: ECMAScriptSourceFunctionValue,
-  writablePrototype?: boolean,
-  prototype?: ObjectValue
+  _writablePrototype?: boolean,
+  _prototype?: ObjectValue
 ): UndefinedValue {
+  let writablePrototype = _writablePrototype;
+  let prototype = _prototype;
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof ECMAScriptSourceFunctionValue, "expected function value");
 
@@ -51,25 +53,35 @@ export function MakeConstructor(
   // 5. If the prototype argument was not provided, then
   if (!prototype) {
     // a. Let prototype be ObjectCreate(%ObjectPrototype%).
-    prototype = ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
+    prototype = Create.ObjectCreate(realm, realm.intrinsics.ObjectPrototype);
     prototype.originalConstructor = F;
 
     // b. Perform ! DefinePropertyOrThrow(prototype, "constructor", PropertyDescriptor{[[Value]]: F, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: true }).
-    DefinePropertyOrThrow(realm, prototype, "constructor", {
-      value: F,
-      writable: writablePrototype,
-      enumerable: false,
-      configurable: true,
-    });
+    Properties.DefinePropertyOrThrow(
+      realm,
+      prototype,
+      "constructor",
+      new PropertyDescriptor({
+        value: F,
+        writable: writablePrototype,
+        enumerable: false,
+        configurable: true,
+      })
+    );
   }
 
   // 6. Perform ! DefinePropertyOrThrow(F, "prototype", PropertyDescriptor{[[Value]]: prototype, [[Writable]]: writablePrototype, [[Enumerable]]: false, [[Configurable]]: false}).
-  DefinePropertyOrThrow(realm, F, "prototype", {
-    value: prototype,
-    writable: writablePrototype,
-    enumerable: false,
-    configurable: false,
-  });
+  Properties.DefinePropertyOrThrow(
+    realm,
+    F,
+    "prototype",
+    new PropertyDescriptor({
+      value: prototype,
+      writable: writablePrototype,
+      enumerable: false,
+      configurable: false,
+    })
+  );
 
   // 7. Return NormalCompletion(undefined).
   return realm.intrinsics.undefined;
@@ -79,9 +91,11 @@ export function MakeConstructor(
 export function Construct(
   realm: Realm,
   F: ObjectValue,
-  argumentsList?: Array<Value>,
-  newTarget?: ObjectValue
-): ObjectValue {
+  _argumentsList?: Array<Value>,
+  _newTarget?: ObjectValue
+): ObjectValue | AbstractObjectValue {
+  let argumentsList = _argumentsList;
+  let newTarget = _newTarget;
   // If newTarget was not passed, let newTarget be F.
   if (!newTarget) newTarget = F;
 
@@ -134,7 +148,7 @@ export function SpeciesConstructor(realm: Realm, O: ObjectValue, defaultConstruc
 }
 
 // ECMA 9.2.9
-export function MakeClassConstructor(realm: Realm, F: ECMAScriptSourceFunctionValue) {
+export function MakeClassConstructor(realm: Realm, F: ECMAScriptSourceFunctionValue): UndefinedValue {
   // 1. Assert: F is an ECMAScript function object.
   invariant(F instanceof ECMAScriptSourceFunctionValue, "expected function value");
 

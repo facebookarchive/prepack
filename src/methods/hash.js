@@ -9,10 +9,14 @@
 
 /* @flow */
 
-import type { BabelBinaryOperator, BabelUnaryOperator } from "babel-types";
+import type { BabelBinaryOperator, BabelUnaryOperator } from "@babel/types";
 import invariant from "../invariant.js";
 
-interface Hashable { getHash(): number, mightBeString(): boolean, mightBeObject(): boolean }
+interface Hashable {
+  getHash(): number;
+  mightBeString(): boolean;
+  mightBeObject(): boolean;
+}
 
 export function hashBinary<T: Hashable>(op: BabelBinaryOperator, x: T, y: T): [number, Array<T>] {
   let xHash = x.getHash();
@@ -105,7 +109,7 @@ export class HashSet<T: Equatable & Hashable> {
     invariant(false); // otherwise Flow thinks this method can return undefined
   }
 
-  expand() {
+  expand(): void {
     let oldEntries = this._entries;
     let n = oldEntries.length;
     let m = n * 2;

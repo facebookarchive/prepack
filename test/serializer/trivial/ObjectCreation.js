@@ -1,5 +1,6 @@
 // no effect
-(function(){
-    var o = new Object();
-    o.x = 42;
-})()
+// omit invariants
+(function() {
+  var o = new Object();
+  o.x = 42;
+})();

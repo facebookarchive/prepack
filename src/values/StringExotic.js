@@ -7,16 +7,15 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, NumberValue, StringValue } from "../values/index.js";
-import { OrdinaryGetOwnProperty, ThrowIfMightHaveBeenDeleted } from "../methods/properties.js";
-import { CanonicalNumericIndexString } from "../methods/to.js";
+import { ObjectValue, NumberValue, StringValue } from "./index.js";
 import { IsInteger, IsArrayIndex } from "../methods/is.js";
-import { ToString, ToInteger } from "../methods/to.js";
-import invariant from "../invariant";
+import { Properties, To } from "../singletons.js";
+import invariant from "../invariant.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export default class StringExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -28,11 +27,11 @@ export default class StringExotic extends ObjectValue {
     // 1. Assert: IsPropertyKey(P) is true.
 
     // 2. Let desc be OrdinaryGetOwnProperty(S, P).
-    let desc = OrdinaryGetOwnProperty(this.$Realm, this, P);
+    let desc = Properties.OrdinaryGetOwnProperty(this.$Realm, this, P);
 
     // 3. If desc is not undefined, return desc.
     if (desc !== undefined) {
-      ThrowIfMightHaveBeenDeleted(desc.value);
+      Properties.ThrowIfMightHaveBeenDeleted(desc);
       return desc;
     }
 
@@ -40,7 +39,10 @@ export default class StringExotic extends ObjectValue {
     if (typeof P !== "string" && !(P instanceof StringValue)) return undefined;
 
     // 5. Let index be ! CanonicalNumericIndexString(P).
-    let index = CanonicalNumericIndexString(this.$Realm, typeof P === "string" ? new StringValue(this.$Realm, P) : P);
+    let index = To.CanonicalNumericIndexString(
+      this.$Realm,
+      typeof P === "string" ? new StringValue(this.$Realm, P) : P
+    );
 
     // 6. If index is undefined, return undefined.
     if (index === undefined || index === null) return undefined;
@@ -66,12 +68,12 @@ export default class StringExotic extends ObjectValue {
     let resultStr = new StringValue(this.$Realm, str.value.charAt(index));
 
     // 13. Return a PropertyDescriptor{[[Value]]: resultStr, [[Writable]]: false, [[Enumerable]]: true, [[Configurable]]: false}.
-    return {
+    return new PropertyDescriptor({
       value: resultStr,
       writable: false,
       enumerable: true,
       configurable: false,
-    };
+    });
   }
 
   // ECMA262 9.4.3.2
@@ -87,27 +89,28 @@ export default class StringExotic extends ObjectValue {
     // 3. Let len be the number of elements in str.
     let len = str.value.length;
 
+    let realm = this.$Realm;
     // 4. For each integer i starting with 0 such that i < len, in ascending order,
     for (let i = 0; i < len; ++i) {
       // a. Add ! ToString(i) as the last element of keys.
-      keys.push(new StringValue(this.$Realm, ToString(this.$Realm, new NumberValue(this.$Realm, i))));
+      keys.push(new StringValue(realm, To.ToString(realm, new NumberValue(realm, i))));
     }
 
     // 5. For each own property key P of O such that P is an integer index and ToInteger(P) ≥ len, in ascending numeric index order,
-    let properties = this.getOwnPropertyKeysArray();
+    let properties = Properties.GetOwnPropertyKeysArray(realm, this, false, false);
     for (let key of properties
-      .filter(x => IsArrayIndex(this.$Realm, x))
+      .filter(x => IsArrayIndex(realm, x))
       .map(x => parseInt(x, 10))
-      .filter(x => ToInteger(this.$Realm, x) >= len)
+      .filter(x => To.ToInteger(realm, x) >= len)
       .sort((x, y) => x - y)) {
       // i. Add P as the last element of keys.
-      keys.push(new StringValue(this.$Realm, key + ""));
+      keys.push(new StringValue(realm, key + ""));
     }
 
     // 6. For each own property key P of O such that Type(P) is String and P is not an integer index, in ascending chronological order of property creation,
-    for (let key of properties.filter(x => !IsArrayIndex(this.$Realm, x))) {
+    for (let key of properties.filter(x => !IsArrayIndex(realm, x))) {
       // i. Add P as the last element of keys.
-      keys.push(new StringValue(this.$Realm, key));
+      keys.push(new StringValue(realm, key));
     }
 
     // 7. For each own property key P of O such that Type(P) is Symbol, in ascending chronological order of property creation,

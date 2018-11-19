@@ -7,25 +7,14 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import type { ElementType } from "../../types.js";
 import { ElementSize } from "../../types.js";
 import { ObjectValue, StringValue, NumberValue, UndefinedValue, NullValue } from "../../values/index.js";
-import {
-  ToInteger,
-  ToString,
-  ToStringPartial,
-  ToBooleanPartial,
-  ToObject,
-  ToObjectPartial,
-  ToLength,
-  ToNumber,
-} from "../../methods/to.js";
 import { Call, Invoke } from "../../methods/call.js";
 import { Get } from "../../methods/get.js";
-import { Set, DeletePropertyOrThrow } from "../../methods/properties.js";
 import { HasProperty, HasSomeCompatibleType } from "../../methods/has.js";
 import { IsDetachedBuffer, IsCallable } from "../../methods/is.js";
 import {
@@ -36,9 +25,9 @@ import {
   IntegerIndexedElementSet,
   IntegerIndexedElementGet,
 } from "../../methods/typedarray.js";
-import { CreateArrayIterator } from "../../methods/create.js";
 import { SetValueInBuffer, GetValueFromBuffer, CloneArrayBuffer } from "../../methods/arraybuffer.js";
 import { SameValue, SameValueZeroPartial, StrictEqualityComparisonPartial } from "../../methods/abstract.js";
+import { Create, Properties, To } from "../../singletons.js";
 import invariant from "../../invariant.js";
 
 export default function(realm: Realm, obj: ObjectValue): void {
@@ -145,29 +134,29 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.5
   obj.defineNativeMethod("copyWithin", 2, (context, [target, start, end]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. Let relativeTarget be ? ToInteger(target).
-    let relativeTarget = ToInteger(realm, target);
+    let relativeTarget = To.ToInteger(realm, target);
 
     // 5. If relativeTarget < 0, let to be max((len + relativeTarget), 0); else let to be min(relativeTarget, len).
     let to = relativeTarget < 0 ? Math.max(len + relativeTarget, 0) : Math.min(relativeTarget, len);
 
     // 6. Let relativeStart be ? ToInteger(start).
-    let relativeStart = ToInteger(realm, start);
+    let relativeStart = To.ToInteger(realm, start);
 
     // 7. If relativeStart < 0, let from be max((len + relativeStart), 0); else let from be min(relativeStart, len).
     let from = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 8. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 9. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -195,10 +184,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 13. Repeat, while count > 0
     while (count > 0) {
       // a. Let fromKey be ! ToString(from).
-      let fromKey = ToString(realm, new NumberValue(realm, from));
+      let fromKey = To.ToString(realm, new NumberValue(realm, from));
 
       // b. Let toKey be ! ToString(to).
-      let toKey = ToString(realm, new NumberValue(realm, to));
+      let toKey = To.ToString(realm, new NumberValue(realm, to));
 
       // c. Let fromPresent be ? HasProperty(O, fromKey).
       let fromPresent = HasProperty(realm, O, fromKey);
@@ -208,11 +197,11 @@ export default function(realm: Realm, obj: ObjectValue): void {
         // i. Let fromVal be ? Get(O, fromKey).
         let fromVal = Get(realm, O, fromKey);
         // ii. Perform ? Set(O, toKey, fromVal, true).
-        Set(realm, O, toKey, fromVal, true);
+        Properties.Set(realm, O, toKey, fromVal, true);
       } else {
         // e. Else fromPresent is false,
         // i. Perform ? DeletePropertyOrThrow(O, toKey).
-        DeletePropertyOrThrow(realm, O, toKey);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), toKey);
       }
 
       // f. Let from be from + direction.
@@ -239,19 +228,19 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(O instanceof ObjectValue);
 
     // 3. Return CreateArrayIterator(O, "key+value").
-    return CreateArrayIterator(realm, O, "key+value");
+    return Create.CreateArrayIterator(realm, O, "key+value");
   });
 
   // ECMA262 22.2.3.7
   obj.defineNativeMethod("every", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -279,7 +268,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let testResult be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
-        let testResult = ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
+        let testResult = To.ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
 
         // iii. If testResult is false, return false.
         if (!testResult) return realm.intrinsics.false;
@@ -296,23 +285,23 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.8
   obj.defineNativeMethod("fill", 1, (context, [value, start, end]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. Let relativeStart be ? ToInteger(start).
-    let relativeStart = ToInteger(realm, start || realm.intrinsics.undefined);
+    let relativeStart = To.ToInteger(realm, start || realm.intrinsics.undefined);
 
     // 5. If relativeStart < 0, let k be max((len + relativeStart), 0); else let k be min(relativeStart, len).
     let k = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 6. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 7. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -323,7 +312,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let Pk = new StringValue(realm, k + "");
 
       // b. Perform ? Set(O, Pk, value, true).
-      Set(realm, O, Pk, value, true);
+      Properties.Set(realm, O, Pk, value, true);
 
       // c. Increase k by 1.
       k++;
@@ -366,13 +355,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 9. Repeat, while k < len
     while (k < len) {
       // a. Let Pk be ! ToString(k).
-      let Pk = ToString(realm, new NumberValue(realm, k));
+      let Pk = To.ToString(realm, new NumberValue(realm, k));
 
       // b. Let kValue be ? Get(O, Pk).
       let kValue = Get(realm, O, Pk);
 
       // c. Let selected be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
-      let selected = ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
+      let selected = To.ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
 
       // d. If selected is true, then
       if (selected === true) {
@@ -396,7 +385,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 12. For each element e of kept
     for (let e of kept) {
       // a. Perform ! Set(A, ! ToString(n), e, true).
-      Set(realm, A, new StringValue(realm, ToString(realm, new NumberValue(realm, n))), e, true);
+      Properties.Set(realm, A, new StringValue(realm, To.ToString(realm, new NumberValue(realm, n))), e, true);
 
       // b. Increment n by 1.
       n = n + 1;
@@ -409,13 +398,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.10
   obj.defineNativeMethod("find", 1, (context, [predicate, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(predicate) is false, throw a TypeError exception.
@@ -438,7 +427,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let kValue = Get(realm, O, Pk);
 
       // c. Let testResult be ToBoolean(? Call(predicate, T, « kValue, k, O »)).
-      let testResult = ToBooleanPartial(realm, Call(realm, predicate, T, [kValue, new NumberValue(realm, k), O]));
+      let testResult = To.ToBooleanPartial(realm, Call(realm, predicate, T, [kValue, new NumberValue(realm, k), O]));
 
       // d. If testResult is true, return kValue.
       if (testResult) return kValue;
@@ -454,13 +443,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.11
   obj.defineNativeMethod("findIndex", 1, (context, [predicate, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(predicate) is false, throw a TypeError exception.
@@ -477,13 +466,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 7. Repeat, while k < len
     while (k < len) {
       // a. Let Pk be ! ToString(k).
-      let Pk = ToString(realm, new NumberValue(realm, k));
+      let Pk = To.ToString(realm, new NumberValue(realm, k));
 
       // b. Let kValue be ? Get(O, Pk).
       let kValue = Get(realm, O, new StringValue(realm, Pk));
 
       // c. Let testResult be ToBoolean(? Call(predicate, T, « kValue, k, O »)).
-      let testResult = ToBooleanPartial(realm, Call(realm, predicate, T, [kValue, new NumberValue(realm, k), O]));
+      let testResult = To.ToBooleanPartial(realm, Call(realm, predicate, T, [kValue, new NumberValue(realm, k), O]));
 
       // d. If testResult is true, return k.
       if (testResult === true) return new NumberValue(realm, k);
@@ -499,13 +488,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.12
   obj.defineNativeMethod("forEach", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -547,20 +536,20 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.14
   obj.defineNativeMethod("includes", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If len is 0, return false.
     if (len === 0) return realm.intrinsics.false;
 
     // 5. Let n be ? ToInteger(fromIndex). (If fromIndex is undefined, this step produces the value 0.)
-    let n = ToInteger(realm, fromIndex || realm.intrinsics.undefined);
+    let n = To.ToInteger(realm, fromIndex || realm.intrinsics.undefined);
 
     let k;
     // 6. If n ≥ 0, then
@@ -578,7 +567,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 8. Repeat, while k < len
     while (k < len) {
       // a. Let elementK be the result of ? Get(O, ! ToString(k)).
-      let elementK = Get(realm, O, ToString(realm, new NumberValue(realm, k)));
+      let elementK = Get(realm, O, To.ToString(realm, new NumberValue(realm, k)));
 
       // b. If SameValueZero(searchElement, elementK) is true, return true.
       if (SameValueZeroPartial(realm, searchElement, elementK) === true) return realm.intrinsics.true;
@@ -594,20 +583,20 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.14
   obj.defineNativeMethod("indexOf", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If len is 0, return -1.
     if (len === 0) return new NumberValue(realm, -1);
 
     // 5. Let n be ? ToInteger(fromIndex). (If fromIndex is undefined, this step produces the value 0.)
-    let n = fromIndex ? ToInteger(realm, fromIndex) : 0;
+    let n = fromIndex ? To.ToInteger(realm, fromIndex) : 0;
 
     // 6. If n ≥ len, return -1.
     if (n >= len) return new NumberValue(realm, -1);
@@ -652,22 +641,23 @@ export default function(realm: Realm, obj: ObjectValue): void {
   });
 
   // ECMA262 22.2.3.15
-  obj.defineNativeMethod("join", 1, (context, [separator]) => {
+  obj.defineNativeMethod("join", 1, (context, [_separator]) => {
+    let separator = _separator;
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If separator is undefined, let separator be the single-element String ",".
     if (!separator || separator instanceof UndefinedValue) separator = new StringValue(realm, ",");
 
     // 5. Let sep be ? ToString(separator).
-    let sep = ToStringPartial(realm, separator);
+    let sep = To.ToStringPartial(realm, separator);
 
     // 6. If len is zero, return the empty String.
     if (len === 0) return realm.intrinsics.emptyString;
@@ -680,7 +670,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     if (HasSomeCompatibleType(element0, UndefinedValue, NullValue)) {
       R = "";
     } else {
-      R = ToStringPartial(realm, element0);
+      R = To.ToStringPartial(realm, element0);
     }
 
     // 9. Let k be 1.
@@ -699,7 +689,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       if (HasSomeCompatibleType(element, UndefinedValue, NullValue)) {
         next = "";
       } else {
-        next = ToStringPartial(realm, element);
+        next = To.ToStringPartial(realm, element);
       }
 
       // d. Let R be a String value produced by concatenating S and next.
@@ -723,26 +713,26 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(O instanceof ObjectValue);
 
     // 3. Return CreateArrayIterator(O, "key").
-    return CreateArrayIterator(realm, O, "key");
+    return Create.CreateArrayIterator(realm, O, "key");
   });
 
   // ECMA262 22.2.3.17
   obj.defineNativeMethod("lastIndexOf", 1, (context, [searchElement, fromIndex]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If len is 0, return -1.
     if (len === 0) return new NumberValue(realm, -1);
 
     // 5. If argument fromIndex was passed, let n be ? ToInteger(fromIndex); else let n be len-1.
-    let n = fromIndex ? ToInteger(realm, fromIndex) : len - 1;
+    let n = fromIndex ? To.ToInteger(realm, fromIndex) : len - 1;
 
     // 6. If n ≥ 0, then
     let k;
@@ -846,7 +836,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     // 8. Repeat, while k < len
     while (k < len) {
       // a. Let Pk be ! ToString(k).
-      let Pk = ToString(realm, new NumberValue(realm, k));
+      let Pk = To.ToString(realm, new NumberValue(realm, k));
 
       // b. Let kValue be ? Get(O, Pk).
       let kValue = Get(realm, O, Pk);
@@ -855,7 +845,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       let mappedValue = Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]);
 
       // d. Perform ? Set(A, Pk, mappedValue, true).
-      Set(realm, A, Pk, mappedValue, true);
+      Properties.Set(realm, A, Pk, mappedValue, true);
 
       // e. Increase k by 1.
       k = k + 1;
@@ -868,13 +858,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.20
   obj.defineNativeMethod("reduce", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -959,13 +949,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.21
   obj.defineNativeMethod("reduceRight", 1, (context, [callbackfn, initialValue]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -1048,13 +1038,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.21
   obj.defineNativeMethod("reverse", 0, context => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. Let middle be floor(len/2).
@@ -1100,28 +1090,28 @@ export default function(realm: Realm, obj: ObjectValue): void {
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
-        Set(realm, O, lowerP, upperValue, true);
+        Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
-        Set(realm, O, upperP, lowerValue, true);
+        Properties.Set(realm, O, upperP, lowerValue, true);
       } else if (!lowerExists && upperExists) {
         // i. Else if lowerExists is false and upperExists is true, then
         invariant(upperValue, "expected upper value to exist");
 
         // i. Perform ? Set(O, lowerP, upperValue, true).
-        Set(realm, O, lowerP, upperValue, true);
+        Properties.Set(realm, O, lowerP, upperValue, true);
 
         // ii. Perform ? DeletePropertyOrThrow(O, upperP).
-        DeletePropertyOrThrow(realm, O, upperP);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), upperP);
       } else if (lowerExists && !upperExists) {
         // j. Else if lowerExists is true and upperExists is false, then
         invariant(lowerValue, "expected lower value to exist");
 
         // i. Perform ? DeletePropertyOrThrow(O, lowerP).
-        DeletePropertyOrThrow(realm, O, lowerP);
+        Properties.DeletePropertyOrThrow(realm, O.throwIfNotConcreteObject(), lowerP);
 
         // ii. Perform ? Set(O, upperP, lowerValue, true).
-        Set(realm, O, upperP, lowerValue, true);
+        Properties.Set(realm, O, upperP, lowerValue, true);
       } else {
         // k. Else both lowerExists and upperExists are false,
         // i. No action is required.
@@ -1137,7 +1127,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
   // ECMA262 22.2.3.23
   obj.defineNativeMethod("set", 1, (context, [overloaded, offset]) => {
-    if (!overloaded.$TypedArrayName) {
+    if (overloaded.$TypedArrayName === undefined) {
       let array = overloaded;
 
       // 1. Assert: array is any ECMAScript language value other than an Object with a [[TypedArrayName]] internal slot. If it is such an Object, the definition in 22.2.3.23.2 applies.
@@ -1163,7 +1153,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       invariant(target.$ViewedArrayBuffer, "target has a [[ViewedArrayBuffer]] internal slot");
 
       // 6. Let targetOffset be ? ToInteger(offset).
-      let targetOffset = ToInteger(realm, offset || realm.intrinsics.undefined);
+      let targetOffset = To.ToInteger(realm, offset || realm.intrinsics.undefined);
 
       // 7. If targetOffset < 0, throw a RangeError exception.
       if (targetOffset < 0) {
@@ -1198,10 +1188,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       invariant(typeof targetByteOffset === "number");
 
       // 15. Let src be ? ToObject(array).
-      let src = ToObjectPartial(realm, array);
+      let src = To.ToObject(realm, array);
 
       // 16. Let srcLength be ? ToLength(? Get(src, "length")).
-      let srcLength = ToLength(realm, Get(realm, src, "length"));
+      let srcLength = To.ToLength(realm, Get(realm, src, "length"));
 
       // 17. If srcLength + targetOffset > targetLength, throw a RangeError exception.
       if (srcLength + targetOffset > targetLength) {
@@ -1220,10 +1210,10 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // 21. Repeat, while targetByteIndex < limit
       while (targetByteIndex < limit) {
         // a. Let Pk be ! ToString(k).
-        let Pk = ToString(realm, new NumberValue(realm, k));
+        let Pk = To.ToString(realm, new NumberValue(realm, k));
 
         // b. Let kNumber be ? ToNumber(? Get(src, Pk)).
-        let kNumber = ToNumber(realm, Get(realm, src, Pk));
+        let kNumber = To.ToNumber(realm, Get(realm, src, Pk));
 
         // c. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
         if (IsDetachedBuffer(realm, targetBuffer) === true) {
@@ -1268,7 +1258,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       invariant(target.$ViewedArrayBuffer);
 
       // 6. Let targetOffset be ? ToInteger(offset).
-      let targetOffset = ToInteger(realm, offset || realm.intrinsics.undefined);
+      let targetOffset = To.ToInteger(realm, offset || realm.intrinsics.undefined);
 
       // 7. If targetOffset < 0, throw a RangeError exception.
       if (targetOffset < 0) {
@@ -1410,13 +1400,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(typeof len === "number");
 
     // 4. Let relativeStart be ? ToInteger(start).
-    let relativeStart = ToInteger(realm, start);
+    let relativeStart = To.ToInteger(realm, start);
 
     // 5. If relativeStart < 0, let k be max((len + relativeStart), 0); else let k be min(relativeStart, len).
     let k = relativeStart < 0 ? Math.max(len + relativeStart, 0) : Math.min(relativeStart, len);
 
     // 6. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToInteger(end).
-    let relativeEnd = !end || end instanceof UndefinedValue ? len : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? len : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 7. If relativeEnd < 0, let final be max((len + relativeEnd), 0); else let final be min(relativeEnd, len).
     let final = relativeEnd < 0 ? Math.max(len + relativeEnd, 0) : Math.min(relativeEnd, len);
@@ -1449,13 +1439,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
       // b. Repeat, while k < final
       while (k < final) {
         // i. Let Pk be ! ToString(k).
-        let Pk = ToString(realm, new NumberValue(realm, k));
+        let Pk = To.ToString(realm, new NumberValue(realm, k));
 
         // ii. Let kValue be ? Get(O, Pk).
         let kValue = Get(realm, O, Pk);
 
         // iii. Perform ! Set(A, ! ToString(n), kValue).
-        Set(realm, A, ToString(realm, new NumberValue(realm, n)), kValue, true);
+        Properties.Set(realm, A, To.ToString(realm, new NumberValue(realm, n)), kValue, true);
 
         // iv. Increase k by 1.
         k += 1;
@@ -1520,13 +1510,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.25
   obj.defineNativeMethod("some", 1, (context, [callbackfn, thisArg]) => {
     // 1. Let O be ? ToObject(this value).
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(O).
     ValidateTypedArray(realm, O);
 
     // 3. Let len be O.[[ArrayLength]].
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
@@ -1557,7 +1547,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
         let kValue = Get(realm, O, Pk);
 
         // ii. Let testResult be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
-        let testResult = ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
+        let testResult = To.ToBooleanPartial(realm, Call(realm, callbackfn, T, [kValue, new NumberValue(realm, k), O]));
 
         // iii. If testResult is true, return true.
         if (testResult) return realm.intrinsics.true;
@@ -1574,13 +1564,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.26
   obj.defineNativeMethod("sort", 1, (context, [comparefn]) => {
     // 1. Let obj be the this value.
-    let O = ToObject(realm, context.throwIfNotConcrete());
+    let O = To.ToObject(realm, context);
 
     // 2. Let buffer be ? ValidateTypedArray(obj).
     let buffer = ValidateTypedArray(realm, O);
 
     // 3. Let len be the value of obj's [[ArrayLength]] internal slot.
-    let len = O.$ArrayLength;
+    let len = O.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 22.2.3.26 Runtime Semantics: SortCompare( x, y )#
@@ -1644,13 +1634,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
       invariant(y instanceof NumberValue, "Unexpected type");
 
       let result_ = SortCompare(x, y);
-      let numb = ToNumber(realm, result_);
+      let numb = To.ToNumber(realm, result_);
       return numb;
     };
 
     let arr = [];
     for (let j = 0; j < len; j++) {
-      let val = IntegerIndexedElementGet(realm, O, j);
+      let val = IntegerIndexedElementGet(realm, O.throwIfNotConcreteObject(), j);
       arr[j] = val;
     }
 
@@ -1658,7 +1648,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
 
     //Apply the permutation back to the original array.
     for (let j = 0; j < len; j++) {
-      IntegerIndexedElementSet(realm, O, j, arr[j]);
+      IntegerIndexedElementSet(realm, O.throwIfNotConcreteObject(), j, arr[j]);
     }
 
     // 2. Return obj;
@@ -1695,13 +1685,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
     invariant(typeof srcLength === "number");
 
     // 7. Let relativeBegin be ? ToInteger(begin).
-    let relativeBegin = ToInteger(realm, begin);
+    let relativeBegin = To.ToInteger(realm, begin);
 
     // 8. If relativeBegin < 0, let beginIndex be max((srcLength + relativeBegin), 0); else let beginIndex be min(relativeBegin, srcLength).
     let beginIndex = relativeBegin < 0 ? Math.max(srcLength + relativeBegin, 0) : Math.min(relativeBegin, srcLength);
 
     // 9. If end is undefined, let relativeEnd be srcLength; else, let relativeEnd be ? ToInteger(end).
-    let relativeEnd = !end || end instanceof UndefinedValue ? srcLength : ToInteger(realm, end.throwIfNotConcrete());
+    let relativeEnd = !end || end instanceof UndefinedValue ? srcLength : To.ToInteger(realm, end.throwIfNotConcrete());
 
     // 10. If relativeEnd < 0, let endIndex be max((srcLength + relativeEnd), 0); else let endIndex be min(relativeEnd, srcLength).
     let endIndex = relativeEnd < 0 ? Math.max(srcLength + relativeEnd, 0) : Math.min(relativeEnd, srcLength);
@@ -1733,13 +1723,13 @@ export default function(realm: Realm, obj: ObjectValue): void {
   // ECMA262 22.2.3.28
   obj.defineNativeMethod("toLocaleString", 0, context => {
     // 1. Let array be ? ToObject(this value).
-    let array = ToObject(realm, context.throwIfNotConcrete());
+    let array = To.ToObject(realm, context);
 
     // 2. Perform ? ValidateTypedArray(array).
     ValidateTypedArray(realm, array);
 
     // 3. Let len be array.[[ArrayLength]].
-    let len = array.$ArrayLength;
+    let len = array.throwIfNotConcreteObject().$ArrayLength;
     invariant(typeof len === "number");
 
     // 4. Let separator be the String value for the list-separator String appropriate for the host environment's current locale (this is derived in an implementation-defined way).
@@ -1759,7 +1749,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
     } else {
       // 8. Else,
       // a. Let R be ? ToString(? Invoke(firstElement, "toLocaleString")).
-      R = ToStringPartial(realm, Invoke(realm, firstElement, "toLocaleString"));
+      R = To.ToStringPartial(realm, Invoke(realm, firstElement, "toLocaleString"));
     }
 
     // 9. Let k be 1.
@@ -1780,7 +1770,7 @@ export default function(realm: Realm, obj: ObjectValue): void {
       } else {
         // d. Else,
         // i. Let R be ? ToString(? Invoke(nextElement, "toLocaleString")).
-        R = ToStringPartial(realm, Invoke(realm, nextElement, "toLocaleString"));
+        R = To.ToStringPartial(realm, Invoke(realm, nextElement, "toLocaleString"));
       }
 
       // e. Let R be a String value produced by concatenating S and R.

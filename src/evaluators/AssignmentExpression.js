@@ -15,16 +15,13 @@ import { Value, ObjectValue } from "../values/index.js";
 import { Reference } from "../environment.js";
 import {
   DestructuringAssignmentEvaluation,
-  GetReferencedName,
-  GetValue,
   HasOwnProperty,
   IsAnonymousFunctionDefinition,
   IsIdentifierRef,
-  PutValue,
-  SetFunctionName,
 } from "../methods/index.js";
+import { Environment, Functions, Properties } from "../singletons.js";
 import invariant from "../invariant.js";
-import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "babel-types";
+import type { BabelNodeAssignmentExpression, BabelBinaryOperator } from "@babel/types";
 import { computeBinary } from "./BinaryExpression.js";
 
 // ECMA262 12.15 Assignment Operators
@@ -54,7 +51,7 @@ export default function(
       // c. Let rref be the result of evaluating AssignmentExpression.
       let rref = env.evaluate(AssignmentExpression, strictCode);
       // d. Let rval be ? GetValue(rref).
-      let rval = GetValue(realm, rref);
+      let rval = Environment.GetValue(realm, rref);
       // e. If IsAnonymousFunctionDefinition(AssignmentExpression) and IsIdentifierRef of LeftHandSideExpression are both true, then
       if (
         IsAnonymousFunctionDefinition(realm, AssignmentExpression) &&
@@ -66,11 +63,11 @@ export default function(
         // ii. If hasNameProperty is false, perform SetFunctionName(rval, GetReferencedName(lref)).
         if (!hasNameProperty) {
           invariant(lref instanceof Reference);
-          SetFunctionName(realm, rval, GetReferencedName(realm, lref));
+          Functions.SetFunctionName(realm, rval, Environment.GetReferencedName(realm, lref));
         }
       }
       // f. Perform ? PutValue(lref, rval).
-      PutValue(realm, lref, rval);
+      Properties.PutValue(realm, lref, rval);
       // g. Return rval.
       return rval;
     }
@@ -82,7 +79,7 @@ export default function(
     let rref = env.evaluate(AssignmentExpression, strictCode);
 
     // 4. Let rval be ? GetValue(rref).
-    let rval = GetValue(realm, rref);
+    let rval = Environment.GetValue(realm, rref);
 
     // 5. Let status be the result of performing DestructuringAssignmentEvaluation of assignmentPattern using rval as the argument.
     DestructuringAssignmentEvaluation(realm, assignmentPattern, rval, strictCode, env);
@@ -98,17 +95,17 @@ export default function(
   // 1. Let lref be the result of evaluating LeftHandSideExpression.
   let lref = env.evaluate(LeftHandSideExpression, strictCode);
   // 2. Let lval be ? GetValue(lref).
-  let lval = GetValue(realm, lref);
+  let lval = Environment.GetValue(realm, lref);
   // 3. Let rref be the result of evaluating AssignmentExpression.
   let rref = env.evaluate(AssignmentExpression, strictCode);
   // 4. Let rval be ? GetValue(rref).
-  let rval = GetValue(realm, rref);
+  let rval = Environment.GetValue(realm, rref);
   // 5. Let op be the @ where AssignmentOperator is @=.
   let op = ((AssignmentOperator.slice(0, -1): any): BabelBinaryOperator);
   // 6. Let r be the result of applying op to lval and rval as if evaluating the expression lval op rval.
-  let r = GetValue(realm, computeBinary(realm, op, lval, rval, ast.left.loc, ast.right.loc));
+  let r = Environment.GetValue(realm, computeBinary(realm, op, lval, rval, ast.left.loc, ast.right.loc));
   // 7. Perform ? PutValue(lref, r).
-  PutValue(realm, lref, r);
+  Properties.PutValue(realm, lref, r);
   // 8. Return r.
   return r;
 }

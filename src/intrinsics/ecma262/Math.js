@@ -11,11 +11,12 @@
 
 import type { Realm } from "../../realm.js";
 import { StringValue, ObjectValue, NumberValue, AbstractValue } from "../../values/index.js";
-import { ToNumber, ToUint32, IsToNumberPure } from "../../methods/index.js";
+import { To } from "../../singletons.js";
 import invariant from "../../invariant.js";
-import buildExpressionTemplate from "../../utils/builder.js";
+import { CompilerDiagnostic } from "../../errors.js";
+import { Placeholders } from "../../utils/PreludeGenerator.js";
 
-let buildMathTemplates: Map<string, { template: Function, templateSource: string }> = new Map();
+let buildMathTemplates: Map<string, string> = new Map();
 
 export default function(realm: Realm): ObjectValue {
   let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, "Math");
@@ -143,10 +144,12 @@ export default function(realm: Realm): ObjectValue {
   ];
 
   // ECMA262 20.2.2.11
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) functions.push(["clz32", 1]);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    functions.push(["clz32", 1]);
 
   // ECMA262 20.2.2.29 (_x_)
-  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) functions.push(["sign", 1]);
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
+    functions.push(["sign", 1]);
 
   for (let [name, length] of functions) {
     obj.defineNativeMethod(name, length, (context, args, originalLength) => {
@@ -155,53 +158,60 @@ export default function(realm: Realm): ObjectValue {
       if (
         originalLength <= 26 &&
         args.some(arg => arg instanceof AbstractValue) &&
-        args.every(arg => IsToNumberPure(realm, arg))
+        args.every(arg => To.IsToNumberPure(realm, arg))
       ) {
-        let r = buildMathTemplates.get(name);
-        if (r === undefined) {
-          let params = "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z".substring(0, originalLength * 2 - 1);
-          let templateSource = `Math.${name}(${params})`;
-          let template = buildExpressionTemplate(templateSource);
-          buildMathTemplates.set(name, (r = { template, templateSource }));
+        let templateSource = buildMathTemplates.get(name);
+        if (templateSource === undefined) {
+          let params = Placeholders.slice(0, originalLength).join(",");
+          templateSource = `global.Math.${name}(${params})`;
+          buildMathTemplates.set(name, templateSource);
         }
-        return AbstractValue.createFromTemplate(realm, r.template, NumberValue, args, r.templateSource);
+        return AbstractValue.createFromTemplate(realm, templateSource, NumberValue, args);
       }
 
       return new NumberValue(
         realm,
-        Math[name].apply(null, args.map((arg, i) => ToNumber(realm, arg.throwIfNotConcrete())))
+        Math[name].apply(null, args.map((arg, i) => To.ToNumber(realm, arg.throwIfNotConcrete())))
       );
     });
   }
 
   const imulTemplateSrc = "global.Math.imul(A, B)";
-  const imulTemplate = buildExpressionTemplate(imulTemplateSrc);
 
   // ECMA262 20.2.2.19
   obj.defineNativeMethod("imul", 2, (context, [x, y]) => {
     if (
       (x instanceof AbstractValue || y instanceof AbstractValue) &&
-      IsToNumberPure(realm, x) &&
-      IsToNumberPure(realm, y)
+      To.IsToNumberPure(realm, x) &&
+      To.IsToNumberPure(realm, y)
     ) {
-      return AbstractValue.createFromTemplate(realm, imulTemplate, NumberValue, [x, y], imulTemplateSrc);
+      return AbstractValue.createFromTemplate(realm, imulTemplateSrc, NumberValue, [x, y]);
     }
 
     return new NumberValue(
       realm,
-      Math.imul(ToUint32(realm, x.throwIfNotConcrete()), ToUint32(realm, y.throwIfNotConcrete()))
+      Math.imul(To.ToUint32(realm, x.throwIfNotConcrete()), To.ToUint32(realm, y.throwIfNotConcrete()))
     );
   });
 
   const mathRandomTemplateSrc = "global.Math.random()";
-  const mathRandomTemplate = buildExpressionTemplate(mathRandomTemplateSrc);
 
   // ECMA262 20.2.2.27
   obj.defineNativeMethod("random", 0, context => {
-    if (realm.mathRandomGenerator !== undefined) {
-      return new NumberValue(realm, realm.mathRandomGenerator());
+    let mathRandomGenerator = realm.mathRandomGenerator;
+    if (mathRandomGenerator !== undefined) {
+      let loc = realm.currentLocation;
+      let error = new CompilerDiagnostic(
+        "Result of Math.random() is made deterministic via a fixed mathRandomSeed",
+        loc,
+        "PP8000",
+        "Information"
+      );
+      realm.handleError(error);
+
+      return new NumberValue(realm, mathRandomGenerator());
     } else if (realm.useAbstractInterpretation) {
-      return AbstractValue.createTemporalFromTemplate(realm, mathRandomTemplate, NumberValue, [], {
+      return AbstractValue.createTemporalFromTemplate(realm, mathRandomTemplateSrc, NumberValue, [], {
         isPure: true,
         skipInvariant: true,
       });

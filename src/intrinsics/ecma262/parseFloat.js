@@ -7,12 +7,12 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../../realm.js";
 import { NativeFunctionValue } from "../../values/index.js";
 import { NumberValue } from "../../values/index.js";
-import { ToStringPartial } from "../../methods/to.js";
+import { To } from "../../singletons.js";
 
 export default function(realm: Realm): NativeFunctionValue {
   // ECMA262 18.2.4
@@ -25,7 +25,7 @@ export default function(realm: Realm): NativeFunctionValue {
       if (!string) return realm.intrinsics.NaN;
 
       // 1. Let inputString be ? ToString(string).
-      let inputString = ToStringPartial(realm, string);
+      let inputString = To.ToStringPartial(realm, string);
 
       return new NumberValue(realm, parseFloat(inputString));
     },

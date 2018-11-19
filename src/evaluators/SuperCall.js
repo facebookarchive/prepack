@@ -7,25 +7,20 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
+import type { BabelNodeExpression, BabelNodeSpreadElement } from "@babel/types";
 import type { Realm } from "../realm.js";
 import type { LexicalEnvironment } from "../environment.js";
 import { FunctionEnvironmentRecord } from "../environment.js";
-import { Completion } from "../completions.js";
 import { Value, UndefinedValue, ObjectValue } from "../values/index.js";
-import {
-  GetNewTarget,
-  ArgumentListEvaluation,
-  Construct,
-  GetThisEnvironment,
-  IsConstructor,
-} from "../methods/index.js";
+import { GetNewTarget, ArgumentListEvaluation, Construct, IsConstructor } from "../methods/index.js";
+import { Environment } from "../singletons.js";
 import invariant from "../invariant.js";
 
 function GetSuperConstructor(realm: Realm) {
   // 1. Let envRec be GetThisEnvironment( ).
-  let envRec = GetThisEnvironment(realm);
+  let envRec = Environment.GetThisEnvironment(realm);
 
   // 2. Assert: envRec is a function Environment Record.
   invariant(envRec instanceof FunctionEnvironmentRecord);
@@ -50,11 +45,11 @@ function GetSuperConstructor(realm: Realm) {
 
 // ECMA262 12.3.5.1
 export default function SuperCall(
-  Arguments: Array<BabelNode>,
+  Arguments: Array<BabelNodeExpression | BabelNodeSpreadElement>,
   strictCode: boolean,
   env: LexicalEnvironment,
   realm: Realm
-): Completion | Value {
+): Value {
   // 1. Let newTarget be GetNewTarget().
   let newTarget = GetNewTarget(realm);
 
@@ -74,12 +69,12 @@ export default function SuperCall(
   // 6. ReturnIfAbrupt(argList).
 
   // 7. Let result be Construct(func, argList, newTarget).
-  let result = Construct(realm, func, argList, newTarget);
+  let result = Construct(realm, func, argList, newTarget).throwIfNotConcreteObject();
 
   // 8. ReturnIfAbrupt(result).
 
   // 9. Let thisER be GetThisEnvironment( ).
-  let thisER = GetThisEnvironment(realm);
+  let thisER = Environment.GetThisEnvironment(realm);
 
   // 10. Return thisER.BindThisValue(result).
   return thisER.BindThisValue(result);

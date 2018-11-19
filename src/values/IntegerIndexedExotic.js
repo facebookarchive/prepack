@@ -7,18 +7,18 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { PropertyKeyValue, Descriptor } from "../types.js";
-import { ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "../values/index.js";
-import { OrdinaryGetOwnProperty, OrdinaryDefineOwnProperty, OrdinarySet } from "../methods/properties.js";
-import { CanonicalNumericIndexString, ToString } from "../methods/to.js";
+import { ObjectValue, NumberValue, StringValue, Value, UndefinedValue } from "./index.js";
 import { IsInteger, IsArrayIndex, IsAccessorDescriptor, IsDetachedBuffer, IsPropertyKey } from "../methods/is.js";
 import { OrdinaryGet } from "../methods/get.js";
 import { OrdinaryHasProperty } from "../methods/has.js";
 import { IntegerIndexedElementSet, IntegerIndexedElementGet } from "../methods/typedarray.js";
-import invariant from "../invariant";
+import { Properties, To } from "../singletons.js";
+import invariant from "../invariant.js";
+import { PropertyDescriptor } from "../descriptors.js";
 
 export default class IntegerIndexedExotic extends ObjectValue {
   constructor(realm: Realm, intrinsicName?: string) {
@@ -38,7 +38,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -52,16 +52,16 @@ export default class IntegerIndexedExotic extends ObjectValue {
         if (value instanceof UndefinedValue) return undefined;
 
         // iii. Return a PropertyDescriptor{[[Value]]: value, [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: false}.
-        return {
+        return new PropertyDescriptor({
           value: value,
           writable: true,
           enumerable: true,
           configurable: false,
-        };
+        });
       }
     }
     // 4. Return OrdinaryGetOwnProperty(O, P).
-    return OrdinaryGetOwnProperty(this.$Realm, O, P);
+    return Properties.OrdinaryGetOwnProperty(this.$Realm, O, P);
   }
 
   // ECMA262 9.4.5.2
@@ -77,7 +77,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -106,7 +106,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
         if (numericIndex < 0) return false;
 
         // vi. If numericIndex ≥ O.[[ArrayLength]], return false.
-        invariant(O.$ArrayLength);
+        invariant(O.$ArrayLength !== undefined);
         if (numericIndex >= O.$ArrayLength) return false;
 
         // vii. Return true.
@@ -119,7 +119,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
   }
 
   // ECMA262 9.4.5.3
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+  $DefineOwnProperty(P: PropertyKeyValue, _Desc: Descriptor): boolean {
     let O = this;
 
     // 1. Assert: IsPropertyKey(P) is true.
@@ -131,7 +131,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 3. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -154,6 +154,8 @@ export default class IntegerIndexedExotic extends ObjectValue {
         // v. If numericIndex ≥ length, return false.
         if (numericIndex >= length) return false;
 
+        let Desc = _Desc.throwIfNotConcrete(this.$Realm);
+
         // vi. If IsAccessorDescriptor(Desc) is true, return false.
         if (IsAccessorDescriptor(this.$Realm, Desc) === true) return false;
 
@@ -170,6 +172,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
         if (Desc.value) {
           // 1. Let value be Desc.[[Value]].
           let value = Desc.value;
+          invariant(value === undefined || value instanceof Value);
 
           // 2. Return ? IntegerIndexedElementSet(O, numericIndex, value).
           return IntegerIndexedElementSet(this.$Realm, O, numericIndex, value);
@@ -181,7 +184,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     }
 
     // 4. Return ! OrdinaryDefineOwnProperty(O, P, Desc).
-    return OrdinaryDefineOwnProperty(this.$Realm, O, P, Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, O, P, _Desc);
   }
 
   // ECMA262 9.4.5.4
@@ -194,7 +197,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 2. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -220,7 +223,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 2. If Type(P) is String, then
     if (typeof P === "string" || P instanceof StringValue) {
       // a. Let numericIndex be ! CanonicalNumericIndexString(P).
-      let numericIndex = CanonicalNumericIndexString(
+      let numericIndex = To.CanonicalNumericIndexString(
         this.$Realm,
         typeof P === "string" ? new StringValue(this.$Realm, P) : P
       );
@@ -233,7 +236,7 @@ export default class IntegerIndexedExotic extends ObjectValue {
     }
 
     // 3. Return ? OrdinarySet(O, P, V, Receiver).
-    return OrdinarySet(this.$Realm, O, P, V, Receiver);
+    return Properties.OrdinarySet(this.$Realm, O, P, V, Receiver);
   }
 
   // ECMA262 9.4.5.6
@@ -259,14 +262,15 @@ export default class IntegerIndexedExotic extends ObjectValue {
     // 4. For each integer i starting with 0 such that i < len, in ascending order,
     for (let i = 0; i < len; ++i) {
       // a. Add ! ToString(i) as the last element of keys.
-      keys.push(new StringValue(this.$Realm, ToString(this.$Realm, new NumberValue(this.$Realm, i))));
+      keys.push(new StringValue(this.$Realm, To.ToString(this.$Realm, new NumberValue(this.$Realm, i))));
     }
 
+    let realm = this.$Realm;
     // 5. For each own property key P of O such that Type(P) is String and P is not an integer index, in ascending chronological order of property creation
-    let properties = O.getOwnPropertyKeysArray();
-    for (let key of properties.filter(x => !IsArrayIndex(this.$Realm, x))) {
+    let properties = Properties.GetOwnPropertyKeysArray(realm, O, false, false);
+    for (let key of properties.filter(x => !IsArrayIndex(realm, x))) {
       // i. Add P as the last element of keys.
-      keys.push(new StringValue(this.$Realm, key));
+      keys.push(new StringValue(realm, key));
     }
 
     // 6. For each own property key P of O such that Type(P) is Symbol, in ascending chronological order of property creation

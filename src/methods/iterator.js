@@ -7,20 +7,21 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-/* @flow */
+/* @flow strict-local */
 
 import type { Realm } from "../realm.js";
 import type { CallableObjectValue } from "../types.js";
 import { Completion, AbruptCompletion, ThrowCompletion } from "../completions.js";
 import { NativeFunctionValue, NumberValue, ObjectValue, StringValue, UndefinedValue, Value } from "../values/index.js";
-import { Call, Get, GetMethod, Invoke, ObjectCreate, ToBooleanPartial } from "./index.js";
+import { Call, Get, GetMethod, Invoke } from "./index.js";
 import invariant from "../invariant.js";
 import type { IterationKind } from "../types.js";
 import { SameValue } from "./abstract.js";
-import { CreateMethodProperty, CreateIterResultObject } from "./create.js";
+import { Create, To } from "../singletons.js";
 
 // ECMA262 7.4.1
-export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefined, method?: Value): ObjectValue {
+export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefined, _method?: Value): ObjectValue {
+  let method = _method;
   // 1. If method was not passed, then
   if (!method) {
     // a. Let method be ? GetMethod(obj, @@iterator).
@@ -28,7 +29,7 @@ export function GetIterator(realm: Realm, obj: Value = realm.intrinsics.undefine
   }
 
   // 2. Let iterator be ? Call(method, obj).
-  let iterator = Call(realm, method, obj);
+  let iterator = Call(realm, (method: Value), obj);
 
   // 3. If Type(iterator) is not Object, throw a TypeError exception.
   if (!(iterator instanceof ObjectValue)) {
@@ -69,7 +70,7 @@ export function IteratorComplete(realm: Realm, iterResult: ObjectValue): boolean
   invariant(iterResult instanceof ObjectValue, "expected obj");
 
   // 2. Return ToBoolean(? Get(iterResult, "done")).
-  return ToBooleanPartial(realm, Get(realm, iterResult, "done"));
+  return To.ToBooleanPartial(realm, Get(realm, iterResult, "done"));
 }
 
 // ECMA262 7.4.2
@@ -97,7 +98,7 @@ export function IteratorNext(realm: Realm, iterator: Value, value?: Value): Obje
 // ECMA262 7.4.8
 export function CreateListIterator(realm: Realm, list: Array<Value>): ObjectValue {
   // 1. Let iterator be ObjectCreate(%IteratorPrototype%, « [[IteratorNext]], [[IteratedList]], [[ListIteratorNextIndex]] »).
-  let iterator = ObjectCreate(realm, realm.intrinsics.IteratorPrototype, {
+  let iterator = Create.ObjectCreate(realm, realm.intrinsics.IteratorPrototype, {
     $IteratorNext: undefined,
     $IteratedList: undefined,
     $ListIteratorNextIndex: undefined,
@@ -116,7 +117,7 @@ export function CreateListIterator(realm: Realm, list: Array<Value>): ObjectValu
   iterator.$IteratorNext = next;
 
   // 6. Perform CreateMethodProperty(iterator, "next", next).
-  CreateMethodProperty(realm, iterator, new StringValue(realm, "next"), next);
+  Create.CreateMethodProperty(realm, iterator, new StringValue(realm, "next"), next);
 
   // 7. Return iterator.
   return iterator;
@@ -172,14 +173,14 @@ function ListIterator_next(realm: Realm): NativeFunctionValue {
     // 10. If index ≥ len, then
     if (index >= len) {
       // a. Return CreateIterResultObject(undefined, true).
-      return CreateIterResultObject(realm, realm.intrinsics.undefined, true);
+      return Create.CreateIterResultObject(realm, realm.intrinsics.undefined, true);
     }
 
     // 11. Set the value of the [[ListIteratorNextIndex]] internal slot of O to index+1.
     O.$ListIteratorNextIndex = index + 1;
 
     // 12. Return CreateIterResultObject(list[index], false).
-    return CreateIterResultObject(realm, list[index], false);
+    return Create.CreateIterResultObject(realm, list[index], false);
   });
 
   return func;
@@ -198,7 +199,7 @@ export function CreateMapIterator(realm: Realm, map: Value, kind: IterationKind)
   }
 
   // 3. Let iterator be ObjectCreate(%MapIteratorPrototype%, « [[Map]], [[MapNextIndex]], [[MapIterationKind]] »).
-  let iterator = ObjectCreate(realm, realm.intrinsics.MapIteratorPrototype, {
+  let iterator = Create.ObjectCreate(realm, realm.intrinsics.MapIteratorPrototype, {
     $Map: undefined,
     $MapNextIndex: undefined,
     $MapIterationKind: undefined,
@@ -230,7 +231,7 @@ export function CreateSetIterator(realm: Realm, set: Value, kind: IterationKind)
   }
 
   // 3. Let iterator be ObjectCreate(%SetIteratorPrototype%, « [[IteratedSet]], [[SetNextIndex]], [[SetIterationKind]] »).
-  let iterator = ObjectCreate(realm, realm.intrinsics.SetIteratorPrototype, {
+  let iterator = Create.ObjectCreate(realm, realm.intrinsics.SetIteratorPrototype, {
     $IteratedSet: undefined,
     $SetNextIndex: undefined,
     $SetIterationKind: undefined,
