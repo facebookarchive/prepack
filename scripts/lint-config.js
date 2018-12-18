@@ -48,7 +48,6 @@ module.exports = {
     fbt: true,
     requireWeak: true,
     xuiglyph: true,
-    __NUM_MODULES__: true,
     DebuggerInternal: true,
     define: true,
     // React
