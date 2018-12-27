@@ -7,6 +7,10 @@ For initialization-heavy code, Prepack works best in an environment where JavaSc
 
 See the official [prepack.io](https://prepack.io) website for an introduction and an [interactive REPL playground](https://prepack.io/repl.html).
 
+## Status
+
+**We, the Prepack team at Facebook, have temporarily set down work on Prepack including the React compiler project. You won't see many Prepack PRs while we are currently prioritizing some other projects. However, we'd like to resume work on Prepack again in a few months.**
+
 ## How to use Prepack
 
 Install the CLI via npm,
@@ -51,7 +55,7 @@ The following are a few plugins to other tools. They have been created and are m
 - [A Visual Studio code plugin for Prepack](https://marketplace.visualstudio.com/items?itemName=RobinMalfait.prepack-vscode)
 - [A babel plugin which transforms Flow annotations into prepack model declarations](https://www.npmjs.com/package/babel-plugin-flow-prepack).
 
-## Status
+## Test Results and Code Coverage
 
 - [test262 status on master branch](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/test262-status.txt?branch=master)
 - [code coverage report for serialization tests](https://circleci.com/api/v1/project/facebook/prepack/latest/artifacts/0/$CIRCLE_ARTIFACTS/coverage-report-sourcemapped/index.html?branch=master)
