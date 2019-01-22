@@ -1,6 +1,6 @@
-// Copies of if :2
-// Copies of console:4
-let x = global.__abstract ? __abstract("boolean", "true") : true;
+// omit invariants
+// Copies of if \(:2
+var x = global.__abstract ? __abstract("boolean", "x") : "x";
 
 if (x) {
   console.log("Hello");
