@@ -368,6 +368,10 @@ export type PathType = {
 export class PathConditions {
   add(c: AbstractValue): void {}
 
+  equals(x: PathConditions): boolean {
+    return false;
+  }
+
   // this => val. A false value does not imply that !(this => val).
   implies(e: Value, depth: number = 0): boolean {
     return false;

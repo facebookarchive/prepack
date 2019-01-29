@@ -1197,7 +1197,44 @@ export class Generator {
     invariant(other.effectsToApply === undefined);
 
     if (other.empty()) return;
-    this._entries.push(...other._entries);
+    let otherEntries = other._entries;
+    otherEntries.forEach(otherEntry => this._appendEntry(otherEntry));
+  }
+
+  _appendEntry(entry: GeneratorEntry): void {
+    let attemptToMergeEntry = (): boolean => {
+      // It attempts to merge the `entry` argument with the last entry item
+      // in `this._entries` if both are `JOIN_GENERATORS` and have the same
+      // path conditions
+      if (entry instanceof TemporalOperationEntry) {
+        let operationDescriptor = entry.operationDescriptor;
+        if (operationDescriptor.type === "JOIN_GENERATORS" && !this.empty()) {
+          invariant(operationDescriptor.data.generators);
+          let thisLastEntry = this._entries[this._entries.length - 1];
+          if (thisLastEntry instanceof TemporalOperationEntry) {
+            let thisLastEntryOperationDescriptor = thisLastEntry.operationDescriptor;
+            if (thisLastEntryOperationDescriptor.type === "JOIN_GENERATORS") {
+              invariant(thisLastEntryOperationDescriptor.data.generators);
+              let [entryGenerator1, entryGenerator2] = operationDescriptor.data.generators;
+              let [thisLastEntryGenerator1, thisLastEntryGenerator2] = thisLastEntryOperationDescriptor.data.generators;
+              if (
+                entryGenerator1.pathConditions.equals(thisLastEntryGenerator1.pathConditions) &&
+                entryGenerator2.pathConditions.equals(thisLastEntryGenerator2.pathConditions)
+              ) {
+                if (!entryGenerator1.empty())
+                  entryGenerator1._entries.forEach(e => thisLastEntryGenerator1._entries.push(e));
+                if (!entryGenerator2.empty())
+                  entryGenerator2._entries.forEach(e => thisLastEntryGenerator2._entries.push(e));
+                return true;
+              }
+            }
+          }
+        }
+      }
+      return false;
+    };
+
+    attemptToMergeEntry() || this._entries.push(entry);
   }
 
   joinGenerators(joinCondition: AbstractValue, generator1: Generator, generator2: Generator): void {
