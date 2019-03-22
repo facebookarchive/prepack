@@ -30,3 +30,5 @@ untyped-import
 untyped-type-import
 sketchy-null
 
+[version]
+^0.83.0
