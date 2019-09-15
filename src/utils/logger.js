@@ -96,9 +96,9 @@ export class Logger {
         let message = object.properties.get("message");
         console.error(
           message &&
-          message.descriptor &&
-          message.descriptor instanceof PropertyDescriptor &&
-          message.descriptor.value instanceof StringValue
+            message.descriptor &&
+            message.descriptor instanceof PropertyDescriptor &&
+            message.descriptor.value instanceof StringValue
             ? message.descriptor.value.value
             : "(no message available)"
         );

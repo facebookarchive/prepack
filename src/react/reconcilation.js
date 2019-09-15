@@ -201,8 +201,8 @@ export class Reconciler {
     let effects;
     try {
       this.realm.react.activeReconciler = this;
-      effects = this.realm.wrapInGlobalEnv(
-        () => (this.realm.isInPureScope() ? funcCall() : this.realm.evaluateWithPureScope(funcCall))
+      effects = this.realm.wrapInGlobalEnv(() =>
+        this.realm.isInPureScope() ? funcCall() : this.realm.evaluateWithPureScope(funcCall)
       );
     } catch (e) {
       this._handleComponentTreeRootFailure(e, evaluatedRootNode);

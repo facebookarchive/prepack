@@ -417,8 +417,8 @@ export default class AbstractObjectValue extends AbstractValue {
           Desc.configurable !== undefined
             ? Desc.configurable
             : firstExistingDesc
-              ? firstExistingDesc.configurable
-              : false,
+            ? firstExistingDesc.configurable
+            : false,
       });
       let newVal = desc.value;
       if (this.kind === "conditional") {

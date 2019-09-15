@@ -25,7 +25,7 @@ import { DebuggerError } from "./../common/DebuggerError.js";
 
 /* An implementation of an debugger adapter adhering to the VSCode Debug protocol
  * The adapter is responsible for communication between the UI and Prepack
-*/
+ */
 class PrepackDebugSession extends DebugSession {
   /**
    * Creates a new debug adapter that is used for one debug session.

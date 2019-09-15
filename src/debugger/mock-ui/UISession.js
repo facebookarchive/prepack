@@ -29,7 +29,7 @@ const TWO_CRLF = "\r\n\r\n";
 /* Represents one debugging session in the CLI.
  * Read in user input from the command line, parses the input into commands,
  * sends the commands to the adapter and process any responses
-*/
+ */
 export class UISession {
   constructor(proc: Process, args: DebuggerCLIArguments) {
     this._proc = proc;

@@ -14,7 +14,9 @@ class Child2 extends React.Component {
   render() {
     return (
       <React.Fragment>
-        {Array.from(this.props.items).map(item => <Child3 data={item} key={item.id} />)}
+        {Array.from(this.props.items).map(item => (
+          <Child3 data={item} key={item.id} />
+        ))}
         <span>{this.randomVar.text}</span>
       </React.Fragment>
     );
