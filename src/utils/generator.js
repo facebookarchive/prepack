@@ -1218,8 +1218,8 @@ export class Generator {
               let [entryGenerator1, entryGenerator2] = operationDescriptor.data.generators;
               let [thisLastEntryGenerator1, thisLastEntryGenerator2] = thisLastEntryOperationDescriptor.data.generators;
               if (
-                entryGenerator1.pathConditions.equals(thisLastEntryGenerator1.pathConditions) &&
-                entryGenerator2.pathConditions.equals(thisLastEntryGenerator2.pathConditions)
+                entryGenerator1.pathConditions.equates(thisLastEntryGenerator1.pathConditions) &&
+                entryGenerator2.pathConditions.equates(thisLastEntryGenerator2.pathConditions)
               ) {
                 if (!entryGenerator1.empty())
                   entryGenerator1._entries.forEach(e => thisLastEntryGenerator1._entries.push(e));

@@ -368,7 +368,7 @@ export type PathType = {
 export class PathConditions {
   add(c: AbstractValue): void {}
 
-  equals(x: PathConditions): boolean {
+  equates(x: PathConditions): boolean {
     return false;
   }
 
