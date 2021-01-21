@@ -9,7 +9,7 @@ See the official [prepack.io](https://prepack.io) website for an introduction an
 
 ## Status
 
-**We, the Prepack team at Facebook, have temporarily set down work on Prepack including the React compiler project. You won't see many Prepack PRs while we are currently prioritizing some other projects. However, we'd like to resume work on Prepack again in a few months.**
+**We, the Prepack team at Facebook, have temporarily set down work on Prepack including the React compiler project. You won't see many Prepack PRs while we are currently prioritizing some other projects.**
 
 ## How to use Prepack
 
