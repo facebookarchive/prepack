@@ -60,4 +60,4 @@ ensure that you copy+paste the relevant section number and individual steps.
 
 ## License
 By contributing to Prepack, you agree that your contributions will be licensed
-under the LICENSE file in the root directory of this source tree.
+under the [LICENSE](https://github.com/facebook/prepack/blob/master/LICENSE) file in the root directory of this source tree.
