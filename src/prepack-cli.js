@@ -315,13 +315,12 @@ function run(
         case "debugDiagnosticSeverity":
           arg = args.shift();
           if (!DiagnosticSeverityValues.includes(arg)) {
-            console.error(`Unsupported debugDiagnosticSeverity: ${arg}`);
+            console.error(
+              `Unsupported debugDiagnosticSeverity: ${arg}, use one of ${DiagnosticSeverityValues.join(", ")}. ` +
+                `The default is FatalError.`
+            );
             process.exit(1);
           }
-          invariant(
-            arg === "FatalError" || arg === "RecoverableError" || arg === "Warning" || arg === "Information",
-            `Invalid debugger diagnostic severity: ${arg}`
-          );
           debuggerConfigArgs.diagnosticSeverity = arg;
           reproArguments.push("--debugDiagnosticSeverity", arg);
           break;
