@@ -7,8 +7,8 @@ for (var p in ob) {
 }
 
 let tgt = {};
-for (var p in ob) {
-  tgt[p] = ob2[p];
+for (var q in ob) {
+  tgt[q] = ob2[q];
 }
 
 inspect = function() {

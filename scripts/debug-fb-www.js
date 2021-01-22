@@ -92,10 +92,13 @@ let components = new Map();
 let startTime = Date.now();
 let uniqueEvaluatedComponents = 0;
 
-function compileSource(source) {
+function compileSource(originalCode) {
   let serialized;
   try {
-    serialized = prepackSources([{ filePath: inputPath, fileContents: source, sourceMapContents: "" }], prepackOptions);
+    serialized = prepackSources(
+      [{ filePath: inputPath, fileContents: originalCode, sourceMapContents: "" }],
+      prepackOptions
+    );
   } catch (e) {
     console.log(`\n${chalk.inverse(`=== Diagnostics Log ===`)}\n`);
     errorsCaptured.forEach(error => printError(error));
@@ -103,7 +106,7 @@ function compileSource(source) {
   }
   return {
     stats: serialized.reactStatistics,
-    code: serialized.code,
+    compiledCode: serialized.code,
   };
 }
 
@@ -118,9 +121,11 @@ async function readComponentsList() {
   }
 }
 
-function lintCompiledSource(source) {
+function lintCompiledCode(compiledCode, originalCode) {
   let linter = new Linter();
-  let errors = linter.verify(source, lintConfig);
+  let lintDirectives = originalCode.split("\n").filter(line => line.startsWith("/* eslint-"));
+  let codeToLint = `${lintDirectives.join("\n")}\n${compiledCode}`;
+  let errors = linter.verify(codeToLint, lintConfig);
   if (errors.length > 0) {
     console.log(`\n${chalk.inverse(`=== Validation Failed ===`)}\n`);
     for (let error of errors) {
@@ -131,10 +136,10 @@ function lintCompiledSource(source) {
 }
 
 async function compileFile() {
-  let source = await readFileAsync(inputPath, "utf8");
-  let { stats, code } = await compileSource(source);
-  await writeFileAsync(outputPath, code);
-  lintCompiledSource(code);
+  let originalCode = await readFileAsync(inputPath, "utf8");
+  let { stats, compiledCode } = await compileSource(originalCode);
+  await writeFileAsync(outputPath, compiledCode);
+  lintCompiledCode(compiledCode, originalCode);
   // $FlowFixMe: no idea what this is about
   return stats;
 }

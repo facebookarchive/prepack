@@ -18,6 +18,7 @@ module.exports = {
   },
   rules: {
     "no-undef": "error",
+    "no-redeclare": "error",
     "no-use-before-define": ["error", { variables: false, functions: false }],
   },
   parserOptions: {
