@@ -1,6 +1,12 @@
-# Prepack [![Circle CI](https://circleci.com/gh/facebook/prepack.png?style=shield&circle-token=1109197a81e634fd06e162c25d309a420585acd5)](https://circleci.com/gh/facebook/prepack)
-
-<img src="assets/PrepackLogo.png" width=150 align=right>
+<p align="center"><img src="assets/PrepackLogo.png" width="150"></p>
+<h1 align="center">
+   Prepack
+</h1>                                                                                                                                               
+<p align="center">
+  <a href="https://circleci.com/gh/facebook/prepack">
+    <img src="https://circleci.com/gh/facebook/prepack.png?style=shield&circle-token=1109197a81e634fd06e162c25d309a420585acd5" alt="Circle CI" />
+  </a>
+</p>
 
 Prepack is a partial evaluator for JavaScript. Prepack rewrites a JavaScript bundle, resulting in JavaScript code that executes more efficiently.
 For initialization-heavy code, Prepack works best in an environment where JavaScript parsing is effectively cached.
