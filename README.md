@@ -1,4 +1,5 @@
 # Prepack [![Circle CI](https://circleci.com/gh/facebook/prepack.png?style=shield&circle-token=1109197a81e634fd06e162c25d309a420585acd5)](https://circleci.com/gh/facebook/prepack)
+[![License](https://img.shields.io/badge/License-BSD%20-blue.svg)](https://github.com/facebook/prepack/blob/master/LICENSE)
 
 <img src="assets/PrepackLogo.png" width=150 align=right>
 
