@@ -8,6 +8,7 @@
  */
 
 const path = require("path");
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 
 process.env.NODE_ENV = "production";
 
@@ -20,10 +21,22 @@ const WebpackConfig = {
   },
   parallelism: 1,
   profile: true,
-  mode: "production",
+  mode: process.env.NODE_ENV == "production" ? process.env.NODE_ENV || "development",
   optimization: {
-    minimize: true,
-  },
+    minimize: [new UglifyJsPlugin()],
+    splitChunks: {
+		cacheGroups: {
+			vendors: {
+				priority: -10,
+				test: /[\\/]node_modules[\\/]/
+			}
+		},
+		chunks: 'async',
+		minChunks: 1,
+		minSize: 30000,
+		name: true
+		}
+ },
   module: {
     rules: [
       {
