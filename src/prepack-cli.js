@@ -253,11 +253,11 @@ function run(
           break;
         case "debugInFilePath":
           debugInFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally] as the field is not visable to the user
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally] as the field is not visible to the user
           break;
         case "debugOutFilePath":
           debugOutFilePath = args.shift();
-          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally] as the field is not visable to the user
+          // do not include this in reproArguments needed by --repro[OnFatalError/Unconditionally] as the field is not visible to the user
           break;
         case "lazyObjectsRuntime":
           lazyObjectsRuntime = args.shift();
