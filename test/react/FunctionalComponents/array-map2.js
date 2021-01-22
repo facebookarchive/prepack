@@ -5,7 +5,13 @@ function A(props) {
 }
 
 function App(props) {
-  return <div>{Array.from(props.items, item => <A title={item.title} key={item.id} />)}</div>;
+  return (
+    <div>
+      {Array.from(props.items, item => (
+        <A title={item.title} key={item.id} />
+      ))}
+    </div>
+  );
 }
 
 App.getTrials = function(renderer, Root) {

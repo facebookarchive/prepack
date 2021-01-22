@@ -41,30 +41,21 @@ export class PathConditionsImplementation extends PathConditions {
     this._failedNegativeImplications = undefined;
   }
 
-  // It makes the strong assumption that, in order for 2 path conditions to be equal,
-  // the number of values must be the same, as well as their order.
-  // This might not always be the case, yielding false negatives?!
-  equals(x: PathConditions): boolean {
+  // this <=> x
+  equates(x: PathConditions): boolean {
     invariant(x instanceof PathConditionsImplementation);
-    let conditionsAreEqual = () => {
-      if (this._assumedConditions.size !== x._assumedConditions.size) return false;
-      let thisConditions = Array.from(this._assumedConditions);
-      let xConditions = Array.from(x._assumedConditions);
-      let thisLength = thisConditions.length;
-      for (let i = 0; i < thisLength; i++) {
-        let thisCondition = thisConditions[i];
-        let xCondition = xConditions[i];
-        if (!thisCondition.equals(xCondition)) return false;
-      }
-      return true;
-    };
-    let baseConditionsAreEqual = () => {
-      if (this._baseConditions && !x._baseConditions) return false;
-      if (!this._baseConditions && x._baseConditions) return false;
-      if (this._baseConditions && x._baseConditions) return this._baseConditions.equals(x._baseConditions);
-      return true;
-    };
-    return this === x || (conditionsAreEqual() && baseConditionsAreEqual());
+    if (this === x) return true;
+    function* assumedConditionsDeep(pc: PathConditionsImplementation) {
+      for (let condition of pc._assumedConditions) yield condition;
+      if (pc._baseConditions !== undefined) yield* assumedConditionsDeep(pc._baseConditions);
+    }
+    for (let xCondition of assumedConditionsDeep(x)) {
+      if (!this.implies(xCondition)) return false;
+    }
+    for (let thisCondition of assumedConditionsDeep(this)) {
+      if (!x.implies(thisCondition)) return false;
+    }
+    return true;
   }
 
   isReadOnly(): boolean {

@@ -38,7 +38,8 @@ module.exports = this.__evaluatePureFunction(() => {
   function App() {
     return (
       <span>
-        This contains a ReactRelay container:<WrappedApp />
+        This contains a ReactRelay container:
+        <WrappedApp />
       </span>
     );
   }

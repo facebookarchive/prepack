@@ -25,7 +25,13 @@ function Foo(props: { href: string }) {
     { href: props.href, name: "Third Item" },
   ];
 
-  return <div>{collection.map(item => <Bar {...item} />)}</div>;
+  return (
+    <div>
+      {collection.map(item => (
+        <Bar {...item} />
+      ))}
+    </div>
+  );
 }
 
 // this is a special Prepack function hook

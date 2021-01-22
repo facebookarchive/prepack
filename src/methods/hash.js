@@ -76,7 +76,9 @@ export function hashUnary(op: BabelUnaryOperator, x: Hashable): number {
   return (hashString(op) * 13) ^ x.getHash();
 }
 
-interface Equatable { equals(x: any): boolean }
+interface Equatable {
+  equals(x: any): boolean;
+}
 
 export class HashSet<T: Equatable & Hashable> {
   constructor(expectedEntries?: number = 32 * 1024) {

@@ -103,7 +103,9 @@ function StoryList({ stories }) {
           <tbody>
             {// we use Array.from to tell the compiler that this
             // is definitely an array object
-            Array.from(stories).map((story, i) => <Story story={story} rank={++i} key={story.id} />)}
+            Array.from(stories).map((story, i) => (
+              <Story story={story} rank={++i} key={story.id} />
+            ))}
           </tbody>
         </table>
       </td>

@@ -407,8 +407,8 @@ export class PropertiesImplementation {
         let existingDescValue = !existingDescriptor
           ? realm.intrinsics.undefined
           : existingDescriptor.value === undefined
-            ? realm.intrinsics.undefined
-            : existingDescriptor.value;
+          ? realm.intrinsics.undefined
+          : existingDescriptor.value;
         invariant(existingDescValue instanceof Value);
 
         // d. If existingDescriptor is not undefined, then

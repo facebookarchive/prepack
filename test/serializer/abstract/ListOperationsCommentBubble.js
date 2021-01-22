@@ -4,11 +4,13 @@ function createAttributedComment(props) {
   let ranges;
 
   if (body && body.ranges) {
-    _ranges = body.ranges.filter(r => r.entity.__typename).map(r => ({
-      location: Number(r.offset),
-      length: Number(r.length),
-      decorationLine: r.entity.__typename.includes("User") ? "none" : "underline",
-    }));
+    _ranges = body.ranges
+      .filter(r => r.entity.__typename)
+      .map(r => ({
+        location: Number(r.offset),
+        length: Number(r.length),
+        decorationLine: r.entity.__typename.includes("User") ? "none" : "underline",
+      }));
   } else {
     _ranges = [];
   }

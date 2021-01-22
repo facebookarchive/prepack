@@ -13,7 +13,7 @@ import { UISession } from "./UISession.js";
 import type { DebuggerCLIArguments } from "./UISession.js";
 /* The entry point to start up the debugger CLI
  * Reads in command line arguments and starts up a UISession
-*/
+ */
 
 function run(process, console) {
   let args = readCLIArguments(process, console);
