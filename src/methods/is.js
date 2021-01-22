@@ -9,7 +9,7 @@
 
 /* @flow */
 
-import { FatalError } from "../errors.js";
+import { CompilerDiagnostic, FatalError } from "../errors.js";
 import type { PropertyKeyValue } from "../types.js";
 import type { Realm } from "../realm.js";
 import type { Descriptor } from "../types.js";
@@ -186,7 +186,14 @@ export function IsPropertyKey(realm: Realm, arg: string | Value): boolean {
   if (arg instanceof SymbolValue) return true;
 
   if (arg instanceof AbstractValue) {
-    AbstractValue.reportIntrospectionError(arg);
+    let loc = realm.currentLocation;
+    let error = new CompilerDiagnostic(
+      "cannot determine if abstract property key is string or symbol",
+      loc,
+      "PP0036",
+      "FatalError"
+    );
+    realm.handleError(error);
     throw new FatalError();
   }
 
