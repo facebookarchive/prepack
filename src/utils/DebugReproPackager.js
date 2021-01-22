@@ -11,7 +11,7 @@
 
 /* eslint-disable no-shadow */
 
-import zipFactory from "node-zip";
+import JSZip from "jszip";
 import zipdir from "zip-dir";
 import path from "path";
 import child_process from "child_process";
@@ -19,11 +19,11 @@ import fs from "fs";
 
 export class DebugReproPackager {
   constructor() {
-    this._reproZip = zipFactory();
+    this._reproZip = new JSZip();
     return;
   }
 
-  _reproZip: zipFactory;
+  _reproZip: JSZip;
 
   _generateZip(
     reproArguments: Array<string>,
