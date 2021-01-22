@@ -102,30 +102,46 @@ function InternalSetProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, 
   propertyBinding.descriptor = desc;
 }
 
-function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, oldDesc?: Descriptor) {
+function InternalEmitPropertyMutationEffect(
+  realm: Realm,
+  Target: null | ObjectValue | AbstractObjectValue,
+  P: PropertyKeyValue,
+  desc: void | Descriptor,
+  oldDesc: void | Descriptor
+) {
+  if (Target === null) return;
   let generator = realm.generator;
   if (!generator) return;
-  if (!O.isIntrinsic() && O.temporalAlias === undefined) return;
+  if (Target instanceof AbstractObjectValue) {
+    // If the target is conditional, we pass the original object as target.
+    // If it is coming from some other operation, it should have some intrinsic
+    // name. In the future, we may have other ways to create abstract objects
+    // and at that point we can relax this invariant to include those cases too.
+    invariant(Target.isIntrinsic());
+  } else {
+    invariant(Target instanceof ObjectValue);
+    if (!Target.isIntrinsic() && Target.temporalAlias === undefined) {
+      // We only emit effects on intrinsics or snapshots.
+      return;
+    }
+    invariant(!Target.mightBeLeakedObject()); // leaked objects are never updated
+    invariant(!Target.mightBeFinalObject()); // final objects are never updated
+  }
   if (P instanceof SymbolValue) return;
   if (P instanceof StringValue) P = P.value;
-  invariant(!O.mightBeLeakedObject()); // leaked objects are never updated
-  invariant(!O.mightBeFinalObject()); // final objects are never updated
   invariant(typeof P === "string");
-  let propertyBinding = InternalGetPropertiesMap(O, P).get(P);
-  invariant(propertyBinding !== undefined); // The callers ensure this
-  let desc = propertyBinding.descriptor;
   if (desc === undefined) {
     // The property is being deleted
-    if (O === realm.$GlobalObject) {
+    if (Target === realm.$GlobalObject) {
       generator.emitGlobalDelete(P);
     } else {
-      generator.emitPropertyDelete(O, P);
+      generator.emitPropertyDelete(Target, P);
     }
   } else {
     desc = desc.throwIfNotConcrete(realm);
     if (oldDesc === undefined) {
       // The property is being created
-      if (O === realm.$GlobalObject) {
+      if (Target === realm.$GlobalObject) {
         if (IsDataDescriptor(realm, desc)) {
           let descValue = desc.value || realm.intrinsics.undefined;
           if (isValidIdentifier(P) && !desc.configurable && desc.enumerable && desc.writable) {
@@ -133,17 +149,17 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
           } else if (desc.configurable && desc.enumerable && desc.writable) {
             generator.emitGlobalAssignment(P, descValue);
           } else {
-            generator.emitDefineProperty(O, P, desc);
+            generator.emitDefineProperty(Target, P, desc);
           }
         } else {
-          generator.emitDefineProperty(O, P, desc);
+          generator.emitDefineProperty(Target, P, desc);
         }
       } else {
         if (IsDataDescriptor(realm, desc) && desc.configurable && desc.enumerable && desc.writable) {
           let descValue = desc.value || realm.intrinsics.undefined;
-          generator.emitPropertyAssignment(O, P, descValue);
+          generator.emitPropertyAssignment(Target, P, descValue);
         } else {
-          generator.emitDefineProperty(O, P, desc);
+          generator.emitDefineProperty(Target, P, desc);
         }
       }
     } else {
@@ -153,13 +169,13 @@ function InternalUpdatedProperty(realm: Realm, O: ObjectValue, P: PropertyKeyVal
         invariant(IsDataDescriptor(realm, desc));
         let descValue = desc.value || realm.intrinsics.undefined;
         // only the value is being modified
-        if (O === realm.$GlobalObject) {
+        if (Target === realm.$GlobalObject) {
           generator.emitGlobalAssignment(P, descValue);
         } else {
-          generator.emitPropertyAssignment(O, P, descValue);
+          generator.emitPropertyAssignment(Target, P, descValue);
         }
       } else {
-        generator.emitDefineProperty(O, P, desc, /*isDescChanged*/ true);
+        generator.emitDefineProperty(Target, P, desc, /*isDescChanged*/ true);
       }
     }
   }
@@ -716,7 +732,14 @@ export class PropertiesImplementation {
   }
 
   //
-  OrdinaryDelete(realm: Realm, O: ObjectValue, P: PropertyKeyValue): boolean {
+  // Note: The extra Target argument represents the Value that should receive any emitted effects,
+  // or null if none should be emitted.
+  OrdinaryDelete(
+    realm: Realm,
+    O: ObjectValue,
+    P: PropertyKeyValue,
+    Target: null | ObjectValue | AbstractObjectValue
+  ): boolean {
     // 1. Assert: IsPropertyKey(P) is true.
     invariant(IsPropertyKey(realm, P), "expected a property key");
 
@@ -761,7 +784,7 @@ export class PropertiesImplementation {
       invariant(propertyBinding !== undefined);
       realm.recordModifiedProperty(propertyBinding);
       propertyBinding.descriptor = undefined;
-      InternalUpdatedProperty(realm, O, P, desc);
+      InternalEmitPropertyMutationEffect(realm, Target, P, undefined, desc);
 
       // b. Return true.
       return true;
@@ -833,7 +856,7 @@ export class PropertiesImplementation {
   // ECMA262 9.1.6.2
   IsCompatiblePropertyDescriptor(realm: Realm, extensible: boolean, Desc: Descriptor, current: ?Descriptor): boolean {
     // 1. Return ValidateAndApplyPropertyDescriptor(undefined, undefined, Extensible, Desc, Current).
-    return this.ValidateAndApplyPropertyDescriptor(realm, undefined, undefined, extensible, Desc, current);
+    return this.ValidateAndApplyPropertyDescriptor(realm, undefined, undefined, extensible, Desc, current, null);
   }
 
   // ECMA262 9.1.6.3
@@ -843,7 +866,8 @@ export class PropertiesImplementation {
     P: void | PropertyKeyValue,
     extensible: boolean,
     _Desc: Descriptor,
-    _current: ?Descriptor
+    _current: ?Descriptor,
+    Target: null | ObjectValue | AbstractObjectValue
   ): boolean {
     let Desc = _Desc;
     let current = _current;
@@ -887,18 +911,14 @@ export class PropertiesImplementation {
         //    to its default value.
         if (O !== undefined) {
           invariant(P !== undefined);
-          InternalSetProperty(
-            realm,
-            O,
-            P,
-            new PropertyDescriptor({
-              value: Desc.value !== undefined ? Desc.value : realm.intrinsics.undefined,
-              writable: Desc.writable !== undefined ? Desc.writable : false,
-              enumerable: Desc.enumerable !== undefined ? Desc.enumerable : false,
-              configurable: Desc.configurable !== undefined ? Desc.configurable : false,
-            })
-          );
-          InternalUpdatedProperty(realm, O, P, undefined);
+          let newDesc = new PropertyDescriptor({
+            value: Desc.value !== undefined ? Desc.value : realm.intrinsics.undefined,
+            writable: Desc.writable !== undefined ? Desc.writable : false,
+            enumerable: Desc.enumerable !== undefined ? Desc.enumerable : false,
+            configurable: Desc.configurable !== undefined ? Desc.configurable : false,
+          });
+          InternalSetProperty(realm, O, P, newDesc);
+          InternalEmitPropertyMutationEffect(realm, Target, P, newDesc, undefined);
         }
       } else {
         // d. Else Desc must be an accessor Property Descriptor,
@@ -909,18 +929,14 @@ export class PropertiesImplementation {
         if (O !== undefined) {
           invariant(P !== undefined);
           Desc = Desc.throwIfNotConcrete(realm);
-          InternalSetProperty(
-            realm,
-            O,
-            P,
-            new PropertyDescriptor({
-              get: Desc.get !== undefined ? Desc.get : realm.intrinsics.undefined,
-              set: Desc.set !== undefined ? Desc.set : realm.intrinsics.undefined,
-              enumerable: Desc.enumerable !== undefined ? Desc.enumerable : false,
-              configurable: Desc.configurable !== undefined ? Desc.configurable : false,
-            })
-          );
-          InternalUpdatedProperty(realm, O, P, undefined);
+          let newDesc = new PropertyDescriptor({
+            get: Desc.get !== undefined ? Desc.get : realm.intrinsics.undefined,
+            set: Desc.set !== undefined ? Desc.set : realm.intrinsics.undefined,
+            enumerable: Desc.enumerable !== undefined ? Desc.enumerable : false,
+            configurable: Desc.configurable !== undefined ? Desc.configurable : false,
+          });
+          InternalSetProperty(realm, O, P, newDesc);
+          InternalEmitPropertyMutationEffect(realm, Target, P, newDesc, undefined);
         }
       }
 
@@ -1109,7 +1125,7 @@ export class PropertiesImplementation {
           (current: any)[field] = (Desc: any)[field];
         }
       }
-      InternalUpdatedProperty(realm, O, P, oldDesc);
+      InternalEmitPropertyMutationEffect(realm, Target, P, current, oldDesc);
     }
 
     // 11. Return true.
@@ -1117,7 +1133,15 @@ export class PropertiesImplementation {
   }
 
   // ECMA262 9.1.6.1
-  OrdinaryDefineOwnProperty(realm: Realm, O: ObjectValue, P: PropertyKeyValue, Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value that should receive any emitted effects,
+  // or null if none should be emitted.
+  OrdinaryDefineOwnProperty(
+    realm: Realm,
+    O: ObjectValue,
+    P: PropertyKeyValue,
+    Desc: Descriptor,
+    Target: null | AbstractObjectValue | ObjectValue
+  ): boolean {
     invariant(O instanceof ObjectValue);
 
     // 1. Let current be ? O.[[GetOwnProperty]](P).
@@ -1127,7 +1151,7 @@ export class PropertiesImplementation {
     let extensible = O.getExtensible();
 
     // 3. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).
-    return this.ValidateAndApplyPropertyDescriptor(realm, O, P, extensible, Desc, current);
+    return this.ValidateAndApplyPropertyDescriptor(realm, O, P, extensible, Desc, current, Target);
   }
 
   // ECMA262 19.1.2.3.1
@@ -1301,14 +1325,16 @@ export class PropertiesImplementation {
   }
 
   // ECMA262 9.4.2.4
-  ArraySetLength(realm: Realm, A: ArrayValue, _Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value that should receive any emitted effects,
+  // or null if none should be emitted.
+  ArraySetLength(realm: Realm, A: ArrayValue, _Desc: Descriptor, Target: ObjectValue | AbstractObjectValue): boolean {
     let Desc = _Desc.throwIfNotConcrete(realm);
 
     // 1. If the [[Value]] field of Desc is absent, then
     let DescValue = Desc.value;
     if (!DescValue) {
       // a. Return OrdinaryDefineOwnProperty(A, "length", Desc).
-      return this.OrdinaryDefineOwnProperty(realm, A, "length", Desc);
+      return this.OrdinaryDefineOwnProperty(realm, A, "length", Desc, Target);
     }
     invariant(DescValue instanceof Value);
 
@@ -1350,7 +1376,7 @@ export class PropertiesImplementation {
     // 10. If newLen ≥ oldLen, then
     if (newLen >= oldLen) {
       // a. Return OrdinaryDefineOwnProperty(A, "length", newLenDesc).
-      return this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc);
+      return this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc, Target);
     }
 
     // 11. If oldLenDesc.[[Writable]] is false, return false.
@@ -1372,7 +1398,7 @@ export class PropertiesImplementation {
     }
 
     // 14. Let succeeded be ! OrdinaryDefineOwnProperty(A, "length", newLenDesc).
-    let succeeded = this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc);
+    let succeeded = this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc, Target);
 
     // 15. If succeeded is false, return false.
     if (succeeded === false) return false;
@@ -1403,7 +1429,7 @@ export class PropertiesImplementation {
         if (newWritable === false) newLenDesc.writable = false;
 
         // iii. Let succeeded be ! OrdinaryDefineOwnProperty(A, "length", newLenDesc).
-        succeeded = this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc);
+        succeeded = this.OrdinaryDefineOwnProperty(realm, A, "length", newLenDesc, Target);
 
         // iv. Return false.
         return false;
@@ -1419,7 +1445,8 @@ export class PropertiesImplementation {
         "length",
         new PropertyDescriptor({
           writable: false,
-        })
+        }),
+        Target
       );
     }
 

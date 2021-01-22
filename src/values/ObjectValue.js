@@ -646,9 +646,10 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // ECMA262 9.1.6
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+  // Note: The extra Target argument represents the Value to emit residual effects on at runtime, if any.
+  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor, Target: ObjectValue | AbstractObjectValue = this): boolean {
     // 1. Return ? OrdinaryDefineOwnProperty(O, P, Desc).
-    return Properties.OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc);
+    return Properties.OrdinaryDefineOwnProperty(this.$Realm, this, P, Desc, Target);
   }
 
   // ECMA262 9.1.7
@@ -697,7 +698,8 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // ECMA262 9.1.10
-  $Delete(P: PropertyKeyValue): boolean {
+  // Note: The extra Target argument represents the Value to emit residual effects on at runtime, if any.
+  $Delete(P: PropertyKeyValue, Target: ObjectValue | AbstractObjectValue = this): boolean {
     if (this.unknownProperty !== undefined) {
       // TODO #946: generate a delete from the object
       AbstractValue.reportIntrospectionError(this, P);
@@ -705,7 +707,7 @@ export default class ObjectValue extends ConcreteValue {
     }
 
     // 1. Return ? OrdinaryDelete(O, P).
-    return Properties.OrdinaryDelete(this.$Realm, this, P);
+    return Properties.OrdinaryDelete(this.$Realm, this, P, Target);
   }
 
   // ECMA262 9.1.11

@@ -359,7 +359,9 @@ export default class ProxyValue extends ObjectValue {
   }
 
   // ECMA262 9.5.6
-  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor): boolean {
+  // Note: The extra Target argument is not relevant on Proxy because mutations are never performed
+  // on the Proxy itself but instead on the target/handler.
+  $DefineOwnProperty(P: PropertyKeyValue, Desc: Descriptor, Target: ObjectValue | AbstractObjectValue = this): boolean {
     let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.
@@ -657,7 +659,9 @@ export default class ProxyValue extends ObjectValue {
   }
 
   // ECMA262 9.5.10
-  $Delete(P: PropertyKeyValue): boolean {
+  // Note: The extra Target argument is not relevant on Proxy because mutations are never performed
+  // on the Proxy itself but instead on the target/handler.
+  $Delete(P: PropertyKeyValue, Target: ObjectValue | AbstractObjectValue = this): boolean {
     let realm = this.$Realm;
 
     // 1. Assert: IsPropertyKey(P) is true.

@@ -89,6 +89,9 @@ export default function(realm: Realm): void {
   //   repeated, by default they must be unique
   // - disablePlaceholders: boolean representing whether placeholders should be substituted in
   //   the abstract value's name.
+  // - externalTemplate: boolean representing whether the template object is unchanged. By default
+  //   the template and nested properties are given intrinsic names. Setting this flag to true
+  //   makes the template reusable and lets nested objects to remain not intrinsic.
   // If the abstract value gets somehow embedded in the final heap,
   // it will be referred to by the supplied name in the generated code.
   global.$DefineOwnProperty(
