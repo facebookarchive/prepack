@@ -72,7 +72,8 @@ export default function(realm: Realm): void {
     "JSON",
   ];
   if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION) && !realm.isCompatibleWith("mobile"))
-    typeNames = typeNames.concat("Symbol", "Promise", "WeakSet", "Proxy", "Reflect");
+    typeNames = typeNames.concat("Promise", "WeakSet", "Proxy", "Reflect");
+  if (!realm.isCompatibleWith(realm.MOBILE_JSC_VERSION)) typeNames.push("Symbol");
   for (let name of typeNames) {
     // need to check if the property exists (it may not due to --compatibility)
     if (realm.intrinsics[name]) {
