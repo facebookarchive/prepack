@@ -28,7 +28,7 @@ function render(_ref3) {
 let wellBehavedObject = {
   props: { toolbox: {}, trackingCodes: null, feedProps: [], unit: { firstItem: { edges: [{ node: 123 }] } } },
 };
-let wellBehavedParameter = global.__abstract ? __abstract("object", "foo") : wellBehavedObject;
+let wellBehavedParameter = global.__abstract ? __abstract({}, "foo") : wellBehavedObject;
 if (global.__makeSimple) __makeSimple(wellBehavedParameter, "transitive");
 var prepackedRender = render(wellBehavedParameter);
 

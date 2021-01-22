@@ -284,14 +284,10 @@ export default class ObjectValue extends ConcreteValue {
   // If true, then unknown properties should return transitively simple abstract object values
   _simplicityIsTransitive: AbstractValue | BooleanValue;
 
-  // The abstract object for which this object is the template.
-  // Use this instead of the object itself when deriving temporal values for object properties.
-  _templateFor: void | AbstractObjectValue;
-
   properties: Map<string, PropertyBinding>;
   symbols: Map<SymbolValue, PropertyBinding>;
   unknownProperty: void | PropertyBinding;
-  _temporalAlias: void | AbstractObjectValue;
+  _temporalAlias: void | ObjectValue | AbstractObjectValue;
 
   // An object value with an intrinsic name can either exist from the beginning of time,
   // or it can be associated with a particular point in time by being used as a template
@@ -325,11 +321,11 @@ export default class ObjectValue extends ConcreteValue {
     return this.hashValue;
   }
 
-  get temporalAlias(): void | AbstractObjectValue {
+  get temporalAlias(): void | ObjectValue | AbstractObjectValue {
     return this._temporalAlias;
   }
 
-  set temporalAlias(value: AbstractObjectValue) {
+  set temporalAlias(value: ObjectValue | AbstractObjectValue) {
     this._temporalAlias = value;
   }
 
@@ -532,31 +528,24 @@ export default class ObjectValue extends ConcreteValue {
   }
 
   // Note that internal properties will not be copied to the snapshot, nor will they be removed.
-  getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue {
+  getSnapshot(options?: { removeProperties: boolean }): AbstractObjectValue | ObjectValue {
+    if (this.isIntrinsic()) {
+      return this;
+    }
     try {
       if (this.temporalAlias !== undefined) return this.temporalAlias;
       let realm = this.$Realm;
-      let template = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
+      let snapshot = new ObjectValue(this.$Realm, this.$Realm.intrinsics.ObjectPrototype);
       let keys = Properties.GetOwnPropertyKeysArray(realm, this, false, true);
-      this.copyKeys(((keys: any): Array<PropertyKeyValue>), this, template);
+      this.copyKeys(((keys: any): Array<PropertyKeyValue>), this, snapshot);
       // The snapshot is an immutable object snapshot
-      template.makeFinal();
+      snapshot.makeFinal();
       // The original object might be a React props object, thus
       // if it is, we need to ensure we mark it with the same rules
       if (realm.react.enabled && realm.react.reactProps.has(this)) {
-        realm.react.reactProps.add(template);
+        realm.react.reactProps.add(snapshot);
       }
-      let operationDescriptor = createOperationDescriptor("SINGLE_ARG");
-      let result = AbstractValue.createTemporalFromBuildFunction(
-        this.$Realm,
-        ObjectValue,
-        [template],
-        operationDescriptor,
-        { skipInvariant: true, isPure: true }
-      );
-      invariant(result instanceof AbstractObjectValue);
-      result.values = new ValuesDomain(template);
-      return result;
+      return snapshot;
     } finally {
       if (options && options.removeProperties) {
         this.properties = new Map();

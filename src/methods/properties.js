@@ -1447,7 +1447,7 @@ export class PropertiesImplementation {
       let absVal = AbstractValue.createTemporalFromBuildFunction(
         realm,
         Value,
-        [O._templateFor || O, propName],
+        [O, propName],
         createOperationDescriptor("ABSTRACT_PROPERTY"),
         { isPure: true }
       );
@@ -1470,19 +1470,11 @@ export class PropertiesImplementation {
             let absVal;
             function createAbstractPropertyValue(type: typeof Value) {
               invariant(typeof P === "string");
-              if (O.isTransitivelySimple()) {
-                return AbstractValue.createFromBuildFunction(
-                  realm,
-                  type,
-                  [O._templateFor || O, new StringValue(realm, P)],
-                  createOperationDescriptor("ABSTRACT_PROPERTY"),
-                  { kind: AbstractValue.makeKind("property", P) }
-                );
-              } else if (realm.generator !== undefined) {
+              if (realm.generator !== undefined) {
                 return AbstractValue.createTemporalFromBuildFunction(
                   realm,
                   type,
-                  [O._templateFor || O, new StringValue(realm, P)],
+                  [O, new StringValue(realm, P)],
                   createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { skipInvariant: true, isPure: true }
                 );
@@ -1494,16 +1486,26 @@ export class PropertiesImplementation {
                 return AbstractValue.createFromBuildFunction(
                   realm,
                   type,
-                  [O._templateFor || O, new StringValue(realm, P)],
+                  [O, new StringValue(realm, P)],
                   createOperationDescriptor("ABSTRACT_PROPERTY"),
                   { kind: "environment initialization expression" }
                 );
               }
             }
             if (O.isTransitivelySimple()) {
-              absVal = createAbstractPropertyValue(ObjectValue);
-              invariant(absVal instanceof AbstractObjectValue);
-              absVal.makeSimple("transitive");
+              invariant(realm.generator);
+              absVal = realm.generator.deriveConcreteObject(
+                intrinsicName => {
+                  let obj = new ObjectValue(realm, realm.intrinsics.ObjectPrototype, intrinsicName);
+                  obj.makeSimple("transitive");
+                  obj.makePartial();
+                  return obj;
+                },
+                [O, new StringValue(realm, P)],
+                createOperationDescriptor("ABSTRACT_PROPERTY"),
+                { isPure: true }
+              );
+              invariant(absVal instanceof ObjectValue);
               absVal = AbstractValue.createAbstractConcreteUnion(realm, absVal, [
                 realm.intrinsics.undefined,
                 realm.intrinsics.null,

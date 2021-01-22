@@ -137,7 +137,10 @@ export class ReactEquivalenceSet {
     return result.value;
   }
 
-  _getTemporalValue(temporalAlias: AbstractObjectValue, visitedValues: Set<Value>): AbstractObjectValue {
+  _getTemporalValue(
+    temporalAlias: ObjectValue | AbstractObjectValue,
+    visitedValues: Set<Value>
+  ): ObjectValue | AbstractObjectValue {
     // Check to ensure the temporal alias is definitely declared in the current scope
     if (!this.residualReactElementVisitor.wasTemporalAliasDeclaredInCurrentScope(temporalAlias)) {
       return temporalAlias;
@@ -203,7 +206,7 @@ export class ReactEquivalenceSet {
   }
 
   getTemporalAliasValue(
-    temporalAlias: AbstractObjectValue,
+    temporalAlias: ObjectValue | AbstractObjectValue,
     map: ReactSetValueMap,
     visitedValues: Set<Value>
   ): ReactSetNode {

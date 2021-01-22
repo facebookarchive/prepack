@@ -74,7 +74,6 @@ export type AbstractValueKind =
   | "global.JSON.stringify(A)"
   | "global.JSON.parse(A)"
   | "JSON.stringify(...)"
-  | "JSON.parse(...)"
   | "global.Math.imul(A, B)"
   | "global.__cannotBecomeObject(A)"
   | "leaked binding value";
@@ -936,14 +935,20 @@ export default class AbstractValue extends Value {
     }
   }
 
-  static dischargeValuesFromUnion(realm: Realm, union: AbstractValue): [AbstractValue, Array<ConcreteValue>] {
+  static dischargeValuesFromUnion(
+    realm: Realm,
+    union: AbstractValue
+  ): [ObjectValue | AbstractValue, Array<ConcreteValue>] {
     invariant(union instanceof AbstractValue && union.kind === "abstractConcreteUnion");
     let abstractValue = union.args[0];
+
+    let concreteValues = ((union.args.slice(1): any): Array<ConcreteValue>);
+
+    if (abstractValue instanceof ObjectValue) {
+      return [abstractValue, concreteValues];
+    }
+
     invariant(abstractValue instanceof AbstractValue);
-
-    let concreteValues = (union.args.filter(e => e instanceof ConcreteValue): any);
-    invariant(concreteValues.length === union.args.length - 1);
-
     if (!abstractValue.isTemporal()) {
       // We make the abstract value in an abstract concrete union temporal, as it is predicated
       // on the conditions that preclude the concrete values in the union. The type invariant
@@ -973,11 +978,10 @@ export default class AbstractValue extends Value {
   // Use this only to allow instrinsic abstract objects to be null and/or undefined.
   static createAbstractConcreteUnion(
     realm: Realm,
-    abstractValue: AbstractValue,
+    abstractValue: ObjectValue | AbstractValue,
     concreteValues: Array<ConcreteValue>
   ): AbstractValue {
     invariant(concreteValues.length > 0);
-    invariant(abstractValue instanceof AbstractValue);
 
     let checkedConcreteValues = (concreteValues.filter(e => e instanceof ConcreteValue): any);
     invariant(checkedConcreteValues.length === concreteValues.length);
@@ -985,11 +989,18 @@ export default class AbstractValue extends Value {
     let concreteSet: Set<ConcreteValue> = new Set(checkedConcreteValues);
     let values;
 
-    if (!abstractValue.values.isTop()) {
-      abstractValue.values.getElements().forEach(v => concreteSet.add(v));
+    if (abstractValue instanceof ObjectValue) {
+      invariant(abstractValue.intrinsicName);
+      concreteSet.add(abstractValue);
       values = new ValuesDomain(concreteSet);
     } else {
-      values = ValuesDomain.topVal;
+      invariant(abstractValue instanceof AbstractValue);
+      if (!abstractValue.values.isTop()) {
+        abstractValue.values.getElements().forEach(v => concreteSet.add(v));
+        values = new ValuesDomain(concreteSet);
+      } else {
+        values = ValuesDomain.topVal;
+      }
     }
     let types = TypesDomain.topVal;
     let [hash, operands] = hashCall("abstractConcreteUnion", abstractValue, ...checkedConcreteValues);
@@ -1096,29 +1107,16 @@ export default class AbstractValue extends Value {
     return realm.reportIntrospectionError(message);
   }
 
-  static createAbstractObject(
-    realm: Realm,
-    name: string,
-    templateOrShape?: ObjectValue | ShapeInformationInterface
-  ): AbstractObjectValue {
-    let value;
-    if (templateOrShape === undefined) {
-      templateOrShape = new ObjectValue(realm, realm.intrinsics.ObjectPrototype);
-    }
-    value = AbstractValue.createFromTemplate(realm, name, ObjectValue, []);
+  static createAbstractObject(realm: Realm, name: string, shape?: ShapeInformationInterface): AbstractObjectValue {
+    let value = AbstractValue.createFromTemplate(realm, name, ObjectValue, []);
     if (!realm.isNameStringUnique(name)) {
       value.hashValue = ++realm.objectCount;
     } else {
       realm.saveNameString(name);
     }
     value.intrinsicName = name;
-    if (templateOrShape instanceof ObjectValue) {
-      templateOrShape.makePartial();
-      templateOrShape.makeSimple();
-      value.values = new ValuesDomain(new Set([templateOrShape]));
-      realm.rebuildNestedProperties(value, name);
-    } else {
-      value.shape = templateOrShape;
+    if (shape !== undefined) {
+      value.shape = shape;
     }
     invariant(value instanceof AbstractObjectValue);
     return value;

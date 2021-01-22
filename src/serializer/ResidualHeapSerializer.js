@@ -2008,7 +2008,7 @@ export class ResidualHeapSerializer {
     let serializedArgs = val.args.map((abstractArg, i) => this.serializeValue(abstractArg));
     if (val.kind === "abstractConcreteUnion") {
       invariant(val.args.length >= 2);
-      invariant(val.args[0] instanceof AbstractValue);
+      invariant(val.args[0] instanceof AbstractValue || val.args[0].intrinsicName);
       return serializedArgs[0];
     }
     if (val.kind === "explicit conversion to object") {
