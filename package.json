@@ -114,7 +114,7 @@
     "js-beautify": "^1.7.5",
     "js-yaml": "^3.6.1",
     "jsdom": "^9.2.1",
-    "madge": "^1.6.0",
+    "madge": "^4.0.1",
     "minimist": "^1.2.0",
     "prettier": "1.17.0",
     "prop-types": "^15.6.0",
